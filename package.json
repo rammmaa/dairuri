@@ -1,0 +1,25 @@
+{
+  "name": "dairuri",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "mobile": "npm run start -w @dairuri/mobile",
+    "api": "npm run start:dev -w @dairuri/api",
+    "test": "npm run build -w @dairuri/shared && npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "overrides": {
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-native": "0.83.6",
+    "react-test-renderer": "19.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
