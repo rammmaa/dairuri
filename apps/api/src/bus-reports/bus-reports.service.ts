@@ -26,7 +26,7 @@ export class BusReportsService {
     return this.busReportsRepository.save(report);
   }
 
-  findRecent(): BusReport[] {
-    return this.busReportsRepository.findRecent();
+  findRecent(routeNumber?: string): BusReport[] {
+    return this.busReportsRepository.findRecent(routeNumber);
   }
 }

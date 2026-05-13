@@ -38,6 +38,54 @@ export interface JobListing {
   scheduleLabel: string;
 }
 
+export interface CreateRidePostInput {
+  title: string;
+  departureName: string;
+  destinationName: string;
+  dayLabel: string;
+  departureTime: string;
+  seatsTotal: number;
+  description: string;
+}
+
+export interface CreateJobPostInput {
+  title: string;
+  placeName: string;
+  payLabel: string;
+  scheduleLabel: string;
+  description: string;
+}
+
+export interface ApplicationInput {
+  listingId: string;
+  message: string;
+}
+
+export type VerificationBadge =
+  | "phone"
+  | "region"
+  | "driverLicense"
+  | "insurance";
+
+export interface UserProfileSummary {
+  id: string;
+  nickname: string;
+  driverYears: number;
+  mannerTemperature: number;
+  completedRides: number;
+  completedJobs: number;
+  recommendationRate: number;
+  verifications: VerificationBadge[];
+}
+
+export interface ChatRoomSummary {
+  id: string;
+  listingTitle: string;
+  participantLabel: string;
+  lastMessage: string;
+  updatedAt: string;
+}
+
 export interface BusReportInput {
   routeNumber: string;
   placeName: string;
@@ -76,6 +124,35 @@ export const serviceFeatures: ServiceFeature[] = [
     description: "지역 소상공인과 주민을 연결하는 짧은 모집글을 다룹니다.",
   },
 ];
+
+export const verificationBadgeLabels: Record<VerificationBadge, string> = {
+  phone: "전화번호 인증",
+  region: "지역 인증",
+  driverLicense: "면허 인증",
+  insurance: "보험 입력",
+};
+
+export function createRidePostDefaults(): CreateRidePostInput {
+  return {
+    title: "",
+    departureName: "",
+    destinationName: "",
+    dayLabel: "",
+    departureTime: "",
+    seatsTotal: 1,
+    description: "",
+  };
+}
+
+export function createJobPostDefaults(): CreateJobPostInput {
+  return {
+    title: "",
+    placeName: "",
+    payLabel: "",
+    scheduleLabel: "",
+    description: "",
+  };
+}
 
 export const sampleRideListings: RideListing[] = [
   {

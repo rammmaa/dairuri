@@ -45,7 +45,7 @@ describe("Dairuri mobile app", () => {
         );
       }
 
-      if (url.endsWith("/bus-reports/recent")) {
+      if (url.includes("/bus-reports/recent")) {
         return Promise.resolve(response([]));
       }
 
@@ -58,6 +58,35 @@ describe("Dairuri mobile app", () => {
             location: { lat: 35.7001, lng: 128.7342 },
             observedAt: "2026-05-11T07:10:00.000Z",
           }),
+        );
+      }
+
+      if (url.endsWith("/users/me")) {
+        return Promise.resolve(
+          response({
+            id: "user-me",
+            nickname: "다로리인",
+            driverYears: 3,
+            mannerTemperature: 40.6,
+            completedRides: 12,
+            completedJobs: 4,
+            recommendationRate: 97,
+            verifications: ["phone", "region"],
+          }),
+        );
+      }
+
+      if (url.endsWith("/chat/rooms")) {
+        return Promise.resolve(
+          response([
+            {
+              id: "chat-room-api",
+              listingTitle: "API에서 온 다로리 라이드",
+              participantLabel: "다로리인 3명",
+              lastMessage: "내일 오전 9시에 만나요.",
+              updatedAt: "2026-05-13T06:20:00.000Z",
+            },
+          ]),
         );
       }
 
@@ -133,6 +162,30 @@ describe("Dairuri mobile app", () => {
 
     fireEvent.press(screen.getByRole("button", { name: "비정기 라이드 필터" }));
     expect(screen.getByText("비정기 라이드 필터 적용됨")).toBeTruthy();
+  });
+
+  it("opens the ride post form from the recruitment tab", async () => {
+    render(<App />);
+
+    fireEvent.press(screen.getByRole("button", { name: "모집글 탭" }));
+    fireEvent.press(await screen.findByRole("button", { name: "라이드 모집글 작성" }));
+
+    expect(screen.getByText("라이드 모집 시작")).toBeTruthy();
+    expect(screen.getByPlaceholderText("출발 장소")).toBeTruthy();
+    expect(screen.getByPlaceholderText("도착 장소")).toBeTruthy();
+  });
+
+  it("renders backend-backed chat rooms and profile badges", async () => {
+    render(<App />);
+
+    fireEvent.press(screen.getByRole("button", { name: "채팅 탭" }));
+    expect(await screen.findByText("API에서 온 다로리 라이드")).toBeTruthy();
+    expect(screen.getByText("내일 오전 9시에 만나요.")).toBeTruthy();
+
+    fireEvent.press(screen.getByRole("button", { name: "프로필 탭" }));
+    expect(await screen.findByText("다로리인")).toBeTruthy();
+    expect(screen.getByText("전화번호 인증")).toBeTruthy();
+    expect(screen.getByText("지역 인증")).toBeTruthy();
   });
 });
 

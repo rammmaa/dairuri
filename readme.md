@@ -37,9 +37,16 @@ API 환경 변수 예시는 `apps/api/.env.example`에 있습니다.
 ```bash
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dairuri
 REDIS_URL=redis://localhost:6379
+PORT=3000
+RUN_DB_MIGRATIONS=false
 ```
+
+## 배포
+
+Vercel은 루트에서 `npm run build`를 실행하고 `apps/mobile/dist`를 정적 출력 디렉터리로 사용합니다.
 
 ## 문서
 
 - [서비스 플랜](docs/dairuri-service-plan.md)
 - [MVP 구현 계획](docs/superpowers/plans/2026-05-13-dairuri-mvp.md)
+- [데모 플로우](docs/demo-flow.md)

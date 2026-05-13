@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { bottomTabs, serviceFeatures } from "./index";
+import {
+  bottomTabs,
+  createJobPostDefaults,
+  createRidePostDefaults,
+  serviceFeatures,
+  verificationBadgeLabels,
+} from "./index";
 
 describe("shared product contract", () => {
   it("keeps the five mobile primary tabs from the IA", () => {
@@ -18,5 +24,33 @@ describe("shared product contract", () => {
       "버스 아카이빙",
       "일자리",
     ]);
+  });
+
+  it("defines ride and job post defaults for mobile forms", () => {
+    expect(createRidePostDefaults()).toMatchObject({
+      title: "",
+      departureName: "",
+      destinationName: "",
+      dayLabel: "",
+      departureTime: "",
+      seatsTotal: 1,
+    });
+
+    expect(createJobPostDefaults()).toMatchObject({
+      title: "",
+      placeName: "",
+      payLabel: "",
+      scheduleLabel: "",
+      description: "",
+    });
+  });
+
+  it("keeps profile verification badge labels stable", () => {
+    expect(verificationBadgeLabels).toEqual({
+      phone: "전화번호 인증",
+      region: "지역 인증",
+      driverLicense: "면허 인증",
+      insurance: "보험 입력",
+    });
   });
 });

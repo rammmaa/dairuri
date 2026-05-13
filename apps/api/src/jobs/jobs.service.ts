@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { JobListing } from "@dairuri/shared";
+import type { CreateJobPostInput, JobListing } from "@dairuri/shared";
 import { JobsRepository } from "./jobs.repository";
 
 @Injectable()
@@ -10,5 +10,9 @@ export class JobsService {
 
   findAll(): JobListing[] {
     return this.jobsRepository.findAll();
+  }
+
+  create(input: CreateJobPostInput): JobListing {
+    return this.jobsRepository.create(input);
   }
 }

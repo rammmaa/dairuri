@@ -20,11 +20,12 @@ export function BusArchiveScreen() {
   const [recentReports, setRecentReports] = useState<BusReport[]>([]);
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clockText, setClockText] = useState(() => formatTime(new Date()));
 
   useEffect(() => {
     let isMounted = true;
 
-    fetchRecentBusReports()
+    fetchRecentBusReports(selectedRoute)
       .then((reports) => {
         if (isMounted) {
           setRecentReports(reports);
@@ -38,6 +39,16 @@ export function BusArchiveScreen() {
 
     return () => {
       isMounted = false;
+    };
+  }, [selectedRoute]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setClockText(formatTime(new Date()));
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -93,7 +104,7 @@ export function BusArchiveScreen() {
       </View>
       <View style={styles.busCard}>
         <Text style={styles.busTitle}>방금 버스 봤어요!</Text>
-        <Text style={styles.timerText}>12:01:19</Text>
+        <Text style={styles.timerText}>{clockText}</Text>
         <View style={styles.locationPill}>
           <View style={styles.blueDot} />
           <Text style={styles.locationText}>현위치: {currentPlace.placeName}</Text>
@@ -126,6 +137,10 @@ export function BusArchiveScreen() {
       ) : null}
     </ScrollView>
   );
+}
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString("ko-KR", { hour12: false });
 }
 
 const styles = StyleSheet.create({

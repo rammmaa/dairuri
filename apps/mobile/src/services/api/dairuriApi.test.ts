@@ -1,4 +1,13 @@
-import { createBusReport, fetchJobs, fetchRecentBusReports, fetchRides } from "./dairuriApi";
+import {
+  createBusReport,
+  createJobPost,
+  createRidePost,
+  fetchChatRooms,
+  fetchJobs,
+  fetchMyProfile,
+  fetchRecentBusReports,
+  fetchRides,
+} from "./dairuriApi";
 
 describe("dairuriApi", () => {
   beforeEach(() => {
@@ -69,6 +78,58 @@ describe("dairuriApi", () => {
         method: "POST",
       },
     );
+  });
+
+  it("posts new ride and job listings", async () => {
+    jest.spyOn(global, "fetch").mockResolvedValue(response({ id: "created" }));
+
+    await createRidePost({
+      title: "병원 정기 라이드 함께 가실 분",
+      departureName: "다로리 카페",
+      destinationName: "청도 병원",
+      dayLabel: "매주 화",
+      departureTime: "오전 8:30",
+      seatsTotal: 3,
+      description: "병원 방문 동선이 맞는 분을 모집합니다.",
+      lat: 35.7001,
+      lng: 128.7342,
+    });
+
+    await createJobPost({
+      title: "평일 오전 농가 포장 도와주실 분",
+      placeName: "다로리 농장",
+      payLabel: "일급 60,000원",
+      scheduleLabel: "월, 수 09:00-12:00",
+      description: "포장과 상차 보조가 주 업무입니다.",
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:3000/rides",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:3000/jobs",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("loads profile and chat summaries", async () => {
+    jest.spyOn(global, "fetch").mockImplementation((input) => {
+      const url = String(input);
+
+      if (url.endsWith("/users/me")) {
+        return Promise.resolve(response({ id: "user-me", nickname: "다로리인" }));
+      }
+
+      if (url.endsWith("/chat/rooms")) {
+        return Promise.resolve(response([{ id: "room-1" }]));
+      }
+
+      return Promise.reject(new Error(`Unexpected URL: ${url}`));
+    });
+
+    await expect(fetchMyProfile()).resolves.toMatchObject({ nickname: "다로리인" });
+    await expect(fetchChatRooms()).resolves.toEqual([{ id: "room-1" }]);
   });
 });
 

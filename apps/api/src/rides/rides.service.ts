@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import type { RideListing } from "@dairuri/shared";
+import type { CreateRidePostInput, RideListing } from "@dairuri/shared";
 import { RidesRepository } from "./rides.repository";
+
+type CreateRidePost = CreateRidePostInput & {
+  lat: number;
+  lng: number;
+};
 
 @Injectable()
 export class RidesService {
@@ -10,6 +15,10 @@ export class RidesService {
 
   findAll(): RideListing[] {
     return this.ridesRepository.findAll();
+  }
+
+  create(input: CreateRidePost): RideListing {
+    return this.ridesRepository.create(input);
   }
 
   findOne(id: string): RideListing {

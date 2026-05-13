@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   sampleJobListings,
   sampleRideListings,
@@ -8,13 +8,17 @@ import {
 } from "@dairuri/shared";
 import { fetchJobs, fetchRides } from "../../services/api/dairuriApi";
 import { colors } from "../../theme/tokens";
+import { JobPostForm } from "./JobPostForm";
+import { RidePostForm } from "./RidePostForm";
 
 type FeedStatus = "loading" | "ready" | "error";
+type PostScreenMode = "feed" | "rideForm" | "jobForm";
 
 export function PostScreen() {
   const [rides, setRides] = useState<RideListing[]>(sampleRideListings);
   const [jobs, setJobs] = useState<JobListing[]>(sampleJobListings);
   const [status, setStatus] = useState<FeedStatus>("loading");
+  const [mode, setMode] = useState<PostScreenMode>("feed");
 
   useEffect(() => {
     let isMounted = true;
@@ -40,6 +44,28 @@ export function PostScreen() {
     };
   }, []);
 
+  if (mode === "rideForm") {
+    return (
+      <RidePostForm
+        onCreated={(ride) => {
+          setRides((currentRides) => [ride, ...currentRides]);
+          setMode("feed");
+        }}
+      />
+    );
+  }
+
+  if (mode === "jobForm") {
+    return (
+      <JobPostForm
+        onCreated={(job) => {
+          setJobs((currentJobs) => [job, ...currentJobs]);
+          setMode("feed");
+        }}
+      />
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.pageContent}>
       <Text style={styles.title}>모집글</Text>
@@ -48,8 +74,26 @@ export function PostScreen() {
           ? "서버에서 모집글을 불러오는 중입니다."
           : status === "error"
             ? "서버 연결이 불안정해 저장된 목록을 먼저 보여주고 있어요."
-            : "가까운 라이드와 일자리 모집글을 확인하세요."}
+          : "가까운 라이드와 일자리 모집글을 확인하세요."}
       </Text>
+      <View style={styles.actionRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="라이드 모집글 작성"
+          onPress={() => setMode("rideForm")}
+          style={styles.actionButton}
+        >
+          <Text style={styles.actionText}>라이드 작성</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="일자리 모집글 작성"
+          onPress={() => setMode("jobForm")}
+          style={styles.actionButton}
+        >
+          <Text style={styles.actionText}>일자리 작성</Text>
+        </Pressable>
+      </View>
 
       <Text style={styles.sectionTitle}>라이드</Text>
       {rides.map((ride) => (
@@ -97,6 +141,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginBottom: 24,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 22,
+  },
+  actionButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 8,
+    backgroundColor: colors.activeSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.active,
+  },
+  actionText: {
+    color: colors.tabTextActive,
+    fontSize: 14,
+    fontWeight: "800",
   },
   sectionTitle: {
     color: colors.ink,

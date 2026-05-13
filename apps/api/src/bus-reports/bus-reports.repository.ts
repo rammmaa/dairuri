@@ -11,8 +11,12 @@ export class BusReportsRepository {
     return cloneReport(savedReport);
   }
 
-  findRecent(limit = 20): BusReport[] {
-    return this.reports.slice(0, limit).map(cloneReport);
+  findRecent(routeNumber?: string, limit = 20): BusReport[] {
+    const reports = routeNumber
+      ? this.reports.filter((report) => report.routeNumber === routeNumber)
+      : this.reports;
+
+    return reports.slice(0, limit).map(cloneReport);
   }
 }
 
