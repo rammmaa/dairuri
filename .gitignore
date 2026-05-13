@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.expo/
+.turbo/
+.vercel/
+.env
+.env.*
+!.env.example
+coverage/
+*.tsbuildinfo
+ios/
+android/
