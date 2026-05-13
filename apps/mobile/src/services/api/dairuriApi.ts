@@ -12,7 +12,17 @@ import type {
 const defaultApiBaseUrl = "http://localhost:3000";
 
 export function getApiBaseUrl(): string {
-  return process.env.EXPO_PUBLIC_API_BASE_URL ?? defaultApiBaseUrl;
+  const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+
+  if (configuredApiBaseUrl) {
+    return configuredApiBaseUrl.replace(/\/$/, "");
+  }
+
+  if (process.env.NODE_ENV === "test") {
+    return defaultApiBaseUrl;
+  }
+
+  return "";
 }
 
 export function fetchRides(): Promise<RideListing[]> {

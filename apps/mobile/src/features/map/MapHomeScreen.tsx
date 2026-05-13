@@ -91,6 +91,7 @@ export function MapHomeScreen({ rides, status }: MapHomeScreenProps) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="현재 위치로 이동"
+          onPress={() => setFeedback("현재 위치 기준으로 지도 이동")}
           style={styles.locateButton}
         >
           <AppIcon name="crosshair" size={22} color={colors.icon} />

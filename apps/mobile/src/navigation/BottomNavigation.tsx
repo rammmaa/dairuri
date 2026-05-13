@@ -27,6 +27,7 @@ export function BottomNavigation({ activeTab, onSelect }: BottomNavigationProps)
             key={tab.id}
             accessibilityRole="button"
             accessibilityLabel={`${tab.label} 탭`}
+            accessibilityState={{ selected: isActive }}
             onPress={() => onSelect(tab.id)}
             style={styles.tabButton}
           >
