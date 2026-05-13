@@ -86,7 +86,6 @@ export function MapHomeScreen({ rides, status }: MapHomeScreenProps) {
             />
           ))}
         </View>
-        <Text style={styles.mapPlaceholderText}>지도</Text>
         <View style={styles.currentDot} />
         <Pressable
           accessibilityRole="button"
@@ -254,14 +253,6 @@ const styles = StyleSheet.create({
     right: 16,
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-  mapPlaceholderText: {
-    position: "absolute",
-    top: 148,
-    alignSelf: "center",
-    color: colors.black,
-    fontSize: 40,
-    fontWeight: "400",
   },
   currentDot: {
     position: "absolute",
