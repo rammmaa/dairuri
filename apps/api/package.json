@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prebuild": "npm run build -w @dairuri/shared",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "build": "nest build",
+    "pretypecheck": "npm run build -w @dairuri/shared",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "npm run build -w @dairuri/shared",
     "test": "vitest run"
   },
   "dependencies": {

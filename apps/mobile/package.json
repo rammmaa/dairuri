@@ -5,10 +5,14 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "prebuild": "npm run build -w @dairuri/shared",
+    "build": "expo export -p web --output-dir dist",
     "ios": "expo start --ios",
     "android": "expo start --android",
     "web": "expo start --web",
+    "pretypecheck": "npm run build -w @dairuri/shared",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "npm run build -w @dairuri/shared",
     "test": "jest --runInBand"
   },
   "dependencies": {
