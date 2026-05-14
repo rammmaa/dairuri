@@ -12,7 +12,13 @@ export async function getRedisClient(
   }
 
   if (!redisClient) {
-    redisClient = createClient({ url: config.redisUrl });
+    redisClient = createClient({
+      url: config.redisUrl,
+      socket: {
+        connectTimeout: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS ?? 3000),
+        reconnectStrategy: false,
+      },
+    });
     redisClient.on("error", () => undefined);
   }
 

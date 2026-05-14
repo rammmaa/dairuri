@@ -13,6 +13,7 @@ export function getPostgresPool(config: DatabaseRuntimeConfig = readDatabaseRunt
     postgresPool = new Pool({
       connectionString: config.postgresUrl,
       max: Number(process.env.DATABASE_POOL_MAX ?? 10),
+      connectionTimeoutMillis: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS ?? 3000),
       ssl: config.postgresSsl ? { rejectUnauthorized: false } : undefined,
     });
   }
