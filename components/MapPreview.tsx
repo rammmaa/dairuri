@@ -1,9 +1,17 @@
-import { StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
+import {
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from "react-native";
 
 import { colors } from "../constants/colors";
 
 type MapPreviewProps = {
   style?: StyleProp<ViewStyle>;
+  onMarkerPress?: (markerId: string) => void;
 };
 
 type RoadSegment = {
@@ -186,7 +194,7 @@ const poiMarkers: PoiMarker[] = [
   },
 ];
 
-export function MapPreview({ style }: MapPreviewProps) {
+export function MapPreview({ style, onMarkerPress }: MapPreviewProps) {
   return (
     <View style={[styles.container, style]} accessibilityLabel="지도 미리보기">
       <View style={styles.water} />
@@ -216,7 +224,17 @@ export function MapPreview({ style }: MapPreviewProps) {
       {poiMarkers.map((marker) => (
         <View key={marker.key}>
           <Text style={[styles.poiLabel, marker.labelStyle]}>{marker.label}</Text>
-          <View style={[styles.poiDot, marker.dotStyle]} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${marker.label} 마커`}
+            onPress={() => onMarkerPress?.(marker.key)}
+            testID={`map-preview-marker-${marker.key}`}
+            style={({ pressed }) => [
+              styles.poiDot,
+              marker.dotStyle,
+              pressed && styles.poiDotPressed,
+            ]}
+          />
         </View>
       ))}
 
@@ -343,6 +361,9 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     borderWidth: 2,
+  },
+  poiDotPressed: {
+    opacity: 0.7,
   },
   currentLocation: {
     position: "absolute",
