@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   PanResponder,
   ScrollView,
@@ -26,64 +26,70 @@ import {
   type BottomNavItem,
   type MapHomePost,
 } from "../data/mapHome";
+import {
+  createPagedListState,
+  filterAndSortMapPosts,
+  type MapPostSortMode,
+} from "../data/mapPostList";
 
 export type MapScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
   onOpenPost?: (postId: string) => void;
+  onSearchPress?: () => void;
+  onCurrentLocationPress?: () => void;
+  onSelectMapMarker?: (markerId: string) => void;
 };
 
 const SHEET_DEFAULT_TOP = 486;
 const SHEET_EXPANDED_TOP = 300;
 const SHEET_COLLAPSED_TOP = 560;
+const POST_PAGE_SIZE = 2;
 type DateFilter = MapHomePost["dateFilter"] | null;
 type TimeFilter = MapHomePost["timeFilter"] | null;
 type DepartureFilter = MapHomePost["departurePlace"] | null;
-type SortMode = "default" | "latest" | "oldest";
 
 function clampSheetTop(top: number) {
   return Math.min(SHEET_COLLAPSED_TOP, Math.max(SHEET_EXPANDED_TOP, top));
 }
 
-export function MapScreen({ onSelectTab, onOpenPost }: MapScreenProps) {
+export function MapScreen({
+  onSelectTab,
+  onOpenPost,
+  onSearchPress,
+  onCurrentLocationPress,
+  onSelectMapMarker,
+}: MapScreenProps) {
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryFilter["id"] | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(null);
   const [departureFilter, setDepartureFilter] = useState<DepartureFilter>(null);
-  const [sortMode, setSortMode] = useState<SortMode>("default");
+  const [sortMode, setSortMode] = useState<MapPostSortMode>("default");
+  const [visibleCount, setVisibleCount] = useState(POST_PAGE_SIZE);
   const [sheetTop, setSheetTop] = useState(SHEET_DEFAULT_TOP);
   const sheetTopRef = useRef(SHEET_DEFAULT_TOP);
   const dragStartTopRef = useRef(SHEET_DEFAULT_TOP);
   const filteredPosts = useMemo(() => {
-    const posts = mapHomePosts.filter((post) => {
-      if (selectedCategory && post.category !== selectedCategory) {
-        return false;
-      }
-
-      if (dateFilter && post.dateFilter !== dateFilter) {
-        return false;
-      }
-
-      if (timeFilter && post.timeFilter !== timeFilter) {
-        return false;
-      }
-
-      if (departureFilter && post.departurePlace !== departureFilter) {
-        return false;
-      }
-
-      return true;
-    });
-
-    return [...posts].sort((a, b) => {
-      if (sortMode === "oldest") {
-        return b.createdMinutesAgo - a.createdMinutesAgo;
-      }
-
-      return a.createdMinutesAgo - b.createdMinutesAgo;
+    return filterAndSortMapPosts(mapHomePosts, {
+      filters: {
+        category: selectedCategory,
+        date: dateFilter,
+        time: timeFilter,
+        departure: departureFilter,
+      },
+      sortMode,
     });
   }, [dateFilter, departureFilter, selectedCategory, sortMode, timeFilter]);
-  const visiblePosts = filteredPosts.slice(0, 2);
+  const pagedPosts = createPagedListState(filteredPosts, {
+    visibleCount,
+    pageSize: POST_PAGE_SIZE,
+  });
+  const visiblePosts = pagedPosts.visibleItems;
+  const hasMorePosts = pagedPosts.hasMore;
+
+  useEffect(() => {
+    setVisibleCount(POST_PAGE_SIZE);
+  }, [dateFilter, departureFilter, selectedCategory, sortMode, timeFilter]);
 
   const cycleDateFilter = () => {
     setDateFilter((current) =>
@@ -128,13 +134,22 @@ export function MapScreen({ onSelectTab, onOpenPost }: MapScreenProps) {
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen}>
-        <MapPreview style={styles.mapPreview} />
+        <MapPreview style={styles.mapPreview} onMarkerPress={onSelectMapMarker} />
 
         <View style={styles.topOverlay}>
-          <View style={styles.searchBar} accessibilityRole="search">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="지도 검색"
+            onPress={onSearchPress}
+            testID="map-home-search-button"
+            style={({ pressed }) => [
+              styles.searchBar,
+              pressed && styles.searchBarPressed,
+            ]}
+          >
             <MapPin size={26} color={colors.mint} fill={colors.mint} />
             <Text style={styles.searchPlaceholder}>여기서 검색</Text>
-          </View>
+          </Pressable>
 
           <View style={styles.categoryRow}>
             {categoryFilters.map((filter) => (
@@ -158,6 +173,8 @@ export function MapScreen({ onSelectTab, onOpenPost }: MapScreenProps) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="현재 위치로 이동"
+          onPress={onCurrentLocationPress}
+          testID="map-home-current-location-button"
           style={styles.locationButton}
         >
           <CurrentLocationIcon size={20} color={colors.grayIcon} />
@@ -253,6 +270,22 @@ export function MapScreen({ onSelectTab, onOpenPost }: MapScreenProps) {
                   <Text style={styles.emptyTitle}>조건에 맞는 모집글이 없어요</Text>
                 </View>
               )}
+              {hasMorePosts ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="모집글 더 보기"
+                  onPress={() =>
+                    setVisibleCount(() => pagedPosts.nextVisibleCount)
+                  }
+                  testID="map-home-load-more"
+                  style={({ pressed }) => [
+                    styles.loadMoreButton,
+                    pressed && styles.loadMorePressed,
+                  ]}
+                >
+                  <Text style={styles.loadMoreText}>더 보기</Text>
+                </Pressable>
+              ) : null}
             </View>
           </ScrollView>
         </View>
@@ -301,6 +334,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
+  },
+  searchBarPressed: {
+    opacity: 0.86,
   },
   searchPlaceholder: {
     color: colors.mutedText,
@@ -421,5 +457,24 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.medium,
+  },
+  loadMoreButton: {
+    minHeight: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadMorePressed: {
+    opacity: 0.82,
+  },
+  loadMoreText: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
   },
 });

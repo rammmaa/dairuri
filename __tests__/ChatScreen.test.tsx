@@ -64,4 +64,15 @@ describe("ChatScreen", () => {
     expect(screen.getByText("다로리 카페 같이 가요")).toBeTruthy();
     expect(screen.queryByText("부릉팟")).toBeNull();
   });
+
+  it("filters chat rooms by search query", () => {
+    render(<ChatScreen />);
+
+    fireEvent.changeText(screen.getByPlaceholderText("채팅방 또는 메시지 검색"), "셔틀");
+
+    expect(screen.getByText("총 1개")).toBeTruthy();
+    expect(screen.getByText("아침 셔틀 공유방")).toBeTruthy();
+    expect(screen.queryByText("부릉팟")).toBeNull();
+    expect(screen.queryByText("다로리 카페 같이 가요")).toBeNull();
+  });
 });

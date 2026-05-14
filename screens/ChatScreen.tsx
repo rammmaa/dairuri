@@ -366,12 +366,25 @@ function ChatListScreen({
 }: ChatListScreenProps) {
   const [selectedFilter, setSelectedFilter] = useState<ChatFilter>("all");
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const visibleRooms = rooms.filter((room) => {
     if (selectedFilter !== "all" && room.category !== selectedFilter) {
       return false;
     }
 
     if (unreadOnly && room.unreadCount === 0) {
+      return false;
+    }
+
+    if (
+      normalizedSearchQuery &&
+      ![
+        room.title,
+        room.participantLabel,
+        room.latestMessage,
+      ].some((value) => value.toLowerCase().includes(normalizedSearchQuery))
+    ) {
       return false;
     }
 
@@ -393,24 +406,21 @@ function ChatListScreen({
           </View>
 
           <View style={styles.searchFilterRow}>
-            <Pressable
+            <View
               accessibilityRole="search"
               accessibilityLabel="채팅방 검색"
-              style={({ pressed }) => [
-                styles.searchBar,
-                pressed && styles.pressed,
-              ]}
+              style={styles.searchBar}
             >
               <Search size={18} color={colors.grayText} strokeWidth={2.2} />
-              <Text
-                style={styles.searchPlaceholder}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.88}
-              >
-                채팅방 또는 메시지 검색
-              </Text>
-            </Pressable>
+              <TextInput
+                accessibilityLabel="채팅방 또는 메시지 검색"
+                placeholder="채팅방 또는 메시지 검색"
+                placeholderTextColor={colors.mutedText}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                style={styles.searchInput}
+              />
+            </View>
 
             <Pressable
               accessibilityRole="button"
@@ -685,7 +695,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  searchPlaceholder: {
+  searchInput: {
     flex: 1,
     minWidth: 0,
     color: colors.mutedText,
@@ -693,6 +703,7 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.regular,
+    padding: 0,
   },
   filterButton: {
     width: spacing.inputHeight,

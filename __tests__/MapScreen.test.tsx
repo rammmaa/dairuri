@@ -55,6 +55,28 @@ describe("MapScreen", () => {
     expect(screen.getAllByTestId("category-current-location-icon")).toHaveLength(3);
   });
 
+  it("exposes no-op-safe map search, location, and marker callbacks", () => {
+    const handleSearchPress = jest.fn();
+    const handleCurrentLocationPress = jest.fn();
+    const handleMarkerPress = jest.fn();
+
+    render(
+      <MapScreen
+        onSearchPress={handleSearchPress}
+        onCurrentLocationPress={handleCurrentLocationPress}
+        onSelectMapMarker={handleMarkerPress}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("map-home-search-button"));
+    fireEvent.press(screen.getByTestId("map-home-current-location-button"));
+    fireEvent.press(screen.getByTestId("map-preview-marker-cafe"));
+
+    expect(handleSearchPress).toHaveBeenCalledTimes(1);
+    expect(handleCurrentLocationPress).toHaveBeenCalledTimes(1);
+    expect(handleMarkerPress).toHaveBeenCalledWith("cafe");
+  });
+
   it("filters map posts by category and cycles date, time, and sort controls", () => {
     render(<MapScreen />);
 
