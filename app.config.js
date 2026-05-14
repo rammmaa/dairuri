@@ -58,6 +58,9 @@ module.exports = {
     ],
     extra: {
       naverMapNcpKeyIdConfigured: Boolean(naverMapNcpKeyId),
+      eas: {
+        projectId: "686eddff-6ecf-4426-b15b-342e32d08b95",
+      },
     },
   },
 };
