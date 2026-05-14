@@ -7,7 +7,7 @@ create type driver_type as enum ('driver', 'non_driver');
 create type chat_message_type as enum ('system', 'text');
 
 create table if not exists users (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key,
   nickname text not null,
   real_name text,
   phone text not null unique,
@@ -20,8 +20,8 @@ create table if not exists users (
 );
 
 create table if not exists vehicles (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references users(id) on delete cascade,
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
   plate_number text not null,
   model_name text,
   image_urls text[] not null default '{}',
@@ -29,11 +29,11 @@ create table if not exists vehicles (
 );
 
 create table if not exists posts (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key,
   type post_type not null,
   title text not null,
   body text not null,
-  author_id uuid not null references users(id) on delete restrict,
+  author_id text not null references users(id) on delete restrict,
   image_urls text[] not null default '{}',
   status post_status not null default 'open',
   place_name text,
@@ -59,16 +59,16 @@ create table if not exists posts (
 );
 
 create table if not exists post_likes (
-  post_id uuid not null references posts(id) on delete cascade,
-  user_id uuid not null references users(id) on delete cascade,
+  post_id text not null references posts(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
   created_at timestamptz not null default now(),
   primary key (post_id, user_id)
 );
 
 create table if not exists applications (
-  id uuid primary key default gen_random_uuid(),
-  post_id uuid not null references posts(id) on delete cascade,
-  applicant_id uuid not null references users(id) on delete cascade,
+  id text primary key,
+  post_id text not null references posts(id) on delete cascade,
+  applicant_id text not null references users(id) on delete cascade,
   intro text not null,
   status application_status not null default 'pending',
   rejection_reason text,
@@ -77,8 +77,8 @@ create table if not exists applications (
 );
 
 create table if not exists chat_rooms (
-  id uuid primary key default gen_random_uuid(),
-  post_id uuid references posts(id) on delete set null,
+  id text primary key,
+  post_id text references posts(id) on delete set null,
   title text not null,
   subtitle text,
   created_at timestamptz not null default now(),
@@ -86,17 +86,17 @@ create table if not exists chat_rooms (
 );
 
 create table if not exists chat_room_participants (
-  room_id uuid not null references chat_rooms(id) on delete cascade,
-  user_id uuid not null references users(id) on delete cascade,
+  room_id text not null references chat_rooms(id) on delete cascade,
+  user_id text not null references users(id) on delete cascade,
   last_read_at timestamptz,
   created_at timestamptz not null default now(),
   primary key (room_id, user_id)
 );
 
 create table if not exists chat_messages (
-  id uuid primary key default gen_random_uuid(),
-  room_id uuid not null references chat_rooms(id) on delete cascade,
-  sender_id uuid references users(id) on delete set null,
+  id text primary key,
+  room_id text not null references chat_rooms(id) on delete cascade,
+  sender_id text references users(id) on delete set null,
   type chat_message_type not null,
   text text,
   created_at timestamptz not null default now(),
@@ -104,10 +104,10 @@ create table if not exists chat_messages (
 );
 
 create table if not exists reports (
-  id uuid primary key default gen_random_uuid(),
-  reporter_id uuid not null references users(id) on delete cascade,
-  room_id uuid references chat_rooms(id) on delete set null,
-  reported_user_id uuid references users(id) on delete set null,
+  id text primary key,
+  reporter_id text not null references users(id) on delete cascade,
+  room_id text references chat_rooms(id) on delete set null,
+  reported_user_id text references users(id) on delete set null,
   reason text not null,
   created_at timestamptz not null default now()
 );
