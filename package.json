@@ -10,7 +10,10 @@
     "test": "jest --runInBand",
     "typecheck": "tsc --noEmit",
     "db:check": "tsx server/db/checkConnections.ts",
-    "db:schema": "tsx server/db/applySchema.ts"
+    "db:schema": "tsx server/db/applySchema.ts",
+    "db:seed": "tsx server/db/seed.ts",
+    "db:reset": "DATABASE_RESET_SCHEMA=true tsx server/db/applySchema.ts && tsx server/db/seed.ts",
+    "api:start": "tsx server/api/server.ts"
   },
   "dependencies": {
     "@expo-google-fonts/noto-sans": "^0.4.2",
