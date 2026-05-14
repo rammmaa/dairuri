@@ -47,7 +47,9 @@ async function main() {
 
 function formatConnectionError(error: unknown) {
   if (error instanceof Error) {
-    return error.message;
+    const code = "code" in error ? String(error.code) : "";
+    const message = error.message || code;
+    return message || error.name;
   }
 
   return String(error);
