@@ -7,12 +7,13 @@ import {
   View,
   Pressable,
 } from "react-native";
-import { MapPin } from "lucide-react-native";
+import { Bus, MapPin } from "lucide-react-native";
 
 import { BottomNav } from "../components/BottomNav";
 import { CurrentLocationIcon } from "../components/CurrentLocationIcon";
 import { FilterChip } from "../components/FilterChip";
 import { MapPreview } from "../components/MapPreview";
+import type { MapPreviewCamera } from "../components/mapPreviewData";
 import { RecruitmentCard } from "../components/RecruitmentCard";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
@@ -42,14 +43,29 @@ export type MapScreenProps = {
 
 const SHEET_DEFAULT_TOP = 486;
 const SHEET_EXPANDED_TOP = 300;
+const BUS_ARCHIVE_SHEET_EXPANDED_TOP = 56;
 const SHEET_COLLAPSED_TOP = 560;
 const POST_PAGE_SIZE = 2;
+const BUS_ARCHIVE_LOCATION_LABEL = "다로리 카페";
 type DateFilter = MapHomePost["dateFilter"] | null;
 type TimeFilter = MapHomePost["timeFilter"] | null;
 type DepartureFilter = MapHomePost["departurePlace"] | null;
+type BusSighting = {
+  id: string;
+  timeLabel: string;
+  locationLabel: string;
+};
 
-function clampSheetTop(top: number) {
-  return Math.min(SHEET_COLLAPSED_TOP, Math.max(SHEET_EXPANDED_TOP, top));
+function clampSheetTop(top: number, expandedTop = SHEET_EXPANDED_TOP) {
+  return Math.min(SHEET_COLLAPSED_TOP, Math.max(expandedTop, top));
+}
+
+function formatBusArchiveClock(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+    date.getSeconds(),
+  )}`;
 }
 
 export function MapScreen({
@@ -67,8 +83,16 @@ export function MapScreen({
   const [sortMode, setSortMode] = useState<MapPostSortMode>("default");
   const [visibleCount, setVisibleCount] = useState(POST_PAGE_SIZE);
   const [sheetTop, setSheetTop] = useState(SHEET_DEFAULT_TOP);
+  const [focusedCamera, setFocusedCamera] = useState<MapPreviewCamera | null>(null);
+  const [busClockDate, setBusClockDate] = useState(() => new Date());
+  const [busSightings, setBusSightings] = useState<BusSighting[]>([]);
   const sheetTopRef = useRef(SHEET_DEFAULT_TOP);
   const dragStartTopRef = useRef(SHEET_DEFAULT_TOP);
+  const isBusArchiveMode = selectedCategory === "bus";
+  const busClockLabel = useMemo(
+    () => formatBusArchiveClock(busClockDate),
+    [busClockDate],
+  );
   const filteredPosts = useMemo(() => {
     return filterAndSortMapPosts(mapHomePosts, {
       filters: {
@@ -109,12 +133,89 @@ export function MapScreen({
       current === "default" ? "latest" : current === "latest" ? "oldest" : "default",
     );
   };
-  const updateSheetTop = useCallback((nextTop: number) => {
-    const clampedTop = clampSheetTop(nextTop);
+  const updateSheetTop = useCallback((nextTop: number, expandedTop?: number) => {
+    const clampedTop = clampSheetTop(nextTop, expandedTop);
 
     sheetTopRef.current = clampedTop;
     setSheetTop(clampedTop);
   }, []);
+  const toggleCategoryFilter = useCallback(
+    (filterId: CategoryFilter["id"]) => {
+      const nextFilter = selectedCategory === filterId ? null : filterId;
+
+      setSelectedCategory(nextFilter);
+
+      if (nextFilter === "bus") {
+        updateSheetTop(
+          BUS_ARCHIVE_SHEET_EXPANDED_TOP,
+          BUS_ARCHIVE_SHEET_EXPANDED_TOP,
+        );
+      }
+    },
+    [selectedCategory, updateSheetTop],
+  );
+  const handleCurrentLocationPress = useCallback(() => {
+    onCurrentLocationPress?.();
+
+    const geolocation = globalThis.navigator?.geolocation;
+
+    if (!geolocation) {
+      return;
+    }
+
+    geolocation.getCurrentPosition(
+      (position) => {
+        setFocusedCamera({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          zoom: 16,
+        });
+      },
+      () => undefined,
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 30000,
+      },
+    );
+  }, [onCurrentLocationPress]);
+  const handleBusSightingSave = useCallback(() => {
+    const now = new Date();
+    const timeLabel = formatBusArchiveClock(now);
+
+    setBusClockDate(now);
+    setBusSightings((current) => [
+      {
+        id: `${now.getTime()}-${current.length}`,
+        timeLabel,
+        locationLabel: BUS_ARCHIVE_LOCATION_LABEL,
+      },
+      ...current,
+    ]);
+  }, []);
+
+  useEffect(() => {
+    if (!isBusArchiveMode) {
+      return undefined;
+    }
+
+    setBusClockDate(new Date());
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const refreshClock = () => {
+      setBusClockDate(new Date());
+      timeoutId = setTimeout(refreshClock, 1000);
+    };
+
+    timeoutId = setTimeout(refreshClock, 1000);
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isBusArchiveMode]);
+
   const sheetPanResponder = useMemo(
     () =>
       PanResponder.create({
@@ -125,16 +226,25 @@ export function MapScreen({
           dragStartTopRef.current = sheetTopRef.current;
         },
         onPanResponderMove: (_, gestureState) => {
-          updateSheetTop(dragStartTopRef.current + gestureState.dy);
+          updateSheetTop(
+            dragStartTopRef.current + gestureState.dy,
+            isBusArchiveMode
+              ? BUS_ARCHIVE_SHEET_EXPANDED_TOP
+              : SHEET_EXPANDED_TOP,
+          );
         },
       }),
-    [updateSheetTop],
+    [isBusArchiveMode, updateSheetTop],
   );
 
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen}>
-        <MapPreview style={styles.mapPreview} onMarkerPress={onSelectMapMarker} />
+        <MapPreview
+          style={styles.mapPreview}
+          camera={focusedCamera ?? undefined}
+          onMarkerPress={onSelectMapMarker}
+        />
 
         <View style={styles.topOverlay}>
           <Pressable
@@ -159,11 +269,7 @@ export function MapScreen({
                 icon={CurrentLocationIcon}
                 iconTestID="category-current-location-icon"
                 selected={selectedCategory === filter.id}
-                onPress={() =>
-                  setSelectedCategory((current) =>
-                    current === filter.id ? null : filter.id,
-                  )
-                }
+                onPress={() => toggleCategoryFilter(filter.id)}
                 testID={`map-home-category-${filter.id}`}
               />
             ))}
@@ -173,7 +279,7 @@ export function MapScreen({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="현재 위치로 이동"
-          onPress={onCurrentLocationPress}
+          onPress={handleCurrentLocationPress}
           testID="map-home-current-location-button"
           style={styles.locationButton}
         >
@@ -184,110 +290,171 @@ export function MapScreen({
           testID="map-home-bottom-sheet"
           style={[styles.bottomSheet, { top: sheetTop }]}
         >
-          <View style={styles.sheetFilterBar}>
+          {isBusArchiveMode ? (
             <View
-              {...sheetPanResponder.panHandlers}
-              accessibilityRole="adjustable"
-              accessibilityLabel="모집글 패널 이동 핸들"
-              testID="map-home-sheet-drag-handle"
-              style={styles.dragHandleTouchArea}
+              style={styles.busArchiveSheet}
+              testID="map-home-bus-archive-panel"
             >
-              <View style={styles.handle} />
-            </View>
-            <View style={styles.sheetFilterRow}>
-              {bottomSheetFilters.map((label) => {
-                const isDeparturePlace = label === "출발 장소";
-                const isDate = label === "날짜";
-                const isTime = label === "시간";
-                const selectedLabel = isDate
-                  ? dateFilter
-                  : isTime
-                    ? timeFilter
-                    : isDeparturePlace
-                      ? departureFilter
-                      : null;
-
-                return (
-                  <FilterChip
-                    key={label}
-                    label={selectedLabel ?? label}
-                    selected={selectedLabel !== null}
-                    showChevron={selectedLabel === null}
-                    showClose={selectedLabel !== null}
-                    onPress={
-                      isDate
-                        ? cycleDateFilter
-                        : isTime
-                          ? cycleTimeFilter
-                          : isDeparturePlace
-                            ? toggleDepartureFilter
-                            : undefined
-                    }
-                    testID={`map-home-filter-${label}`}
-                  />
-                );
-              })}
-            </View>
-          </View>
-
-          <ScrollView
-            style={styles.sheetScroll}
-            contentContainerStyle={styles.sheetContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.listHeader}>
-              <View style={styles.countRow}>
-                <Text style={styles.countText}>총</Text>
-                <Text style={styles.countNumber}>{filteredPosts.length}</Text>
-                <Text style={styles.countText}>건</Text>
+              <View
+                {...sheetPanResponder.panHandlers}
+                accessibilityRole="adjustable"
+                accessibilityLabel="버스 기록 패널 이동 핸들"
+                testID="map-home-sheet-drag-handle"
+                style={styles.dragHandleTouchArea}
+              >
+                <View style={styles.handle} />
               </View>
-              <FilterChip
-                label={
-                  sortMode === "latest"
-                    ? "최신순"
-                    : sortMode === "oldest"
-                      ? "오래된순"
-                      : "정렬조건"
-                }
-                selected={sortMode !== "default"}
-                showChevron={sortMode === "default"}
-                showClose={sortMode !== "default"}
-                compact
-                onPress={cycleSortMode}
-                testID="map-home-sort-filter"
-              />
-            </View>
 
-            <View style={styles.cardList}>
-              {visiblePosts.length > 0 ? visiblePosts.map((post) => (
-                <RecruitmentCard
-                  key={post.id}
-                  post={post}
-                  onPress={() => onOpenPost?.(post.detailPostId)}
-                />
-              )) : (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyTitle}>조건에 맞는 모집글이 없어요</Text>
+              <View style={styles.busArchiveContent}>
+                <Text style={styles.busArchiveTitle}>방금 버스 봤어요!</Text>
+                <Text style={styles.busArchiveTime}>{busClockLabel}</Text>
+                <View style={styles.busLocationPill}>
+                  <View style={styles.busLocationDot} />
+                  <Text style={styles.busLocationText}>
+                    현위치: {BUS_ARCHIVE_LOCATION_LABEL}
+                  </Text>
                 </View>
-              )}
-              {hasMorePosts ? (
+
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="모집글 더 보기"
-                  onPress={() =>
-                    setVisibleCount(() => pagedPosts.nextVisibleCount)
-                  }
-                  testID="map-home-load-more"
+                  accessibilityLabel="버스 목격 기록하기"
+                  onPress={handleBusSightingSave}
+                  testID="map-home-bus-sighting-save"
                   style={({ pressed }) => [
-                    styles.loadMoreButton,
-                    pressed && styles.loadMorePressed,
+                    styles.busSaveButton,
+                    pressed && styles.busSaveButtonPressed,
                   ]}
                 >
-                  <Text style={styles.loadMoreText}>더 보기</Text>
+                  <Bus size={44} color={colors.blue} strokeWidth={2.2} />
                 </Pressable>
-              ) : null}
+
+                <Text style={styles.busArchiveHint}>
+                  버튼을 누르면,{"\n"}현재 시각과 위치가 즉시 저장됩니다.
+                </Text>
+
+                {busSightings.length > 0 ? (
+                  <View
+                    style={styles.busSightingsList}
+                    testID="map-home-bus-sighting-list"
+                  >
+                    <Text style={styles.busSightingsTitle}>최근 기록</Text>
+                    {busSightings.slice(0, 3).map((sighting) => (
+                      <Text key={sighting.id} style={styles.busSightingItem}>
+                        {sighting.timeLabel} · {sighting.locationLabel}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
             </View>
-          </ScrollView>
+          ) : (
+            <>
+              <View style={styles.sheetFilterBar}>
+                <View
+                  {...sheetPanResponder.panHandlers}
+                  accessibilityRole="adjustable"
+                  accessibilityLabel="모집글 패널 이동 핸들"
+                  testID="map-home-sheet-drag-handle"
+                  style={styles.dragHandleTouchArea}
+                >
+                  <View style={styles.handle} />
+                </View>
+                <View style={styles.sheetFilterRow}>
+                  {bottomSheetFilters.map((label) => {
+                    const isDeparturePlace = label === "출발 장소";
+                    const isDate = label === "날짜";
+                    const isTime = label === "시간";
+                    const selectedLabel = isDate
+                      ? dateFilter
+                      : isTime
+                        ? timeFilter
+                        : isDeparturePlace
+                          ? departureFilter
+                          : null;
+
+                    return (
+                      <FilterChip
+                        key={label}
+                        label={selectedLabel ?? label}
+                        selected={selectedLabel !== null}
+                        showChevron={selectedLabel === null}
+                        showClose={selectedLabel !== null}
+                        onPress={
+                          isDate
+                            ? cycleDateFilter
+                            : isTime
+                              ? cycleTimeFilter
+                              : isDeparturePlace
+                                ? toggleDepartureFilter
+                                : undefined
+                        }
+                        testID={`map-home-filter-${label}`}
+                      />
+                    );
+                  })}
+                </View>
+              </View>
+
+              <ScrollView
+                style={styles.sheetScroll}
+                contentContainerStyle={styles.sheetContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.listHeader}>
+                  <View style={styles.countRow}>
+                    <Text style={styles.countText}>총</Text>
+                    <Text style={styles.countNumber}>{filteredPosts.length}</Text>
+                    <Text style={styles.countText}>건</Text>
+                  </View>
+                  <FilterChip
+                    label={
+                      sortMode === "latest"
+                        ? "최신순"
+                        : sortMode === "oldest"
+                          ? "오래된순"
+                          : "정렬조건"
+                    }
+                    selected={sortMode !== "default"}
+                    showChevron={sortMode === "default"}
+                    showClose={sortMode !== "default"}
+                    compact
+                    onPress={cycleSortMode}
+                    testID="map-home-sort-filter"
+                  />
+                </View>
+
+                <View style={styles.cardList}>
+                  {visiblePosts.length > 0 ? visiblePosts.map((post) => (
+                    <RecruitmentCard
+                      key={post.id}
+                      post={post}
+                      onPress={() => onOpenPost?.(post.detailPostId)}
+                    />
+                  )) : (
+                    <View style={styles.emptyState}>
+                      <Text style={styles.emptyTitle}>조건에 맞는 모집글이 없어요</Text>
+                    </View>
+                  )}
+                  {hasMorePosts ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="모집글 더 보기"
+                      onPress={() =>
+                        setVisibleCount(() => pagedPosts.nextVisibleCount)
+                      }
+                      testID="map-home-load-more"
+                      style={({ pressed }) => [
+                        styles.loadMoreButton,
+                        pressed && styles.loadMorePressed,
+                      ]}
+                    >
+                      <Text style={styles.loadMoreText}>더 보기</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </ScrollView>
+            </>
+          )}
         </View>
 
         <BottomNav
@@ -417,6 +584,113 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenX,
     paddingTop: 14,
     paddingBottom: 22,
+  },
+  busArchiveSheet: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+  },
+  busArchiveContent: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: spacing.screenX,
+    paddingTop: 50,
+    paddingBottom: 18,
+  },
+  busArchiveTitle: {
+    color: colors.blue,
+    fontFamily: typography.family.body,
+    fontSize: 32,
+    lineHeight: 40,
+    fontWeight: typography.weight.regular,
+    textAlign: "center",
+  },
+  busArchiveTime: {
+    marginTop: 20,
+    color: "#000000",
+    fontFamily: typography.family.body,
+    fontSize: 72,
+    lineHeight: 80,
+    fontWeight: typography.weight.bold,
+    textAlign: "center",
+  },
+  busLocationPill: {
+    minHeight: 54,
+    marginTop: 12,
+    paddingHorizontal: 26,
+    borderRadius: 27,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  busLocationDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.blue,
+  },
+  busLocationText: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.regular,
+  },
+  busSaveButton: {
+    width: "100%",
+    maxWidth: 292,
+    height: 150,
+    marginTop: 42,
+    borderRadius: 36,
+    backgroundColor: "#9D9D9D",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  busSaveButtonPressed: {
+    opacity: 0.8,
+  },
+  busArchiveHint: {
+    marginTop: 32,
+    color: colors.gray400,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: 24,
+    fontWeight: typography.weight.regular,
+    textAlign: "center",
+  },
+  busSightingsList: {
+    width: "100%",
+    maxWidth: 292,
+    marginTop: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: spacing.cardRadius,
+    backgroundColor: colors.gray50,
+  },
+  busSightingsTitle: {
+    color: colors.slate,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
+  },
+  busSightingItem: {
+    marginTop: 4,
+    color: colors.grayIcon,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.regular,
   },
   listHeader: {
     flexDirection: "row",

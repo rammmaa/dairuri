@@ -77,6 +77,39 @@ describe("MapScreen", () => {
     expect(handleMarkerPress).toHaveBeenCalledWith("cafe");
   });
 
+  it("requests browser location when pressing the current-location button", () => {
+    const originalNavigator = global.navigator;
+    const getCurrentPosition = jest.fn();
+
+    Object.defineProperty(global, "navigator", {
+      configurable: true,
+      value: {
+        geolocation: {
+          getCurrentPosition,
+        },
+      },
+    });
+
+    try {
+      render(<MapScreen />);
+
+      fireEvent.press(screen.getByTestId("map-home-current-location-button"));
+
+      expect(getCurrentPosition).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.any(Function),
+        expect.objectContaining({
+          enableHighAccuracy: true,
+        }),
+      );
+    } finally {
+      Object.defineProperty(global, "navigator", {
+        configurable: true,
+        value: originalNavigator,
+      });
+    }
+  });
+
   it("filters map posts by category and cycles date, time, and sort controls", () => {
     render(<MapScreen />);
 
@@ -102,6 +135,50 @@ describe("MapScreen", () => {
 
     fireEvent.press(screen.getByTestId("map-home-sort-filter"));
     expect(screen.getByText("오래된순")).toBeTruthy();
+  });
+
+  it("opens the bus sighting archive panel and saves the current time and location", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 4, 15, 12, 1, 19));
+
+    try {
+      render(<MapScreen />);
+
+      fireEvent.press(screen.getByTestId("map-home-category-bus"));
+
+      expect(screen.getByText("방금 버스 봤어요!")).toBeTruthy();
+      expect(screen.getByText("12:01:19")).toBeTruthy();
+      expect(screen.getByText("현위치: 다로리 카페")).toBeTruthy();
+
+      fireEvent.press(screen.getByTestId("map-home-bus-sighting-save"));
+
+      expect(screen.getByText("최근 기록")).toBeTruthy();
+      expect(screen.getByText("12:01:19 · 다로리 카페")).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("lets the bus archive panel move close to the top of the map", () => {
+    render(<MapScreen />);
+
+    fireEvent.press(screen.getByTestId("map-home-category-bus"));
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId("map-home-bottom-sheet").props.style)
+        .top,
+    ).toBe(56);
+
+    const dragHandle = screen.getByTestId("map-home-sheet-drag-handle");
+
+    fireEvent(dragHandle, "responderGrant", createPanEvent(56, 56));
+    fireEvent(dragHandle, "responderMove", createPanEvent(56, -80));
+    fireEvent(dragHandle, "responderRelease", createPanEvent(56, -80));
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId("map-home-bottom-sheet").props.style)
+        .top,
+    ).toBe(56);
   });
 
   it("toggles the departure place bottom filter chip selection", () => {
