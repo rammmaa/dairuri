@@ -1,4 +1,11 @@
-const naverMapNcpKeyId = process.env.NAVER_MAP_NCP_KEY_ID ?? "";
+const naverMapNcpKeyId =
+  process.env.NAVER_MAP_NCP_KEY_ID ??
+  process.env.EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID ??
+  "";
+const naverMapWebNcpKeyId =
+  process.env.EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID ??
+  process.env.EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID ??
+  "";
 
 module.exports = {
   expo: {
@@ -57,7 +64,9 @@ module.exports = {
       ],
     ],
     extra: {
+      naverMapWebNcpKeyId,
       naverMapNcpKeyIdConfigured: Boolean(naverMapNcpKeyId),
+      naverMapWebNcpKeyIdConfigured: Boolean(naverMapWebNcpKeyId),
       eas: {
         projectId: "686eddff-6ecf-4426-b15b-342e32d08b95",
       },
