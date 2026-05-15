@@ -1,6 +1,6 @@
-# Darori Current Structure
+# Current Architecture
 
-기준: `feat/api-auth-rate-limit` 브랜치의 현재 코드. Android APK/EAS 설정은 별도 PR `feat/android-apk-build-profile`에 있다.
+기준: `feat/map-bus-sighting-archive` 브랜치의 현재 코드. 웹 배포는 Vercel의 Expo web export 흐름을 사용하며, Android APK/EAS 설정은 별도 PR `feat/android-apk-build-profile`에 있다.
 
 ## High-Level Architecture
 
@@ -9,6 +9,10 @@ flowchart TD
   User[Mobile/Web User]
   App[Expo React Native App]
   Screens[Screens]
+  MapScreen["screens/MapScreen.tsx"]
+  MapSurface["components/NaverMapSurface.*"]
+  NaverMaps[Naver Maps Dynamic Map]
+  BusArchive[Bus sighting archive panel]
   ServiceSwitch[services/api.ts]
   MockApi[services/mockApi.ts]
   LiveApi[services/liveApi.ts]
@@ -23,6 +27,10 @@ flowchart TD
 
   User --> App
   App --> Screens
+  Screens --> MapScreen
+  MapScreen --> MapSurface
+  MapSurface --> NaverMaps
+  MapScreen --> BusArchive
   Screens --> ServiceSwitch
   ServiceSwitch -->|no EXPO_PUBLIC_DARORI_API_BASE_URL| MockApi
   ServiceSwitch -->|EXPO_PUBLIC_DARORI_API_BASE_URL set| LiveApi
@@ -41,8 +49,8 @@ flowchart TD
 | Area | Files | Role |
 | --- | --- | --- |
 | Entry | `index.ts`, `App.tsx` | Expo entry and root screen/tab orchestration |
-| Screens | `screens/*.tsx` | Map, archive, route, create post, chat, profile flows |
-| Components | `components/*.tsx` | Shared UI controls, bottom nav, cards, map preview |
+| Screens | `screens/*.tsx` | Map, route/bus, archive, create post, chat, profile flows |
+| Components | `components/*.tsx` | Shared UI controls, bottom nav, cards, native/web map surfaces |
 | Domain types | `types/domain.ts` | Shared app/domain model types |
 | Mock data | `data/mockDomain.ts`, `data/mapHome.ts` | Local fixture source for mock mode and UI demos |
 | List helpers | `data/mapPostList.ts` | Shared map/archive filtering, sorting, paging |
@@ -71,7 +79,19 @@ Live requests can include:
 - `EXPO_PUBLIC_DARORI_API_BASE_URL`: API server base URL.
 - `EXPO_PUBLIC_DARORI_USER_ID`: sent as `X-Darori-User-Id` for write requests.
 
-This is still a development user context, not production-grade auth.
+These names are current code-level identifiers. The user context is still a development contract, not production-grade auth.
+
+## Map Layer
+
+The map home screen uses two implementations behind the same UI surface:
+
+| Target | Files | Behavior |
+| --- | --- | --- |
+| Native | `components/NaverMapSurface.tsx` | Uses `@mj-studio/react-native-naver-map` and native Dynamic Map key configuration |
+| Web | `components/NaverMapSurface.web.tsx` | Loads the Naver Web Dynamic Map script with `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID` |
+| Fallback | `components/FallbackMapSurface.tsx` | Draws a lightweight local map-like view when the real map cannot be used |
+
+`screens/MapScreen.tsx` owns the map camera state, category chips, current-location button, recruitment bottom sheet, and the bus sighting archive panel. The current-location button asks the browser/native geolocation API for permission, moves the map camera, and falls back to the default campus coordinate when location is unavailable.
 
 ## Server API
 
@@ -163,12 +183,15 @@ Redis usage:
 | --- | --- | --- |
 | `EXPO_PUBLIC_DARORI_API_BASE_URL` | app client | live API mode |
 | `EXPO_PUBLIC_DARORI_USER_ID` | app client | development write user header |
+| `EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID` | Expo app / native map | public native Dynamic Map key fallback |
+| `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID` | web map surface | Naver Web Dynamic Map script auth |
+| `NAVER_MAP_NCP_KEY_ID` | Expo config | native Naver map client id |
+| `NAVER_MAP_API_KEY` | server API | Naver REST APIs such as geocoding/directions |
 | `DATABASE_URL` | server DB | PostgreSQL access |
 | `REDIS_URL` | server API | rate limiting / Redis access |
 | `DATABASE_SSL` / `PGSSLMODE` / `POSTGRES_SSL` | server DB | production SSL config |
 | `DARORI_API_PORT` | server API | local API port override |
 | `DARORI_RATE_LIMIT_DISABLED` | server API | controlled local rate-limit bypass |
-| `NAVER_MAP_NCP_KEY_ID` | Expo config | native Naver map client id |
 
 ## Current Gaps
 
@@ -178,4 +201,6 @@ These are not finished yet:
 - Role/ownership checks for accepting or rejecting applications.
 - Production migration history beyond the current initial schema migration.
 - Production `DATABASE_URL` and `REDIS_URL` verification against real infrastructure.
+- Production Naver Maps domain/environment verification for the final deployment URL.
 - App UI for real login session propagation into `EXPO_PUBLIC_DARORI_USER_ID` replacement.
+- Branding cleanup across `app.config.js`, environment variable names, fixtures, and reference docs after the public name is final.

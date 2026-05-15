@@ -1,10 +1,6 @@
-# [서비스명 미정]
-
 📌 Overview
 
 테크포임팩트 프로젝트
-
-> 서비스명은 아직 확정되지 않았습니다. 현재 저장소, 환경변수, mock 데이터에 남아 있는 `dairuri`, `DARORI`, `다로리` 표기는 개발용 식별자입니다.
 
 지역 기반 이동/모집 커뮤니티 앱입니다. 지도에서 가까운 라이드, 알바, 버스 관련 모집글을 확인하고, 모집글 작성, 지원, 승인, 채팅, 프로필 관리를 한 흐름으로 연결합니다. Expo React Native 기반으로 모바일 앱과 웹 배포를 함께 지원하며, 웹은 Vercel에서 Expo web export 방식으로 배포합니다.
 
@@ -104,7 +100,7 @@ npx expo export --platform web --output-dir dist
 
 💡 Potential Plans
 
-- 서비스명과 로고를 확정한 뒤 README, 앱 설정, mock 데이터 명칭 정리
+- 브랜딩 확정 후 README, 앱 설정, mock 데이터 명칭 정리
 - mock API 중심 흐름을 실제 API 서버 연동 흐름으로 확장
 - 버스 목격 아카이빙을 사용자별 기록, 최근 목격 내역, 지도 마커와 연결
 - Naver Directions/Geocoding 기반 장소 검색과 경로 안내 고도화
