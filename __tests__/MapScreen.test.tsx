@@ -77,6 +77,39 @@ describe("MapScreen", () => {
     expect(handleMarkerPress).toHaveBeenCalledWith("cafe");
   });
 
+  it("requests browser location when pressing the current-location button", () => {
+    const originalNavigator = global.navigator;
+    const getCurrentPosition = jest.fn();
+
+    Object.defineProperty(global, "navigator", {
+      configurable: true,
+      value: {
+        geolocation: {
+          getCurrentPosition,
+        },
+      },
+    });
+
+    try {
+      render(<MapScreen />);
+
+      fireEvent.press(screen.getByTestId("map-home-current-location-button"));
+
+      expect(getCurrentPosition).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.any(Function),
+        expect.objectContaining({
+          enableHighAccuracy: true,
+        }),
+      );
+    } finally {
+      Object.defineProperty(global, "navigator", {
+        configurable: true,
+        value: originalNavigator,
+      });
+    }
+  });
+
   it("filters map posts by category and cycles date, time, and sort controls", () => {
     render(<MapScreen />);
 

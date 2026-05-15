@@ -11,6 +11,7 @@ export type NaverMapSurfaceProps = {
   style?: StyleProp<ViewStyle>;
   markers: MapPreviewMarker[];
   initialCamera: MapPreviewCamera;
+  camera?: MapPreviewCamera;
   onMarkerPress?: (markerId: string) => void;
 };
 
@@ -18,8 +19,11 @@ export function NativeNaverMapSurface({
   style,
   markers,
   initialCamera,
+  camera,
   onMarkerPress,
 }: NaverMapSurfaceProps) {
+  const activeCamera = camera ?? initialCamera;
+
   return (
     <View
       style={[styles.container, style]}
@@ -29,6 +33,8 @@ export function NativeNaverMapSurface({
       <NaverMapView
         style={styles.map}
         initialCamera={initialCamera}
+        camera={camera}
+        animationDuration={400}
         locale="ko"
         isExtentBoundedInKorea
         isScrollGesturesEnabled
@@ -43,8 +49,8 @@ export function NativeNaverMapSurface({
         locationOverlay={{
           isVisible: true,
           position: {
-            latitude: initialCamera.latitude,
-            longitude: initialCamera.longitude,
+            latitude: activeCamera.latitude,
+            longitude: activeCamera.longitude,
           },
           circleRadius: 42,
           circleColor: colors.blueSoft,

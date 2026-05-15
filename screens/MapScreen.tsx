@@ -13,6 +13,7 @@ import { BottomNav } from "../components/BottomNav";
 import { CurrentLocationIcon } from "../components/CurrentLocationIcon";
 import { FilterChip } from "../components/FilterChip";
 import { MapPreview } from "../components/MapPreview";
+import type { MapPreviewCamera } from "../components/mapPreviewData";
 import { RecruitmentCard } from "../components/RecruitmentCard";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
@@ -67,6 +68,7 @@ export function MapScreen({
   const [sortMode, setSortMode] = useState<MapPostSortMode>("default");
   const [visibleCount, setVisibleCount] = useState(POST_PAGE_SIZE);
   const [sheetTop, setSheetTop] = useState(SHEET_DEFAULT_TOP);
+  const [focusedCamera, setFocusedCamera] = useState<MapPreviewCamera | null>(null);
   const sheetTopRef = useRef(SHEET_DEFAULT_TOP);
   const dragStartTopRef = useRef(SHEET_DEFAULT_TOP);
   const filteredPosts = useMemo(() => {
@@ -115,6 +117,31 @@ export function MapScreen({
     sheetTopRef.current = clampedTop;
     setSheetTop(clampedTop);
   }, []);
+  const handleCurrentLocationPress = useCallback(() => {
+    onCurrentLocationPress?.();
+
+    const geolocation = globalThis.navigator?.geolocation;
+
+    if (!geolocation) {
+      return;
+    }
+
+    geolocation.getCurrentPosition(
+      (position) => {
+        setFocusedCamera({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          zoom: 16,
+        });
+      },
+      () => undefined,
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 30000,
+      },
+    );
+  }, [onCurrentLocationPress]);
   const sheetPanResponder = useMemo(
     () =>
       PanResponder.create({
@@ -134,7 +161,11 @@ export function MapScreen({
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen}>
-        <MapPreview style={styles.mapPreview} onMarkerPress={onSelectMapMarker} />
+        <MapPreview
+          style={styles.mapPreview}
+          camera={focusedCamera ?? undefined}
+          onMarkerPress={onSelectMapMarker}
+        />
 
         <View style={styles.topOverlay}>
           <Pressable
@@ -173,7 +204,7 @@ export function MapScreen({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="현재 위치로 이동"
-          onPress={onCurrentLocationPress}
+          onPress={handleCurrentLocationPress}
           testID="map-home-current-location-button"
           style={styles.locationButton}
         >

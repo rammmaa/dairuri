@@ -10,7 +10,14 @@ type NaverMapSurfaceProps = {
   style?: StyleProp<ViewStyle>;
   markers: MapPreviewMarker[];
   initialCamera: MapPreviewCamera;
+  camera?: MapPreviewCamera;
   onMarkerPress?: (markerId: string) => void;
+};
+
+type NaverMapInstance = {
+  panTo?: (center: unknown) => void;
+  setCenter: (center: unknown) => void;
+  setZoom: (zoom: number) => void;
 };
 
 type NaverMapsGlobal = {
@@ -19,7 +26,10 @@ type NaverMapsGlobal = {
       addListener: (target: unknown, eventName: string, listener: () => void) => unknown;
     };
     LatLng: new (latitude: number, longitude: number) => unknown;
-    Map: new (element: HTMLElement, options: Record<string, unknown>) => unknown;
+    Map: new (
+      element: HTMLElement,
+      options: Record<string, unknown>,
+    ) => NaverMapInstance;
     Marker: new (options: Record<string, unknown>) => { setMap: (map: unknown | null) => void };
   };
   __dairuriNaverMapScriptPromise?: Promise<void>;
@@ -75,9 +85,11 @@ export function NaverMapSurface({
   style,
   markers,
   initialCamera,
+  camera,
   onMarkerPress,
 }: NaverMapSurfaceProps) {
   const mapElementRef = useRef<HTMLElement | null>(null);
+  const mapRef = useRef<NaverMapInstance | null>(null);
   const markerRefs = useRef<Array<{ setMap: (map: unknown | null) => void }>>([]);
   const [isReady, setIsReady] = useState(false);
   const [hasFailed, setHasFailed] = useState(false);
@@ -123,6 +135,7 @@ export function NaverMapSurface({
           scaleControl: false,
           zoomControl: false,
         });
+        mapRef.current = map;
 
         markerRefs.current = markers.map((marker) => {
           const naverMarker = new naver.Marker({
@@ -169,8 +182,32 @@ export function NaverMapSurface({
       }
       markerRefs.current.forEach((marker) => marker.setMap(null));
       markerRefs.current = [];
+      mapRef.current = null;
     };
   }, [initialCamera, markers, naverMapKey, onMarkerPress]);
+
+  useEffect(() => {
+    if (!isReady || !camera) {
+      return;
+    }
+
+    const naver = getNaverMapsGlobal()?.maps;
+    const map = mapRef.current;
+
+    if (!naver || !map) {
+      return;
+    }
+
+    const center = new naver.LatLng(camera.latitude, camera.longitude);
+
+    if (map.panTo) {
+      map.panTo(center);
+    } else {
+      map.setCenter(center);
+    }
+
+    map.setZoom(camera.zoom);
+  }, [camera, isReady]);
 
   if (hasFailed) {
     return (
@@ -178,6 +215,7 @@ export function NaverMapSurface({
         style={style}
         markers={markers}
         initialCamera={initialCamera}
+        camera={camera}
         onMarkerPress={onMarkerPress}
       />
     );
@@ -195,6 +233,7 @@ export function NaverMapSurface({
           style={StyleSheet.absoluteFill}
           markers={markers}
           initialCamera={initialCamera}
+          camera={camera}
           onMarkerPress={onMarkerPress}
         />
       ) : null}

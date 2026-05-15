@@ -16,6 +16,7 @@ type FallbackMapSurfaceProps = {
   style?: StyleProp<ViewStyle>;
   markers: MapPreviewMarker[];
   initialCamera: MapPreviewCamera;
+  camera?: MapPreviewCamera;
   onMarkerPress?: (markerId: string) => void;
 };
 
