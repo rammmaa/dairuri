@@ -4,6 +4,14 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 
 import type { Post } from "../../types/domain";
 import { closePostgresPool } from "../db/postgres";
+import { closeRedisClient } from "../db/redis";
+import {
+  AuthenticationError,
+  getOptionalRequestUserId,
+  requireRequestContext,
+  type RequestContext,
+} from "./auth";
+import { checkRedisRateLimit, RateLimitExceededError } from "./rateLimit";
 import {
   createApplication,
   createPost,
@@ -18,6 +26,13 @@ import {
 } from "./repository";
 
 const port = Number(process.env.DARORI_API_PORT ?? 8787);
+const writeRateLimits = {
+  createPost: { limit: 20, windowSeconds: 60 },
+  toggleLike: { limit: 120, windowSeconds: 60 },
+  createApplication: { limit: 10, windowSeconds: 60 },
+  reviewApplication: { limit: 60, windowSeconds: 60 },
+  sendChatMessage: { limit: 60, windowSeconds: 60 },
+} as const;
 
 const server = createServer(async (request, response) => {
   setCorsHeaders(response);
@@ -31,6 +46,17 @@ const server = createServer(async (request, response) => {
   try {
     await routeRequest(request, response);
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      sendJson(response, 401, { error: error.message });
+      return;
+    }
+
+    if (error instanceof RateLimitExceededError) {
+      response.setHeader("Retry-After", String(error.retryAfterSeconds));
+      sendJson(response, 429, { error: error.message });
+      return;
+    }
+
     sendJson(response, 500, {
       error: error instanceof Error ? error.message : String(error),
     });
@@ -55,14 +81,16 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
   }
 
   if (method === "GET" && pathname === "/posts") {
-    sendJson(response, 200, await listPosts());
+    const viewerUserId = getOptionalRequestUserId(request.headers);
+    sendJson(response, 200, await listPosts(viewerUserId));
     return;
   }
 
   if (method === "POST" && pathname === "/posts") {
+    const context = await requireWriteContext(request, "createPost");
     const body = await readJsonBody<Partial<Post>>(request);
     try {
-      sendJson(response, 201, await createPost(body));
+      sendJson(response, 201, await createPost(body, context.userId));
     } catch (error) {
       if (error instanceof CreatePostInputError) {
         sendJson(response, 400, { error: error.message });
@@ -76,7 +104,8 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
 
   const postMatch = pathname.match(/^\/posts\/([^/]+)$/);
   if (method === "GET" && postMatch) {
-    const post = await getPostById(postMatch[1]);
+    const viewerUserId = getOptionalRequestUserId(request.headers);
+    const post = await getPostById(postMatch[1], viewerUserId);
     if (!post) {
       sendJson(response, 404, { error: "post not found" });
       return;
@@ -87,7 +116,8 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
 
   const postLikeMatch = pathname.match(/^\/posts\/([^/]+)\/like$/);
   if (method === "POST" && postLikeMatch) {
-    const post = await togglePostLike(postLikeMatch[1]);
+    const context = await requireWriteContext(request, "toggleLike");
+    const post = await togglePostLike(postLikeMatch[1], context.userId);
     if (!post) {
       sendJson(response, 404, { error: "post not found" });
       return;
@@ -98,17 +128,23 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
 
   const applicationMatch = pathname.match(/^\/posts\/([^/]+)\/applications$/);
   if (method === "POST" && applicationMatch) {
+    const context = await requireWriteContext(request, "createApplication");
     const body = await readJsonBody<{ intro?: string }>(request);
     if (!body.intro?.trim()) {
       sendJson(response, 400, { error: "intro is required" });
       return;
     }
-    sendJson(response, 201, await createApplication(applicationMatch[1], body.intro.trim()));
+    sendJson(
+      response,
+      201,
+      await createApplication(applicationMatch[1], body.intro.trim(), context.userId),
+    );
     return;
   }
 
   const acceptMatch = pathname.match(/^\/applications\/([^/]+)\/accept$/);
   if (method === "POST" && acceptMatch) {
+    await requireWriteContext(request, "reviewApplication");
     await updateApplicationStatus(acceptMatch[1], "accepted");
     sendJson(response, 204);
     return;
@@ -116,6 +152,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
 
   const rejectMatch = pathname.match(/^\/applications\/([^/]+)\/reject$/);
   if (method === "POST" && rejectMatch) {
+    await requireWriteContext(request, "reviewApplication");
     const body = await readJsonBody<{ reason?: string }>(request);
     await updateApplicationStatus(rejectMatch[1], "rejected", body.reason?.trim());
     sendJson(response, 204);
@@ -134,12 +171,17 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
   }
 
   if (messagesMatch && method === "POST") {
+    const context = await requireWriteContext(request, "sendChatMessage");
     const body = await readJsonBody<{ text?: string }>(request);
     if (!body.text?.trim()) {
       sendJson(response, 400, { error: "text is required" });
       return;
     }
-    sendJson(response, 201, await createChatMessage(messagesMatch[1], body.text.trim()));
+    sendJson(
+      response,
+      201,
+      await createChatMessage(messagesMatch[1], body.text.trim(), context.userId),
+    );
     return;
   }
 
@@ -148,7 +190,10 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
 
 function setCorsHeaders(response: ServerResponse) {
   response.setHeader("Access-Control-Allow-Origin", "*");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+  response.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Accept, X-Darori-User-Id",
+  );
   response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 }
 
@@ -191,5 +236,24 @@ function readJsonBody<T>(request: IncomingMessage): Promise<T> {
 
 async function shutdown() {
   await closePostgresPool();
+  await closeRedisClient();
   server.close(() => process.exit(0));
+}
+
+async function requireWriteContext(
+  request: IncomingMessage,
+  action: keyof typeof writeRateLimits,
+): Promise<RequestContext> {
+  const context = requireRequestContext(request.headers);
+
+  if (process.env.DARORI_RATE_LIMIT_DISABLED === "true") {
+    return context;
+  }
+
+  await checkRedisRateLimit({
+    key: `darori:${action}:${context.rateLimitKey}`,
+    ...writeRateLimits[action],
+  });
+
+  return context;
 }

@@ -22,7 +22,8 @@ async function main() {
           post_likes,
           posts,
           vehicles,
-          users
+          users,
+          schema_migrations
         cascade;
         drop type if exists chat_message_type cascade;
         drop type if exists driver_type cascade;

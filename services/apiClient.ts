@@ -18,11 +18,7 @@ export async function apiRequest<T>(
 
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers: buildRequestHeaders(options.headers),
     body:
       options.body === undefined ? undefined : JSON.stringify(options.body),
   });
@@ -47,6 +43,29 @@ function getLiveApiBaseUrl() {
   }
 
   return baseUrl.replace(/\/$/, "");
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const userId = process.env.EXPO_PUBLIC_DARORI_USER_ID?.trim();
+  return userId ? { "X-Darori-User-Id": userId } : {};
+}
+
+function buildRequestHeaders(headers: HeadersInit | undefined) {
+  const requestHeaders: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    ...getAuthHeaders(),
+  };
+
+  if (!headers) {
+    return requestHeaders;
+  }
+
+  new Headers(headers).forEach((value, key) => {
+    requestHeaders[key] = value;
+  });
+
+  return requestHeaders;
 }
 
 async function readErrorMessage(response: Response) {

@@ -8,8 +8,6 @@ import type {
 } from "../../types/domain";
 import { getPostgresPool } from "../db/postgres";
 
-const CURRENT_USER_ID = "me";
-
 type UserRow = {
   id: string;
   nickname: string;
@@ -129,25 +127,33 @@ type ChatMessageRow = {
   created_at: Date;
 };
 
-export async function listPosts(): Promise<Post[]> {
-  const { rows } = await getPostgresPool().query<PostRow>(postSelectSql());
+export async function listPosts(viewerUserId?: string): Promise<Post[]> {
+  const { rows } = await getPostgresPool().query<PostRow>(postSelectSql(), [
+    viewerUserId ?? null,
+  ]);
   return rows.map(mapPostRow);
 }
 
-export async function getPostById(id: string): Promise<Post | undefined> {
+export async function getPostById(
+  id: string,
+  viewerUserId?: string,
+): Promise<Post | undefined> {
   const { rows } = await getPostgresPool().query<PostRow>(
-    `${postSelectSql()} where p.id = $1`,
-    [id],
+    `${postSelectSql()} where p.id = $2`,
+    [viewerUserId ?? null, id],
   );
   return rows[0] ? mapPostRow(rows[0]) : undefined;
 }
 
-export async function createPost(input: Partial<Post>): Promise<Post> {
+export async function createPost(
+  input: Partial<Post>,
+  userId: string,
+): Promise<Post> {
   const id = `post-${Date.now()}`;
   const createdAt = new Date().toISOString();
   const record = normalizeCreatePostInput(input, {
     id,
-    authorId: CURRENT_USER_ID,
+    authorId: userId,
     createdAt,
   });
 
@@ -189,7 +195,7 @@ export async function createPost(input: Partial<Post>): Promise<Post> {
     ],
   );
 
-  const post = await getPostById(id);
+  const post = await getPostById(id, userId);
   if (!post) {
     throw new Error(`created post missing: ${id}`);
   }
@@ -260,31 +266,35 @@ export function normalizeCreatePostInput(
   };
 }
 
-export async function togglePostLike(postId: string): Promise<Post | undefined> {
+export async function togglePostLike(
+  postId: string,
+  userId: string,
+): Promise<Post | undefined> {
   const pool = getPostgresPool();
   const existing = await pool.query(
     "select 1 from post_likes where post_id = $1 and user_id = $2",
-    [postId, CURRENT_USER_ID],
+    [postId, userId],
   );
 
   if (existing.rowCount) {
     await pool.query("delete from post_likes where post_id = $1 and user_id = $2", [
       postId,
-      CURRENT_USER_ID,
+      userId,
     ]);
   } else {
     await pool.query(
       "insert into post_likes (post_id, user_id) values ($1, $2) on conflict do nothing",
-      [postId, CURRENT_USER_ID],
+      [postId, userId],
     );
   }
 
-  return getPostById(postId);
+  return getPostById(postId, userId);
 }
 
 export async function createApplication(
   postId: string,
   intro: string,
+  userId: string,
 ): Promise<Application> {
   const id = `application-${Date.now()}`;
   const createdAt = new Date().toISOString();
@@ -301,9 +311,9 @@ export async function createApplication(
       values ($1, $2, $3, $4, 'pending', $5)
       returning id, post_id, intro, status, created_at
     `,
-    [id, postId, CURRENT_USER_ID, intro, createdAt],
+    [id, postId, userId, intro, createdAt],
   );
-  const applicant = await getUserById(CURRENT_USER_ID);
+  const applicant = await getUserById(userId);
 
   if (!applicant) {
     throw new Error("current user missing");
@@ -389,6 +399,7 @@ export async function listChatMessages(roomId: string): Promise<ChatMessage[]> {
 export async function createChatMessage(
   roomId: string,
   text: string,
+  userId: string,
 ): Promise<ChatMessage> {
   const id = `message-${Date.now()}`;
   const createdAt = new Date().toISOString();
@@ -398,7 +409,7 @@ export async function createChatMessage(
       values ($1, $2, $3, 'text', $4, $5)
       returning id, room_id, sender_id, type, text, created_at
     `,
-    [id, roomId, CURRENT_USER_ID, text, createdAt],
+    [id, roomId, userId, text, createdAt],
   );
 
   return {
@@ -467,7 +478,7 @@ function postSelectSql() {
       p.*,
       exists(
         select 1 from post_likes pl
-        where pl.post_id = p.id and pl.user_id = '${CURRENT_USER_ID}'
+        where pl.post_id = p.id and pl.user_id = $1
       ) as liked,
       u.id as author_id,
       u.nickname as author_nickname,
