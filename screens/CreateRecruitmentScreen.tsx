@@ -23,18 +23,11 @@ import { MapPreview } from "../components/MapPreview";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
+import { searchPlaceCandidates as searchApiPlaceCandidates } from "../services/places";
+import type { PlaceCandidate } from "../types/place";
 
 type RecruitmentType = "ride" | "work";
 type RoutePlaceTarget = "departure" | "destination";
-
-type PlaceCandidate = {
-  id: string;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  source: "api" | "fallback";
-};
 
 export type CreateRecruitmentScreenProps = {
   onCancel?: () => void;
@@ -1044,7 +1037,7 @@ function PlacePickerScreen({
 
     setPlaces(fallback);
 
-    searchPlaceCandidates(query).then((apiPlaces) => {
+    searchApiPlaceCandidates(query).then((apiPlaces) => {
       if (!active || apiPlaces.length === 0) {
         return;
       }
@@ -1352,60 +1345,6 @@ function mergePlaceCandidates(
     seen.add(key);
     return true;
   });
-}
-
-async function searchPlaceCandidates(query: string): Promise<PlaceCandidate[]> {
-  const trimmedQuery = query.trim();
-  if (
-    process.env.NODE_ENV === "test" ||
-    trimmedQuery.length < 2 ||
-    typeof fetch !== "function"
-  ) {
-    return [];
-  }
-
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=kr&q=${encodeURIComponent(
-        trimmedQuery,
-      )}`,
-    );
-
-    if (!response.ok) {
-      return [];
-    }
-
-    const items = (await response.json()) as Array<{
-      display_name?: string;
-      lat?: string;
-      lon?: string;
-      name?: string;
-    }>;
-
-    return items
-      .map((item, index): PlaceCandidate | null => {
-        const latitude = Number(item.lat);
-        const longitude = Number(item.lon);
-        const displayName = item.display_name ?? "";
-        const name = item.name ?? displayName.split(",")[0] ?? trimmedQuery;
-
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-          return null;
-        }
-
-        return {
-          id: `api-${trimmedQuery}-${index}`.replace(/[^a-zA-Z0-9가-힣_-]/g, "-"),
-          name,
-          address: displayName || "검색된 지도 위치",
-          latitude,
-          longitude,
-          source: "api",
-        };
-      })
-      .filter((place): place is PlaceCandidate => place !== null);
-  } catch {
-    return [];
-  }
 }
 
 function formatCurrency(value: string) {

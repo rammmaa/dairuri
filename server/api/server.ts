@@ -24,6 +24,10 @@ import {
   togglePostLike,
   updateApplicationStatus,
 } from "./repository";
+import {
+  NaverMapsConfigError,
+  searchNaverPlaces,
+} from "../maps/naverGeocode";
 
 const port = Number(process.env.DARORI_API_PORT ?? 8787);
 const writeRateLimits = {
@@ -83,6 +87,26 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
   if (method === "GET" && pathname === "/posts") {
     const viewerUserId = getOptionalRequestUserId(request.headers);
     sendJson(response, 200, await listPosts(viewerUserId));
+    return;
+  }
+
+  if (method === "GET" && pathname === "/maps/geocode") {
+    const query = url.searchParams.get("query")?.trim() ?? "";
+    if (query.length < 2) {
+      sendJson(response, 200, []);
+      return;
+    }
+
+    try {
+      sendJson(response, 200, await searchNaverPlaces(query));
+    } catch (error) {
+      if (error instanceof NaverMapsConfigError) {
+        sendJson(response, 503, { error: error.message });
+        return;
+      }
+
+      throw error;
+    }
     return;
   }
 
