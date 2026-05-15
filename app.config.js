@@ -5,6 +5,7 @@ const naverMapNcpKeyId =
 const naverMapWebNcpKeyId =
   process.env.EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID ??
   process.env.EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID ??
+  naverMapNcpKeyId ??
   "";
 
 module.exports = {
