@@ -12,6 +12,7 @@ import { View } from "react-native";
 import { AuthScreen } from "./screens/auth/AuthScreen";
 import { MapScreen } from "./screens/MapScreen";
 import { RouteScreen } from "./screens/RouteScreen";
+import { BusSightingScreen } from "./screens/BusSightingScreen";
 import { ChatScreen } from "./screens/ChatScreen";
 import { MyPageScreen } from "./screens/MyPageScreen";
 import { CreateRecruitmentScreen } from "./screens/CreateRecruitmentScreen";
@@ -49,6 +50,7 @@ export default function App() {
   const [selectedChatRoomId, setSelectedChatRoomId] = useState<string | null>(null);
   const [reportRoomId, setReportRoomId] = useState<string | null>(null);
   const [reviewApplicationId, setReviewApplicationId] = useState<string | null>(null);
+  const [busSightingOpen, setBusSightingOpen] = useState(false);
 
   const handleSelectTab = (item: BottomNavItem) => {
     if (item.id === "posts" && activeTab !== "posts") {
@@ -59,6 +61,7 @@ export default function App() {
     setSelectedChatRoomId(null);
     setReportRoomId(null);
     setReviewApplicationId(null);
+    setBusSightingOpen(false);
 
     if (item.id !== "profile" || activeTab === "profile") {
       setProfileSubScreen(null);
@@ -140,9 +143,21 @@ export default function App() {
     );
   }
 
+  if (busSightingOpen) {
+    return (
+      <>
+        <BusSightingScreen onBack={() => setBusSightingOpen(false)} />
+        <StatusBar style="dark" />
+      </>
+    );
+  }
+
   const screen =
     activeTab === "bus" ? (
-      <RouteScreen onSelectTab={handleSelectTab} />
+      <RouteScreen
+        onSelectTab={handleSelectTab}
+        onOpenBusSighting={() => setBusSightingOpen(true)}
+      />
     ) : activeTab === "posts" ? (
       <CreateRecruitmentScreen
         onCancel={() => setActiveTab(returnTab)}

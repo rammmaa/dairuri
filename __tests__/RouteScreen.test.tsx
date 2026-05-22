@@ -22,3 +22,21 @@ describe("RouteScreen sorting", () => {
     expect(screen.getByText("다이루리 순환")).toBeTruthy();
   });
 });
+
+describe("RouteScreen bus sighting entry", () => {
+  it("renders the record-sighting button only when an onOpenBusSighting handler is supplied", () => {
+    const { rerender } = render(<RouteScreen />);
+    expect(screen.queryByTestId("route-record-sighting-button")).toBeNull();
+
+    rerender(<RouteScreen onOpenBusSighting={() => undefined} />);
+    expect(screen.getByTestId("route-record-sighting-button")).toBeTruthy();
+  });
+
+  it("calls onOpenBusSighting when the header button is pressed", () => {
+    const handler = jest.fn();
+    render(<RouteScreen onOpenBusSighting={handler} />);
+
+    fireEvent.press(screen.getByTestId("route-record-sighting-button"));
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+});

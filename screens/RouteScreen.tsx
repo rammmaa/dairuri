@@ -1,16 +1,20 @@
 import { Bus, Clock3, MapPin, Search, Timer } from "lucide-react-native";
-import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { BottomNav } from "../components/BottomNav";
 import { FilterChip } from "../components/FilterChip";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
+import { formatLastSightingLabel } from "../data/busSightingFormat";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
+import { getBusRoutes } from "../services/api";
+import type { BusRoute } from "../types/domain";
 
 export type RouteScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
+  onOpenBusSighting?: () => void;
 };
 
 type RouteStatus = "운행중" | "곧 도착" | "배차대기";
@@ -74,9 +78,38 @@ const routeCards: RouteCardData[] = [
   },
 ];
 
-export function RouteScreen({ onSelectTab }: RouteScreenProps) {
+export function RouteScreen({ onSelectTab, onOpenBusSighting }: RouteScreenProps) {
   const [selectedFilter, setSelectedFilter] = useState<RouteFilter>("전체");
   const [selectedSort, setSelectedSort] = useState<RouteSort>("빠른순");
+
+  // Pull the community-sighted routes so we can annotate the static prototype
+  // cards with a last-seen badge. The route number on the static card
+  // (e.g. "D-01") is matched against the BusRoute.code we get back. Routes
+  // that have no recorded sighting (or that do not exist in the archive at
+  // all, such as the prototype's "N-10") simply render without a badge.
+  const [busRoutes, setBusRoutes] = useState<BusRoute[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void getBusRoutes().then((routes) => {
+      if (!cancelled) {
+        setBusRoutes(routes);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const lastSightingByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const route of busRoutes) {
+      if (route.lastSightingAt) {
+        map.set(route.code, route.lastSightingAt);
+      }
+    }
+    return map;
+  }, [busRoutes]);
+
   const visibleRoutes = useMemo(() => {
     const filtered = routeCards.filter((route) => {
       if (selectedFilter === "전체") {
@@ -108,7 +141,24 @@ export function RouteScreen({ onSelectTab }: RouteScreenProps) {
     <View style={styles.safeArea}>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <Text style={styles.title}>버스</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>버스</Text>
+            {onOpenBusSighting ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="방금 버스 봤어요"
+                onPress={onOpenBusSighting}
+                testID="route-record-sighting-button"
+                style={({ pressed }) => [
+                  styles.recordSightingButton,
+                  pressed && styles.recordSightingButtonPressed,
+                ]}
+              >
+                <Bus size={16} color={colors.surface} strokeWidth={2.4} />
+                <Text style={styles.recordSightingText}>방금 봤어요</Text>
+              </Pressable>
+            ) : null}
+          </View>
           <View style={styles.searchBar} accessibilityRole="search">
             <Search size={20} color={colors.grayIcon} strokeWidth={2.3} />
             <Text style={styles.searchPlaceholder}>노선, 정류장 검색</Text>
@@ -168,7 +218,11 @@ export function RouteScreen({ onSelectTab }: RouteScreenProps) {
 
           <View style={styles.cardList}>
             {visibleRoutes.map((route) => (
-              <RouteCard key={route.id} route={route} />
+              <RouteCard
+                key={route.id}
+                route={route}
+                lastSightingAt={lastSightingByCode.get(route.routeNumber)}
+              />
             ))}
           </View>
         </ScrollView>
@@ -198,9 +252,15 @@ function statusPriority(status: RouteStatus) {
 
 type RouteCardProps = {
   route: RouteCardData;
+  /** ISO timestamp of the most recent community sighting on this route's
+   *  matching BusRoute (matched by `route.routeNumber === BusRoute.code`).
+   *  Undefined when no sighting exists (or the route is not in the archive). */
+  lastSightingAt?: string;
 };
 
-function RouteCard({ route }: RouteCardProps) {
+function RouteCard({ route, lastSightingAt }: RouteCardProps) {
+  const sightingLabel = formatLastSightingLabel(lastSightingAt);
+
   return (
     <View style={styles.routeCard}>
       <View style={styles.routeTopRow}>
@@ -232,6 +292,16 @@ function RouteCard({ route }: RouteCardProps) {
           <Text style={styles.durationText}>{route.duration}</Text>
         </View>
       </View>
+
+      {sightingLabel ? (
+        <View
+          style={styles.sightingBadge}
+          accessibilityLabel={`최근 목격: ${sightingLabel}`}
+        >
+          <Bus size={12} color={colors.blue} strokeWidth={2.4} />
+          <Text style={styles.sightingBadgeText}>마지막 목격 {sightingLabel}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -310,11 +380,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     gap: 16,
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
   title: {
     color: colors.black,
     fontFamily: typography.family.body,
     fontSize: 24,
     lineHeight: 31,
+    fontWeight: typography.weight.bold,
+  },
+  recordSightingButton: {
+    minHeight: 36,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 18,
+    backgroundColor: colors.blue,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  recordSightingButtonPressed: {
+    opacity: 0.84,
+  },
+  recordSightingText: {
+    color: colors.surface,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.bold,
   },
   searchBar: {
@@ -603,6 +699,23 @@ const styles = StyleSheet.create({
   },
   durationText: {
     color: colors.grayIcon,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.bold,
+  },
+  sightingBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: colors.blueSoft,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  sightingBadgeText: {
+    color: colors.blue,
     fontFamily: typography.family.body,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
