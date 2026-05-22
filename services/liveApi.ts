@@ -1,5 +1,14 @@
-import type { Application, ChatMessage, ChatRoom, Post } from "../types/domain";
+import type {
+  Application,
+  BusRoute,
+  BusSighting,
+  BusStop,
+  ChatMessage,
+  ChatRoom,
+  Post,
+} from "../types/domain";
 import { apiRequest } from "./apiClient";
+import type { RecordBusSightingInput } from "./busArchiveCore";
 
 export async function getPosts(): Promise<Post[]> {
   return apiRequest<Post[]>("/posts");
@@ -86,4 +95,35 @@ export async function sendMessage(
       body: { text },
     },
   );
+}
+
+// ---------------------------------------------------------------------------
+// Happy Bus archive (live API)
+// ---------------------------------------------------------------------------
+
+export async function getBusRoutes(): Promise<BusRoute[]> {
+  return apiRequest<BusRoute[]>("/bus/routes");
+}
+
+export async function getBusStops(): Promise<BusStop[]> {
+  return apiRequest<BusStop[]>("/bus/stops");
+}
+
+export async function getStopSightings(
+  stopId: string,
+  limit?: number,
+): Promise<BusSighting[]> {
+  const query = limit !== undefined ? `?limit=${encodeURIComponent(limit)}` : "";
+  return apiRequest<BusSighting[]>(
+    `/bus/stops/${encodeURIComponent(stopId)}/sightings${query}`,
+  );
+}
+
+export async function recordBusSighting(
+  input: RecordBusSightingInput,
+): Promise<BusSighting> {
+  return apiRequest<BusSighting>("/bus/sightings", {
+    method: "POST",
+    body: input,
+  });
 }

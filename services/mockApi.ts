@@ -1,4 +1,19 @@
-import type { Application, ChatMessage, ChatRoom, Post } from "../types/domain";
+import type {
+  Application,
+  BusRoute,
+  BusSighting,
+  BusStop,
+  ChatMessage,
+  ChatRoom,
+  Post,
+} from "../types/domain";
+import {
+  BusSightingInputError,
+  mockReporterLabel,
+  normalizeRecordSightingInput,
+  resolveNearestStop,
+  type RecordBusSightingInput,
+} from "./busArchiveCore";
 import { assertDatabaseConsistency, connectMockDatabase } from "./mockDb";
 
 const delay = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -137,4 +152,135 @@ export async function sendMessage(
   database.messages.push(message);
   assertDatabaseConsistency(database);
   return message;
+}
+
+// ---------------------------------------------------------------------------
+// Happy Bus archive
+// ---------------------------------------------------------------------------
+//
+// The mock implementation mirrors server/api/busArchive.ts as closely as the
+// runtime allows. Stop snapping uses the same haversine helper from
+// services/busArchiveCore.ts so the snap behavior is identical. The reporter
+// label algorithm differs (mock uses mockReporterLabel / FNV-1a; live uses
+// sha256) because Node's createHash is not in the React Native bundle; both
+// satisfy the same stability + "deleted" + 6-char-hex contract.
+
+export async function getBusRoutes(): Promise<BusRoute[]> {
+  await delay(60);
+  const database = connectMockDatabase();
+  const latestByRoute = new Map<string, string>();
+  for (const sighting of database.busSightings) {
+    const existing = latestByRoute.get(sighting.routeId);
+    if (!existing || sighting.createdAt > existing) {
+      latestByRoute.set(sighting.routeId, sighting.createdAt);
+    }
+  }
+  return database.busRoutes.map((route) => ({
+    ...route,
+    lastSightingAt: latestByRoute.get(route.id),
+  }));
+}
+
+export async function getBusStops(): Promise<BusStop[]> {
+  await delay(80);
+  const database = connectMockDatabase();
+  const latestByStop = new Map<string, string>();
+  for (const sighting of database.busSightings) {
+    const existing = latestByStop.get(sighting.stopId);
+    if (!existing || sighting.createdAt > existing) {
+      latestByStop.set(sighting.stopId, sighting.createdAt);
+    }
+  }
+  return database.busStops.map((stop) => ({
+    ...stop,
+    lastSightingAt: latestByStop.get(stop.id),
+  }));
+}
+
+export async function getStopSightings(
+  stopId: string,
+  limit = 20,
+): Promise<BusSighting[]> {
+  await delay(60);
+  const database = connectMockDatabase();
+  const boundedLimit = Math.min(Math.max(limit, 1), 100);
+  return database.busSightings
+    .filter((sighting) => sighting.stopId === stopId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, boundedLimit)
+    .map(toMockBusSighting);
+}
+
+export async function recordBusSighting(
+  input: RecordBusSightingInput,
+): Promise<BusSighting> {
+  await delay(80);
+  const database = connectMockDatabase();
+  const validated = normalizeRecordSightingInput(input);
+
+  const routeStopIds = new Set(
+    database.busRouteStops
+      .filter((link) => link.routeId === validated.routeId)
+      .map((link) => link.stopId),
+  );
+
+  if (routeStopIds.size === 0) {
+    throw new BusSightingInputError("route not found");
+  }
+
+  const candidates = database.busStops
+    .filter((stop) => routeStopIds.has(stop.id))
+    .map((stop) => ({
+      stopId: stop.id,
+      latitude: stop.latitude,
+      longitude: stop.longitude,
+    }));
+
+  const snapped = resolveNearestStop(
+    { latitude: validated.latitude, longitude: validated.longitude },
+    candidates,
+  );
+
+  if (!snapped) {
+    throw new BusSightingInputError("no nearby stop on route");
+  }
+
+  // Mock mode runs without an authenticated user header, so it pins the
+  // reporter to the local mockMe profile. The mockReporterLabel function
+  // derives a stable 6-char identifier from that id.
+  const reporterId = database.users[0]?.id ?? null;
+
+  const raw = {
+    id: `sighting-${Date.now()}`,
+    routeId: validated.routeId,
+    stopId: snapped.stopId,
+    reporterId,
+    latitude: validated.latitude,
+    longitude: validated.longitude,
+    createdAt: new Date().toISOString(),
+  };
+
+  database.busSightings.push(raw);
+  assertDatabaseConsistency(database);
+  return toMockBusSighting(raw);
+}
+
+function toMockBusSighting(raw: {
+  id: string;
+  routeId: string;
+  stopId: string;
+  reporterId: string | null;
+  latitude: number;
+  longitude: number;
+  createdAt: string;
+}): BusSighting {
+  return {
+    id: raw.id,
+    routeId: raw.routeId,
+    stopId: raw.stopId,
+    reporterLabel: mockReporterLabel(raw.reporterId),
+    latitude: raw.latitude,
+    longitude: raw.longitude,
+    createdAt: raw.createdAt,
+  };
 }

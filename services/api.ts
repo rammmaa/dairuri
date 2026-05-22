@@ -36,3 +36,17 @@ export const getChatMessages = (
 
 export const sendMessage = (...args: Parameters<typeof mockApi.sendMessage>) =>
   activeApi().sendMessage(...args);
+
+export const getBusRoutes = (...args: Parameters<typeof mockApi.getBusRoutes>) =>
+  activeApi().getBusRoutes(...args);
+
+export const getBusStops = (...args: Parameters<typeof mockApi.getBusStops>) =>
+  activeApi().getBusStops(...args);
+
+export const getStopSightings = (
+  ...args: Parameters<typeof mockApi.getStopSightings>
+) => activeApi().getStopSightings(...args);
+
+export const recordBusSighting = (
+  ...args: Parameters<typeof mockApi.recordBusSighting>
+) => activeApi().recordBusSighting(...args);
