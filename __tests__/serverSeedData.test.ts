@@ -22,4 +22,27 @@ describe("server seed data", () => {
       ]),
     );
   });
+
+  it("includes Happy Bus seed records", () => {
+    const records = createSeedRecords();
+
+    expect(records.busRoutes.map((route) => route.id)).toEqual([
+      "route-d-01",
+      "route-d-03",
+      "route-d-05",
+    ]);
+    expect(records.busStops.map((stop) => stop.id)).toContain("stop-darori-cafe");
+    expect(records.busStops).toHaveLength(8);
+    expect(records.busRouteStops.length).toBeGreaterThanOrEqual(11);
+    expect(records.busSightings.map((sighting) => sighting.id)).toEqual(
+      expect.arrayContaining(["sighting-1", "sighting-2"]),
+    );
+    for (const sighting of records.busSightings) {
+      // seed never carries the read-time reporter_label
+      expect(sighting).not.toHaveProperty("reporterLabel");
+      expect(typeof sighting.reporterId === "string" || sighting.reporterId === null).toBe(
+        true,
+      );
+    }
+  });
 });

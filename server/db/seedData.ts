@@ -1,6 +1,10 @@
 import {
   mockApplications,
   mockAuthor,
+  mockBusRoutes,
+  mockBusRouteStops,
+  mockBusSightings,
+  mockBusStops,
   mockChatRooms,
   mockMe,
   mockMessages,
@@ -92,6 +96,36 @@ export function createSeedRecords() {
     createdAt: message.createdAt,
   }));
 
+  const busRoutes = mockBusRoutes.map((route) => ({
+    id: route.id,
+    code: route.code,
+    name: route.name,
+    color: route.color,
+  }));
+
+  const busStops = mockBusStops.map((stop) => ({
+    id: stop.id,
+    name: stop.name,
+    latitude: stop.latitude,
+    longitude: stop.longitude,
+  }));
+
+  const busRouteStops = mockBusRouteStops.map((link) => ({
+    routeId: link.routeId,
+    stopId: link.stopId,
+    sequence: link.sequence,
+  }));
+
+  const busSightings = mockBusSightings.map((sighting) => ({
+    id: sighting.id,
+    routeId: sighting.routeId,
+    stopId: sighting.stopId,
+    reporterId: sighting.reporterId,
+    latitude: sighting.latitude,
+    longitude: sighting.longitude,
+    createdAt: sighting.createdAt,
+  }));
+
   return {
     users,
     vehicles,
@@ -101,6 +135,10 @@ export function createSeedRecords() {
     chatRooms,
     chatRoomParticipants,
     chatMessages,
+    busRoutes,
+    busStops,
+    busRouteStops,
+    busSightings,
   };
 }
 
