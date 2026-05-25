@@ -1,4 +1,12 @@
-import { Bus, Clock3, MapPin, Search, Timer } from "lucide-react-native";
+import {
+  Bus,
+  ChevronRight,
+  Clock3,
+  History,
+  MapPin,
+  Search,
+  Timer,
+} from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -15,6 +23,8 @@ import type { BusRoute } from "../types/domain";
 export type RouteScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
   onOpenBusSighting?: () => void;
+  onOpenArchiveHistory?: () => void;
+  onOpenArrivalTimes?: () => void;
 };
 
 type RouteStatus = "운행중" | "곧 도착" | "배차대기";
@@ -38,47 +48,92 @@ type RouteFilter = (typeof routeFilters)[number];
 type RouteSort = "빠른순" | "출발순" | "상태순";
 const routeSortOptions: RouteSort[] = ["빠른순", "출발순", "상태순"];
 
+// Prototype-only data: six Happy Bus rows match the H1 through H6 routes in
+// data/mockDomain so the per-route last-sighting badge can resolve by code.
+// The schedule values (departure time, duration, status, isExpress) are
+// placeholders until a real operator schedule is wired in.
 const routeCards: RouteCardData[] = [
   {
-    id: "campus-loop",
-    routeName: "다이루리 순환",
-    routeNumber: "D-01",
-    departure: "다로리 카페",
-    arrival: "중앙 정류장",
-    departureTime: "08:12 출발",
-    departureMinutes: 492,
+    id: "happy-1",
+    routeName: "행복버스 1호선",
+    routeNumber: "H1",
+    departure: "청도 코아루블루핀",
+    arrival: "청도 버스 터미널",
+    departureTime: "06:10 출발",
+    departureMinutes: 370,
     duration: "12분",
     durationMinutes: 12,
     status: "운행중",
   },
   {
-    id: "station-shuttle",
-    routeName: "역 앞 셔틀",
-    routeNumber: "D-03",
-    departure: "다로리역 2번 출구",
-    arrival: "커뮤니티 센터",
-    departureTime: "08:20 출발",
-    departureMinutes: 500,
-    duration: "8분",
-    durationMinutes: 8,
+    id: "happy-2",
+    routeName: "행복버스 2호선",
+    routeNumber: "H2",
+    departure: "청도군청",
+    arrival: "성조 아파트 앞",
+    departureTime: "06:30 출발",
+    departureMinutes: 390,
+    duration: "14분",
+    durationMinutes: 14,
     status: "곧 도착",
     isExpress: true,
   },
   {
-    id: "late-night",
-    routeName: "야간 귀가",
-    routeNumber: "N-10",
-    departure: "중앙 정류장",
-    arrival: "기숙사 동문",
-    departureTime: "22:40 출발",
-    departureMinutes: 1360,
+    id: "happy-3",
+    routeName: "행복버스 3호선",
+    routeNumber: "H3",
+    departure: "청도 버스 터미널",
+    arrival: "부민 아파트",
+    departureTime: "07:00 출발",
+    departureMinutes: 420,
     duration: "18분",
     durationMinutes: 18,
+    status: "운행중",
+  },
+  {
+    id: "happy-4",
+    routeName: "행복버스 4호선",
+    routeNumber: "H4",
+    departure: "성조 아파트 앞",
+    arrival: "어린이집",
+    departureTime: "07:20 출발",
+    departureMinutes: 440,
+    duration: "10분",
+    durationMinutes: 10,
     status: "배차대기",
+  },
+  {
+    id: "happy-5",
+    routeName: "행복버스 5호선",
+    routeNumber: "H5",
+    departure: "부민 아파트",
+    arrival: "청도 코아루블루핀",
+    departureTime: "07:40 출발",
+    departureMinutes: 460,
+    duration: "22분",
+    durationMinutes: 22,
+    status: "곧 도착",
+  },
+  {
+    id: "happy-6",
+    routeName: "행복버스 6호선",
+    routeNumber: "H6",
+    departure: "어린이집",
+    arrival: "청도 버스 터미널",
+    departureTime: "08:00 출발",
+    departureMinutes: 480,
+    duration: "25분",
+    durationMinutes: 25,
+    status: "운행중",
   },
 ];
 
-export function RouteScreen({ onSelectTab, onOpenBusSighting }: RouteScreenProps) {
+export function RouteScreen({
+  onSelectTab,
+  onOpenBusSighting,
+  onOpenArchiveHistory,
+  onOpenArrivalTimes,
+}: RouteScreenProps) {
   const [selectedFilter, setSelectedFilter] = useState<RouteFilter>("전체");
   const [selectedSort, setSelectedSort] = useState<RouteSort>("빠른순");
 
@@ -210,6 +265,43 @@ export function RouteScreen({ onSelectTab, onOpenBusSighting }: RouteScreenProps
               <Text style={styles.summaryBadgeText}>{summaryRoute.status}</Text>
             </View>
           </View>
+
+          {onOpenArrivalTimes || onOpenArchiveHistory ? (
+            <View style={styles.entryGroup}>
+              {onOpenArrivalTimes ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="버스 도착 시간 기록 보기"
+                  onPress={onOpenArrivalTimes}
+                  testID="route-open-arrival-times"
+                  style={({ pressed }) => [
+                    styles.entryRow,
+                    pressed && styles.entryRowPressed,
+                  ]}
+                >
+                  <Clock3 size={18} color={colors.mintDark} strokeWidth={2.2} />
+                  <Text style={styles.entryRowLabel}>버스 도착 시간 기록 보기</Text>
+                  <ChevronRight size={18} color={colors.gray400} />
+                </Pressable>
+              ) : null}
+              {onOpenArchiveHistory ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="아카이빙 보기"
+                  onPress={onOpenArchiveHistory}
+                  testID="route-open-archive-history"
+                  style={({ pressed }) => [
+                    styles.entryRow,
+                    pressed && styles.entryRowPressed,
+                  ]}
+                >
+                  <History size={18} color={colors.mintDark} strokeWidth={2.2} />
+                  <Text style={styles.entryRowLabel}>아카이빙 보기</Text>
+                  <ChevronRight size={18} color={colors.gray400} />
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
 
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>추천 경로</Text>
@@ -514,6 +606,37 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
     fontWeight: typography.weight.bold,
+  },
+  entryGroup: {
+    width: "100%",
+    backgroundColor: colors.surface,
+    borderRadius: spacing.cardRadius,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  entryRow: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 10,
+  },
+  entryRowPressed: {
+    backgroundColor: colors.mintLight,
+  },
+  entryRowLabel: {
+    flex: 1,
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.semibold,
   },
   sectionHeader: {
     flexDirection: "row",

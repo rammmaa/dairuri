@@ -200,6 +200,8 @@ export default function App() {
       <RouteScreen
         onSelectTab={handleSelectTab}
         onOpenBusSighting={() => setBusSightingOpen(true)}
+        onOpenArchiveHistory={() => setBusArchiveHistoryOpen(true)}
+        onOpenArrivalTimes={() => setBusArrivalTimesOpen(true)}
       />
     ) : activeTab === "posts" ? (
       <CreateRecruitmentScreen
