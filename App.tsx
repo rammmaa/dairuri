@@ -13,6 +13,9 @@ import { AuthScreen } from "./screens/auth/AuthScreen";
 import { MapScreen } from "./screens/MapScreen";
 import { RouteScreen } from "./screens/RouteScreen";
 import { BusSightingScreen } from "./screens/BusSightingScreen";
+import { BusRouteInfoScreen } from "./screens/BusRouteInfoScreen";
+import { BusArchiveHistoryScreen } from "./screens/BusArchiveHistoryScreen";
+import { BusArrivalTimesScreen } from "./screens/BusArrivalTimesScreen";
 import { ChatScreen } from "./screens/ChatScreen";
 import { MyPageScreen } from "./screens/MyPageScreen";
 import { CreateRecruitmentScreen } from "./screens/CreateRecruitmentScreen";
@@ -51,6 +54,9 @@ export default function App() {
   const [reportRoomId, setReportRoomId] = useState<string | null>(null);
   const [reviewApplicationId, setReviewApplicationId] = useState<string | null>(null);
   const [busSightingOpen, setBusSightingOpen] = useState(false);
+  const [busRouteInfoOpen, setBusRouteInfoOpen] = useState(false);
+  const [busArchiveHistoryOpen, setBusArchiveHistoryOpen] = useState(false);
+  const [busArrivalTimesOpen, setBusArrivalTimesOpen] = useState(false);
 
   const handleSelectTab = (item: BottomNavItem) => {
     if (item.id === "posts" && activeTab !== "posts") {
@@ -62,6 +68,9 @@ export default function App() {
     setReportRoomId(null);
     setReviewApplicationId(null);
     setBusSightingOpen(false);
+    setBusRouteInfoOpen(false);
+    setBusArchiveHistoryOpen(false);
+    setBusArrivalTimesOpen(false);
 
     if (item.id !== "profile" || activeTab === "profile") {
       setProfileSubScreen(null);
@@ -143,10 +152,44 @@ export default function App() {
     );
   }
 
+  if (busRouteInfoOpen) {
+    return (
+      <>
+        <BusRouteInfoScreen onBack={() => setBusRouteInfoOpen(false)} />
+        <StatusBar style="dark" />
+      </>
+    );
+  }
+
+  if (busArchiveHistoryOpen) {
+    return (
+      <>
+        <BusArchiveHistoryScreen
+          onBack={() => setBusArchiveHistoryOpen(false)}
+        />
+        <StatusBar style="dark" />
+      </>
+    );
+  }
+
+  if (busArrivalTimesOpen) {
+    return (
+      <>
+        <BusArrivalTimesScreen
+          onBack={() => setBusArrivalTimesOpen(false)}
+        />
+        <StatusBar style="dark" />
+      </>
+    );
+  }
+
   if (busSightingOpen) {
     return (
       <>
-        <BusSightingScreen onBack={() => setBusSightingOpen(false)} />
+        <BusSightingScreen
+          onBack={() => setBusSightingOpen(false)}
+          onOpenRouteInfo={() => setBusRouteInfoOpen(true)}
+        />
         <StatusBar style="dark" />
       </>
     );

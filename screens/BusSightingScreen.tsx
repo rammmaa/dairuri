@@ -1,4 +1,4 @@
-import { Bus, Check, ChevronRight, MapPin } from "lucide-react-native";
+import { Bus, Check, ChevronRight, Info, MapPin } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
@@ -26,6 +26,10 @@ import type {
 
 export type BusSightingScreenProps = {
   onBack?: () => void;
+  /** Optional callback for the header (i) icon. When provided, the icon
+   *  renders and tapping it opens the per-route info screen. Phase 1 wires
+   *  this to a Coming Soon stub; Phase 2 will replace the stub. */
+  onOpenRouteInfo?: () => void;
 };
 
 type LocationStatus = "loading" | "granted" | "denied" | "error";
@@ -45,7 +49,10 @@ type FlowState =
 const LOCATION_DISTANCE_INTERVAL_M = 10;
 const CLOCK_TICK_MS = 1_000;
 
-export function BusSightingScreen({ onBack }: BusSightingScreenProps) {
+export function BusSightingScreen({
+  onBack,
+  onOpenRouteInfo,
+}: BusSightingScreenProps) {
   const [flowState, setFlowState] = useState<FlowState>("recorder");
 
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
@@ -344,6 +351,23 @@ export function BusSightingScreen({ onBack }: BusSightingScreenProps) {
         showBack
         onBack={handleStateBack}
         border
+        right={
+          onOpenRouteInfo ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="노선 정보"
+              hitSlop={12}
+              onPress={onOpenRouteInfo}
+              testID="bus-sighting-info-button"
+              style={({ pressed }) => [
+                styles.infoButton,
+                pressed && styles.infoButtonPressed,
+              ]}
+            >
+              <Info size={20} color={colors.grayIcon} strokeWidth={2.2} />
+            </Pressable>
+          ) : undefined
+        }
       />
       <ScrollView
         contentContainerStyle={styles.content}
@@ -820,6 +844,16 @@ const styles = StyleSheet.create({
   stateBlock: {
     width: "100%",
     alignItems: "center",
+  },
+  infoButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoButtonPressed: {
+    opacity: 0.7,
   },
   pagerStrip: {
     marginTop: 16,

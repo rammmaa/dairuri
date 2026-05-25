@@ -185,6 +185,20 @@ describe("BusSightingScreen", () => {
     expect(within(recent).getByText(/H6/)).toBeTruthy();
   });
 
+  it("renders the (i) header button only when onOpenRouteInfo is provided and forwards taps", async () => {
+    grantPermissionWithLocation();
+
+    const { rerender } = render(<BusSightingScreen />);
+    expect(screen.queryByTestId("bus-sighting-info-button")).toBeNull();
+
+    const onOpenRouteInfo = jest.fn();
+    rerender(<BusSightingScreen onOpenRouteInfo={onOpenRouteInfo} />);
+    const infoButton = screen.getByTestId("bus-sighting-info-button");
+    expect(infoButton).toBeTruthy();
+    fireEvent.press(infoButton);
+    expect(onOpenRouteInfo).toHaveBeenCalledTimes(1);
+  });
+
   it("back arrow walks the state machine in reverse", async () => {
     grantPermissionWithLocation();
     const onBack = jest.fn();
