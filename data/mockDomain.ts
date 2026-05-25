@@ -218,10 +218,17 @@ export const mockBusRouteStops: MockBusRouteStop[] = [
   { routeId: "route-happy-1", stopId: "stop-koaru-bluepin", sequence: 1 },
   { routeId: "route-happy-1", stopId: "stop-cheongdo-office", sequence: 2 },
   { routeId: "route-happy-1", stopId: "stop-cheongdo-terminal", sequence: 3 },
-  // H2: cheongdo-office -> cheongdo-terminal -> seongjo-apt
-  { routeId: "route-happy-2", stopId: "stop-cheongdo-office", sequence: 1 },
-  { routeId: "route-happy-2", stopId: "stop-cheongdo-terminal", sequence: 2 },
-  { routeId: "route-happy-2", stopId: "stop-seongjo-apt", sequence: 3 },
+  // H2: visits every stop as a stadium loop. Matches the Figma "행복버스
+  //     2호선" stop-selection frame, where the user can choose any of the
+  //     six stops along the route. Sequence order traces the stadium clockwise:
+  //     top row koaru-bluepin -> cheongdo-office -> cheongdo-terminal, then
+  //     bottom row seongjo-apt -> bumin-apt -> kindergarten.
+  { routeId: "route-happy-2", stopId: "stop-koaru-bluepin", sequence: 1 },
+  { routeId: "route-happy-2", stopId: "stop-cheongdo-office", sequence: 2 },
+  { routeId: "route-happy-2", stopId: "stop-cheongdo-terminal", sequence: 3 },
+  { routeId: "route-happy-2", stopId: "stop-seongjo-apt", sequence: 4 },
+  { routeId: "route-happy-2", stopId: "stop-bumin-apt", sequence: 5 },
+  { routeId: "route-happy-2", stopId: "stop-kindergarten", sequence: 6 },
   // H3: cheongdo-terminal -> seongjo-apt -> bumin-apt
   { routeId: "route-happy-3", stopId: "stop-cheongdo-terminal", sequence: 1 },
   { routeId: "route-happy-3", stopId: "stop-seongjo-apt", sequence: 2 },
