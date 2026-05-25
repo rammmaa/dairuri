@@ -43,6 +43,10 @@ export const getBusRoutes = (...args: Parameters<typeof mockApi.getBusRoutes>) =
 export const getBusStops = (...args: Parameters<typeof mockApi.getBusStops>) =>
   activeApi().getBusStops(...args);
 
+export const getBusRouteStops = (
+  ...args: Parameters<typeof mockApi.getBusRouteStops>
+) => activeApi().getBusRouteStops(...args);
+
 export const getStopSightings = (
   ...args: Parameters<typeof mockApi.getStopSightings>
 ) => activeApi().getStopSightings(...args);

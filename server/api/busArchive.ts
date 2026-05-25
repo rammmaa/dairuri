@@ -7,10 +7,16 @@ import {
   type RecordBusSightingInput,
   type RouteStopForSnap,
   haversine,
+  inferRouteAndStop,
   normalizeRecordSightingInput,
   resolveNearestStop,
 } from "../../services/busArchiveCore";
-import type { BusRoute, BusSighting, BusStop } from "../../types/domain";
+import type {
+  BusRoute,
+  BusRouteStop,
+  BusSighting,
+  BusStop,
+} from "../../types/domain";
 import { getPostgresPool } from "../db/postgres";
 import { getRedisClient } from "../db/redis";
 
@@ -22,6 +28,7 @@ export {
   BusSightingInputError,
   NEAREST_STOP_RADIUS_METERS,
   haversine,
+  inferRouteAndStop,
   normalizeRecordSightingInput,
   resolveNearestStop,
 };
@@ -152,6 +159,27 @@ export async function listBusRoutes(): Promise<BusRoute[]> {
     name: row.name,
     color: row.color,
     lastSightingAt: row.last_sighting_at?.toISOString(),
+  }));
+}
+
+type BusRouteStopRow = {
+  route_id: string;
+  stop_id: string;
+  sequence: number;
+};
+
+export async function listBusRouteStops(): Promise<BusRouteStop[]> {
+  const { rows } = await getPostgresPool().query<BusRouteStopRow>(
+    `
+      select route_id, stop_id, sequence
+      from bus_route_stops
+      order by route_id asc, sequence asc
+    `,
+  );
+  return rows.map((row) => ({
+    routeId: row.route_id,
+    stopId: row.stop_id,
+    sequence: row.sequence,
   }));
 }
 

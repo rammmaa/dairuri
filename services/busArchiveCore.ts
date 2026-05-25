@@ -11,7 +11,7 @@ const EARTH_RADIUS_METERS = 6_371_000;
 /**
  * Maximum distance, in meters, between a reporter and the stop their sighting
  * is snapped to. Sightings beyond this radius are rejected. Default 300 m
- * was chosen from the prototype-map stop spacing (~400–600 m) and should be
+ * was chosen from the prototype-map stop spacing (~400-600 m) and should be
  * revisited once Darori field data is available. Can be overridden at module
  * load time via `DARORI_BUS_SNAP_RADIUS_M`.
  */
@@ -150,4 +150,107 @@ export function mockReporterLabel(
     hash = Math.imul(hash, 0x01000193);
   }
   return (hash >>> 0).toString(16).padStart(8, "0").slice(0, 6);
+}
+
+// ---------------------------------------------------------------------------
+// inferRouteAndStop: infer-then-confirm helper used by BusSightingScreen
+// ---------------------------------------------------------------------------
+
+/** Subset of the BusRoute domain type used by inferRouteAndStop. We do not
+ *  import the full BusRoute here because this module must not depend on
+ *  `types/domain.ts` in a way that creates a cycle; the screen passes the
+ *  fields the helper needs and gets back the same shape. */
+export type RouteForInference = {
+  id: string;
+  code: string;
+};
+
+/** Subset of the BusStop domain type used by inferRouteAndStop. */
+export type StopForInference = {
+  id: string;
+  latitude: number;
+  longitude: number;
+};
+
+export type RouteStopLink = {
+  routeId: string;
+  stopId: string;
+};
+
+export type InferenceResult<
+  R extends RouteForInference,
+  S extends StopForInference,
+> = {
+  route: R;
+  stop: S;
+  distanceMeters: number;
+};
+
+/**
+ * Picks the (route, stop) pair whose stop is nearest to the reporter, scoped
+ * to pairs that appear in `routeStops`. Pure.
+ *
+ *   - Ties (a junction stop served by multiple routes, or two stops at the
+ *     same distance) are broken deterministically by ascending `route.code`
+ *     then by ascending `stop.id` so callers and tests can predict the
+ *     outcome.
+ *   - Pairs whose stop is beyond `radiusMeters` are dropped, so a far-away
+ *     reporter returns null rather than being snapped to an arbitrary stop.
+ *   - Returns null if no route, no stop, or no in-range pair exists.
+ */
+export function inferRouteAndStop<
+  R extends RouteForInference,
+  S extends StopForInference,
+>(
+  reporter: LatLng,
+  routes: readonly R[],
+  routeStops: readonly RouteStopLink[],
+  stops: readonly S[],
+  radiusMeters: number = NEAREST_STOP_RADIUS_METERS,
+): InferenceResult<R, S> | null {
+  if (routes.length === 0 || stops.length === 0 || routeStops.length === 0) {
+    return null;
+  }
+
+  const routesById = new Map(routes.map((route) => [route.id, route]));
+  const stopsById = new Map(stops.map((stop) => [stop.id, stop]));
+
+  let best: InferenceResult<R, S> | null = null;
+
+  for (const link of routeStops) {
+    const route = routesById.get(link.routeId);
+    const stop = stopsById.get(link.stopId);
+    if (!route || !stop) {
+      continue;
+    }
+
+    const distance = haversine(reporter, {
+      latitude: stop.latitude,
+      longitude: stop.longitude,
+    });
+    if (distance > radiusMeters) {
+      continue;
+    }
+
+    if (best === null) {
+      best = { route, stop, distanceMeters: distance };
+      continue;
+    }
+
+    if (distance < best.distanceMeters) {
+      best = { route, stop, distanceMeters: distance };
+      continue;
+    }
+
+    if (distance === best.distanceMeters) {
+      if (
+        route.code < best.route.code ||
+        (route.code === best.route.code && stop.id < best.stop.id)
+      ) {
+        best = { route, stop, distanceMeters: distance };
+      }
+    }
+  }
+
+  return best;
 }

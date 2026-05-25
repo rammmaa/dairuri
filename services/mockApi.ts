@@ -1,6 +1,7 @@
 import type {
   Application,
   BusRoute,
+  BusRouteStop,
   BusSighting,
   BusStop,
   ChatMessage,
@@ -178,6 +179,16 @@ export async function getBusRoutes(): Promise<BusRoute[]> {
   return database.busRoutes.map((route) => ({
     ...route,
     lastSightingAt: latestByRoute.get(route.id),
+  }));
+}
+
+export async function getBusRouteStops(): Promise<BusRouteStop[]> {
+  await delay(50);
+  const database = connectMockDatabase();
+  return database.busRouteStops.map((link) => ({
+    routeId: link.routeId,
+    stopId: link.stopId,
+    sequence: link.sequence,
   }));
 }
 

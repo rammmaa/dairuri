@@ -127,6 +127,12 @@ export type BusStop = {
   lastSightingAt?: string;
 };
 
+export type BusRouteStop = {
+  routeId: string;
+  stopId: string;
+  sequence: number;
+};
+
 export type BusSighting = {
   id: string;
   routeId: string;

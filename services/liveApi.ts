@@ -1,6 +1,7 @@
 import type {
   Application,
   BusRoute,
+  BusRouteStop,
   BusSighting,
   BusStop,
   ChatMessage,
@@ -107,6 +108,10 @@ export async function getBusRoutes(): Promise<BusRoute[]> {
 
 export async function getBusStops(): Promise<BusStop[]> {
   return apiRequest<BusStop[]>("/bus/stops");
+}
+
+export async function getBusRouteStops(): Promise<BusRouteStop[]> {
+  return apiRequest<BusRouteStop[]>("/bus/route-stops");
 }
 
 export async function getStopSightings(

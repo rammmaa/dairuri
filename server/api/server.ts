@@ -26,6 +26,7 @@ import {
 } from "./repository";
 import {
   BusSightingInputError,
+  listBusRouteStops,
   listBusRoutes,
   listBusStops,
   listSightingsForStop,
@@ -199,6 +200,11 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
 
   if (method === "GET" && pathname === "/bus/stops") {
     sendJson(response, 200, await listBusStops());
+    return;
+  }
+
+  if (method === "GET" && pathname === "/bus/route-stops") {
+    sendJson(response, 200, await listBusRouteStops());
     return;
   }
 
