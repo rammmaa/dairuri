@@ -37,11 +37,38 @@ describe("mock domain service", () => {
 });
 
 describe("mock Happy Bus fixtures", () => {
-  it("exposes routes, stops, and historical sightings", () => {
-    expect(mockBusRoutes).toHaveLength(3);
-    expect(mockBusStops).toHaveLength(8);
-    expect(mockBusSightings.length).toBeGreaterThanOrEqual(4);
+  it("exposes six Happy Bus routes, six stops, and historical sightings", () => {
+    expect(mockBusRoutes).toHaveLength(6);
+    expect(mockBusStops).toHaveLength(6);
+    expect(mockBusSightings.length).toBeGreaterThanOrEqual(3);
     expect(mockBusSightings.length).toBeLessThanOrEqual(6);
+  });
+
+  it("uses the H1 through H6 codes for the Happy Bus routes", () => {
+    expect(mockBusRoutes.map((route) => route.code)).toEqual([
+      "H1",
+      "H2",
+      "H3",
+      "H4",
+      "H5",
+      "H6",
+    ]);
+  });
+
+  it("assigns a single mint color to every Happy Bus route", () => {
+    const distinctColors = new Set(mockBusRoutes.map((route) => route.color));
+    expect(distinctColors.size).toBe(1);
+  });
+
+  it("uses the six stop names sourced from the Figma frame", () => {
+    expect(mockBusStops.map((stop) => stop.name)).toEqual([
+      "청도 코아루블루핀",
+      "청도군청",
+      "청도 버스 터미널",
+      "성조 아파트 앞",
+      "부민 아파트",
+      "어린이집",
+    ]);
   });
 
   it("assigns a unique sequence within each route", () => {

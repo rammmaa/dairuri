@@ -28,10 +28,11 @@ const mockedWatchPosition = Location.watchPositionAsync as jest.MockedFunction<
   typeof Location.watchPositionAsync
 >;
 
-// Coordinates of the Darori Cafe mock stop, so the in-screen snap resolves to it.
-const CAFE_COORDS = { latitude: 35.6474, longitude: 128.7338 };
+// Coordinates of the Cheongdo Koaru-bluepin mock stop, so the in-screen
+// snap resolves to it (id: stop-koaru-bluepin).
+const NEAREST_STOP_COORDS = { latitude: 35.6474, longitude: 128.7338 };
 
-function grantPermissionWithLocation(coords = CAFE_COORDS) {
+function grantPermissionWithLocation(coords = NEAREST_STOP_COORDS) {
   mockedRequestPermissions.mockResolvedValue({
     status: Location.PermissionStatus.GRANTED,
     granted: true,
@@ -92,7 +93,7 @@ describe("BusSightingScreen", () => {
     render(<BusSightingScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText(/현위치: 다로리 카페/)).toBeTruthy();
+      expect(screen.getByText(/현위치: 청도 코아루블루핀/)).toBeTruthy();
     });
   });
 
@@ -101,8 +102,8 @@ describe("BusSightingScreen", () => {
 
     render(<BusSightingScreen />);
 
-    // Wait until routes are loaded; the D-01 chip should appear.
-    const routeChip = await screen.findByLabelText("D-01 노선");
+    // Wait until routes are loaded; the H1 chip should appear.
+    const routeChip = await screen.findByLabelText("H1 노선");
 
     // Before route selection: button disabled and the help text nudges the user
     // to pick a route.
@@ -124,12 +125,12 @@ describe("BusSightingScreen", () => {
       fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
     });
 
-    // The recent-record card should render with the cafe stop name and the
-    // 6-char reporter label that the mock API derives from "me". We scope the
-    // query to the card because the cafe name also appears in the live
-    // current-location chip above.
+    // The recent-record card should render with the koaru-bluepin stop name
+    // and the 6-char reporter label that the mock API derives from "me". We
+    // scope the query to the card because the stop name also appears in the
+    // live current-location chip above.
     const recent = await screen.findByTestId("bus-sighting-recent");
-    expect(within(recent).getByText(/다로리 카페/)).toBeTruthy();
+    expect(within(recent).getByText(/청도 코아루블루핀/)).toBeTruthy();
     expect(within(recent).getByText(/기록자 ID:/)).toBeTruthy();
   });
 });

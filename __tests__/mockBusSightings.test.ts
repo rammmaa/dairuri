@@ -25,63 +25,64 @@ describe("mock Happy Bus archive API", () => {
 
   it("derives lastSightingAt on each stop from the most recent sighting", async () => {
     const stops = await getBusStops();
-    const cafe = stops.find((stop) => stop.id === "stop-darori-cafe");
-    expect(cafe?.lastSightingAt).toBe("2026-05-22T08:30:00.000Z");
+    const koaru = stops.find((stop) => stop.id === "stop-koaru-bluepin");
+    expect(koaru?.lastSightingAt).toBe("2026-05-22T08:30:00.000Z");
 
     const stopWithoutSighting = stops.find(
-      (stop) => stop.id === "stop-west-village",
+      (stop) => stop.id === "stop-bumin-apt",
     );
     expect(stopWithoutSighting?.lastSightingAt).toBeUndefined();
   });
 
   it("lists existing sightings for a stop newest first", async () => {
-    const sightings = await getStopSightings("stop-darori-cafe");
+    const sightings = await getStopSightings("stop-koaru-bluepin");
     expect(sightings.length).toBeGreaterThanOrEqual(1);
-    expect(sightings[0]?.stopId).toBe("stop-darori-cafe");
+    expect(sightings[0]?.stopId).toBe("stop-koaru-bluepin");
     expect(sightings[0]?.reporterLabel).toMatch(/^[0-9a-f]{6}$/);
   });
 
   it("records a new sighting and surfaces it on the stop list and stop sightings", async () => {
-    const cafe = mockBusStops.find((stop) => stop.id === "stop-darori-cafe");
-    if (!cafe) {
+    const koaru = mockBusStops.find((stop) => stop.id === "stop-koaru-bluepin");
+    if (!koaru) {
       throw new Error("seed stop missing");
     }
 
     const recorded = await recordBusSighting({
-      routeId: "route-d-01",
-      latitude: cafe.latitude,
-      longitude: cafe.longitude,
+      routeId: "route-happy-1",
+      latitude: koaru.latitude,
+      longitude: koaru.longitude,
     });
 
-    expect(recorded.stopId).toBe("stop-darori-cafe");
-    expect(recorded.routeId).toBe("route-d-01");
+    expect(recorded.stopId).toBe("stop-koaru-bluepin");
+    expect(recorded.routeId).toBe("route-happy-1");
     expect(recorded.reporterLabel).toMatch(/^[0-9a-f]{6}$/);
     // mock mode pins the reporter to mockMe (id = "me"), so the label must
     // match what mockReporterLabel("me") returns.
     expect(recorded.reporterLabel).toBe(mockReporterLabel("me"));
 
     const stops = await getBusStops();
-    const updated = stops.find((stop) => stop.id === "stop-darori-cafe");
+    const updated = stops.find((stop) => stop.id === "stop-koaru-bluepin");
     expect(updated?.lastSightingAt).toBe(recorded.createdAt);
 
-    const stopSightings = await getStopSightings("stop-darori-cafe");
+    const stopSightings = await getStopSightings("stop-koaru-bluepin");
     expect(stopSightings[0]?.id).toBe(recorded.id);
   });
 
   it("snaps to the nearest stop on the requested route even when the reporter is slightly off", async () => {
-    // ~70 m east of the central stop (35.6501, 128.7370). Still on route D-01.
+    // ~70 m east of the Cheongdo bus terminal (35.6501, 128.7370). Still on
+    // H1, which visits the terminal.
     const recorded = await recordBusSighting({
-      routeId: "route-d-01",
+      routeId: "route-happy-1",
       latitude: 35.65015,
       longitude: 128.7378,
     });
-    expect(recorded.stopId).toBe("stop-central");
+    expect(recorded.stopId).toBe("stop-cheongdo-terminal");
   });
 
   it("rejects when the reporter is too far from every stop on the route", async () => {
     await expect(
       recordBusSighting({
-        routeId: "route-d-01",
+        routeId: "route-happy-1",
         latitude: 35.8,
         longitude: 128.9,
       }),

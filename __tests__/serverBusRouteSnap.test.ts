@@ -30,7 +30,7 @@ describe("haversine", () => {
 
 describe("resolveNearestStop", () => {
   const cafe = {
-    stopId: "stop-darori-cafe",
+    stopId: "stop-koaru-bluepin",
     latitude: 35.6474,
     longitude: 128.7338,
   };
@@ -57,7 +57,7 @@ describe("resolveNearestStop", () => {
   it("picks the closest stop within the radius", () => {
     const reporter = { latitude: 35.6477, longitude: 128.734 };
     const snapped = resolveNearestStop(reporter, [cafe, central, farAway]);
-    expect(snapped?.stopId).toBe("stop-darori-cafe");
+    expect(snapped?.stopId).toBe("stop-koaru-bluepin");
   });
 
   it("rejects when the closest stop is beyond the default radius", () => {

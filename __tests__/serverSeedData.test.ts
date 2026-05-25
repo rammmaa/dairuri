@@ -27,13 +27,16 @@ describe("server seed data", () => {
     const records = createSeedRecords();
 
     expect(records.busRoutes.map((route) => route.id)).toEqual([
-      "route-d-01",
-      "route-d-03",
-      "route-d-05",
+      "route-happy-1",
+      "route-happy-2",
+      "route-happy-3",
+      "route-happy-4",
+      "route-happy-5",
+      "route-happy-6",
     ]);
-    expect(records.busStops.map((stop) => stop.id)).toContain("stop-darori-cafe");
-    expect(records.busStops).toHaveLength(8);
-    expect(records.busRouteStops.length).toBeGreaterThanOrEqual(11);
+    expect(records.busStops.map((stop) => stop.id)).toContain("stop-koaru-bluepin");
+    expect(records.busStops).toHaveLength(6);
+    expect(records.busRouteStops.length).toBeGreaterThanOrEqual(18);
     expect(records.busSightings.map((sighting) => sighting.id)).toEqual(
       expect.arrayContaining(["sighting-1", "sighting-2"]),
     );

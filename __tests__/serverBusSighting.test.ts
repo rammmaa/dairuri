@@ -5,7 +5,7 @@ import {
 
 describe("normalizeRecordSightingInput", () => {
   const validInput = {
-    routeId: "route-d-01",
+    routeId: "route-happy-1",
     latitude: 35.6474,
     longitude: 128.7338,
   };
@@ -13,12 +13,12 @@ describe("normalizeRecordSightingInput", () => {
   it("returns the trimmed input when fully valid", () => {
     expect(
       normalizeRecordSightingInput({
-        routeId: "  route-d-01  ",
+        routeId: "  route-happy-1  ",
         latitude: 35.6474,
         longitude: 128.7338,
       }),
     ).toEqual({
-      routeId: "route-d-01",
+      routeId: "route-happy-1",
       latitude: 35.6474,
       longitude: 128.7338,
     });
