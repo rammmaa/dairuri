@@ -78,12 +78,15 @@ export function BusSightingScreen({
   onOpenRouteInfo,
   onOpenArrivalTimes,
 }: BusSightingScreenProps) {
-  // The map previews stretch to the full content area minus the screen
-  // horizontal padding, so the diagram reads as something the phone holds
-  // edge to edge rather than as a small inset card.
+  // The map previews stretch to fill the phone-width content area minus
+  // the screen horizontal padding. We cap the working width at 430 px
+  // (iPhone 14 Pro Max) so the diagram does not balloon on desktop web
+  // builds; everything beyond that turns into surrounding whitespace
+  // instead of stretched UI.
   const { width: windowWidth } = useWindowDimensions();
+  const PHONE_MAX_WIDTH = 430;
   const mapWidth = Math.max(
-    Math.min(windowWidth, 720) - MAP_HORIZONTAL_PADDING,
+    Math.min(windowWidth, PHONE_MAX_WIDTH) - MAP_HORIZONTAL_PADDING,
     240,
   );
 

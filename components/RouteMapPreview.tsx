@@ -131,7 +131,11 @@ function projectSchematic(
   }));
 }
 
-const PADDING = 24;
+// Padding is large enough that a 100 px label centered on an endpoint pin
+// stays inside the canvas. Smaller padding made the leftmost and rightmost
+// stop names clip on the schematic stadium layout.
+const PADDING = 54;
+const LABEL_WIDTH = 100;
 const STOP_RADIUS = 6;
 const HIGHLIGHTED_RADIUS = 9;
 const HIT_SLOP = 14;
@@ -257,7 +261,7 @@ export function RouteMapPreview({
                 style={[
                   styles.label,
                   {
-                    left: point.x - 60,
+                    left: point.x - LABEL_WIDTH / 2,
                     top: labelAbove
                       ? Math.max(2, point.y - HIGHLIGHTED_RADIUS - 22)
                       : Math.min(
@@ -306,14 +310,14 @@ const styles = StyleSheet.create({
   },
   label: {
     position: "absolute",
-    width: 120,
+    width: LABEL_WIDTH,
     alignItems: "center",
   },
   labelText: {
     color: colors.black,
     fontFamily: typography.family.body,
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 11,
+    lineHeight: 14,
     backgroundColor: "rgba(255,255,255,0.86)",
     paddingHorizontal: 4,
     borderRadius: 4,
