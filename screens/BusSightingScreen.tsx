@@ -8,7 +8,15 @@ import {
   MapPin,
 } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import * as Location from "expo-location";
 
 import { Header } from "../components/Header";
@@ -61,15 +69,24 @@ type FlowState =
 
 const LOCATION_DISTANCE_INTERVAL_M = 10;
 const CLOCK_TICK_MS = 1_000;
-const MAP_PREVIEW_WIDTH = 320;
-const MAP_PREVIEW_HEIGHT = 140;
-const STOP_SELECT_MAP_HEIGHT = 220;
+const MAP_HORIZONTAL_PADDING = spacing.screenX * 2;
+const CONFIRMATION_MAP_HEIGHT = 160;
+const STOP_SELECT_MAP_HEIGHT = 260;
 
 export function BusSightingScreen({
   onBack,
   onOpenRouteInfo,
   onOpenArrivalTimes,
 }: BusSightingScreenProps) {
+  // The map previews stretch to the full content area minus the screen
+  // horizontal padding, so the diagram reads as something the phone holds
+  // edge to edge rather than as a small inset card.
+  const { width: windowWidth } = useWindowDimensions();
+  const mapWidth = Math.max(
+    Math.min(windowWidth, 720) - MAP_HORIZONTAL_PADDING,
+    240,
+  );
+
   const [flowState, setFlowState] = useState<FlowState>("recorder");
 
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
@@ -409,6 +426,7 @@ export function BusSightingScreen({
             inference={inferredResult}
             stops={stops}
             routeStops={routeStops}
+            mapWidth={mapWidth}
             recording={recording}
             recordError={recordError}
             onAccept={handleConfirmAccept}
@@ -427,6 +445,7 @@ export function BusSightingScreen({
             stops={stops}
             routeStops={routeStops}
             stopsForRoute={stopsForChosenRoute}
+            mapWidth={mapWidth}
             chosenStopId={chosenStopId}
             recording={recording}
             recordError={recordError}
@@ -559,7 +578,7 @@ function RecorderView({
         ]}
       >
         <Bus
-          size={36}
+          size={56}
           color={canStartConfirmation ? colors.blue : colors.gray400}
           strokeWidth={2.2}
         />
@@ -602,6 +621,7 @@ function ConfirmationView({
   inference,
   stops,
   routeStops,
+  mapWidth,
   recording,
   recordError,
   onAccept,
@@ -610,6 +630,7 @@ function ConfirmationView({
   inference: InferenceResult<BusRoute, BusStop>;
   stops: BusStop[];
   routeStops: BusRouteStop[];
+  mapWidth: number;
   recording: boolean;
   recordError: string | null;
   onAccept: () => void;
@@ -633,9 +654,10 @@ function ConfirmationView({
           routeId={inference.route.id}
           stops={stops}
           routeStops={routeStops}
-          width={MAP_PREVIEW_WIDTH}
-          height={MAP_PREVIEW_HEIGHT}
+          width={mapWidth}
+          height={CONFIRMATION_MAP_HEIGHT}
           highlightedStopId={inference.stop.id}
+          showLabels
         />
       </View>
 
@@ -734,6 +756,7 @@ function StopSelectionView({
   stops,
   routeStops,
   stopsForRoute,
+  mapWidth,
   chosenStopId,
   recording,
   recordError,
@@ -745,6 +768,7 @@ function StopSelectionView({
   stops: BusStop[];
   routeStops: BusRouteStop[];
   stopsForRoute: BusStop[];
+  mapWidth: number;
   chosenStopId: string | null;
   recording: boolean;
   recordError: string | null;
@@ -763,7 +787,7 @@ function StopSelectionView({
           routeId={routeId}
           stops={stops}
           routeStops={routeStops}
-          width={MAP_PREVIEW_WIDTH}
+          width={mapWidth}
           height={STOP_SELECT_MAP_HEIGHT}
           highlightedStopId={chosenStopId}
           onPickStop={onPickStop}
@@ -995,10 +1019,10 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
   },
   busButton: {
-    marginTop: 28,
-    width: 110,
-    height: 80,
-    borderRadius: 18,
+    marginTop: 32,
+    width: 180,
+    height: 130,
+    borderRadius: 22,
     backgroundColor: colors.gray100,
     alignItems: "center",
     justifyContent: "center",

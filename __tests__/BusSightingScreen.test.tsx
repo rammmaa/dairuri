@@ -114,10 +114,12 @@ describe("BusSightingScreen", () => {
       fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
     });
 
-    // Confirmation state: the inferred (route, stop) panel shows.
+    // Confirmation state: the inferred (route, stop) panel shows. The stop
+    // name now appears in both the headline card and the map preview label,
+    // so use getAllByText rather than getByText.
     expect(await screen.findByText("이 정류장이 맞나요?")).toBeTruthy();
     expect(screen.getByText("행복버스 1호선")).toBeTruthy();
-    expect(screen.getByText("청도 코아루블루핀")).toBeTruthy();
+    expect(screen.getAllByText("청도 코아루블루핀").length).toBeGreaterThan(0);
 
     await act(async () => {
       fireEvent.press(screen.getByTestId("bus-sighting-accept-button"));

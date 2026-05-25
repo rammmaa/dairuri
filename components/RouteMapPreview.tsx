@@ -5,6 +5,16 @@ import { colors } from "../constants/colors";
 import { typography } from "../constants/typography";
 import type { BusRouteStop, BusStop } from "../types/domain";
 
+/**
+ * `geographic` projects the real stop latitudes and longitudes into the
+ * preview box and is honest about the route's actual shape. `schematic`
+ * arranges the stops into a stadium / line / rectangle layout chosen by
+ * stop count so the diagram reads cleanly even when the placeholder
+ * coordinates put the polyline in an awkward shape. The Figma flow uses a
+ * schematic stadium for the stop-selection screen.
+ */
+export type RouteMapLayout = "geographic" | "schematic";
+
 export type RouteMapPreviewProps = {
   /** All stops in the catalog. The component filters down to the route's
    *  stops by joining against `routeStops`. */
@@ -16,6 +26,9 @@ export type RouteMapPreviewProps = {
   width: number;
   /** Outer height of the preview. */
   height: number;
+  /** Layout strategy; defaults to `schematic` so the diagram reads cleanly
+   *  even with placeholder coordinates. */
+  layout?: RouteMapLayout;
   /** Highlighted stop, drawn larger and filled with the accent color. */
   highlightedStopId?: string | null;
   /** When provided, every stop pin becomes pressable and forwards taps. */
@@ -23,6 +36,100 @@ export type RouteMapPreviewProps = {
   /** When true, the stop name renders below each pin. */
   showLabels?: boolean;
 };
+
+type Projected = {
+  stop: BusStop;
+  x: number;
+  y: number;
+};
+
+function projectGeographic(
+  orderedStops: BusStop[],
+  width: number,
+  height: number,
+): Projected[] {
+  const lats = orderedStops.map((stop) => stop.latitude);
+  const lngs = orderedStops.map((stop) => stop.longitude);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  // Guard against zero-range routes (one stop, or coincident stops): give
+  // them an artificial epsilon so the projection still produces a finite
+  // center point instead of NaN.
+  const latRange = Math.max(maxLat - minLat, 0.0001);
+  const lngRange = Math.max(maxLng - minLng, 0.0001);
+
+  return orderedStops.map((stop) => ({
+    stop,
+    x:
+      ((stop.longitude - minLng) / lngRange) * (width - 2 * PADDING) +
+      PADDING,
+    y: ((maxLat - stop.latitude) / latRange) * (height - 2 * PADDING) + PADDING,
+  }));
+}
+
+/**
+ * Position stops in a clean diagrammatic layout chosen by stop count. The
+ * Figma stop-selection frame uses a six-pin stadium; we match that for
+ * counts of five or more, fall back to a simple rectangle for four stops,
+ * and to a straight line for three or fewer.
+ */
+function projectSchematic(
+  orderedStops: BusStop[],
+  width: number,
+  height: number,
+): Projected[] {
+  const count = orderedStops.length;
+  const usableWidth = Math.max(width - 2 * PADDING, 0);
+  const usableHeight = Math.max(height - 2 * PADDING, 0);
+  const left = PADDING;
+  const right = PADDING + usableWidth;
+  const top = PADDING + usableHeight * 0.32;
+  const bottom = PADDING + usableHeight * 0.68;
+  const mid = PADDING + usableHeight / 2;
+
+  const placements: { x: number; y: number }[] = [];
+
+  if (count <= 1) {
+    placements.push({ x: PADDING + usableWidth / 2, y: mid });
+  } else if (count === 2) {
+    placements.push({ x: left, y: mid });
+    placements.push({ x: right, y: mid });
+  } else if (count === 3) {
+    placements.push({ x: left, y: mid });
+    placements.push({ x: PADDING + usableWidth / 2, y: mid });
+    placements.push({ x: right, y: mid });
+  } else if (count === 4) {
+    // Rectangle: top-left, top-right, bottom-right, bottom-left so the
+    // polyline reads as a closed loop along three sides.
+    placements.push({ x: left, y: top });
+    placements.push({ x: right, y: top });
+    placements.push({ x: right, y: bottom });
+    placements.push({ x: left, y: bottom });
+  } else {
+    // Stadium: top row left to right, bottom row right to left, so the
+    // polyline walks one side and returns along the other. Splits half
+    // up, the remainder down, so 5 stops = 3 top + 2 bottom.
+    const topCount = Math.ceil(count / 2);
+    const bottomCount = count - topCount;
+    for (let i = 0; i < topCount; i += 1) {
+      const t = topCount === 1 ? 0.5 : i / (topCount - 1);
+      placements.push({ x: left + usableWidth * t, y: top });
+    }
+    for (let i = 0; i < bottomCount; i += 1) {
+      const t = bottomCount === 1 ? 0.5 : i / (bottomCount - 1);
+      // right-to-left traversal so the stadium connects naturally
+      placements.push({ x: right - usableWidth * t, y: bottom });
+    }
+  }
+
+  return orderedStops.map((stop, index) => ({
+    stop,
+    x: placements[index].x,
+    y: placements[index].y,
+  }));
+}
 
 const PADDING = 24;
 const STOP_RADIUS = 6;
@@ -48,6 +155,7 @@ export function RouteMapPreview({
   routeId,
   width,
   height,
+  layout = "schematic",
   highlightedStopId,
   onPickStop,
   showLabels = false,
@@ -69,29 +177,10 @@ export function RouteMapPreview({
     );
   }
 
-  const lats = orderedStops.map((stop) => stop.latitude);
-  const lngs = orderedStops.map((stop) => stop.longitude);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-
-  // Guard against a zero-range route (one stop, or coincident stops): give
-  // it an artificial epsilon so the projection still produces a finite
-  // center point instead of NaN.
-  const latRange = Math.max(maxLat - minLat, 0.0001);
-  const lngRange = Math.max(maxLng - minLng, 0.0001);
-
-  const project = (lat: number, lng: number) => {
-    const x = ((lng - minLng) / lngRange) * (width - 2 * PADDING) + PADDING;
-    const y = ((maxLat - lat) / latRange) * (height - 2 * PADDING) + PADDING;
-    return { x, y };
-  };
-
-  const projected = orderedStops.map((stop) => ({
-    stop,
-    ...project(stop.latitude, stop.longitude),
-  }));
+  const projected =
+    layout === "geographic"
+      ? projectGeographic(orderedStops, width, height)
+      : projectSchematic(orderedStops, width, height);
 
   const polylinePoints = projected
     .map((point) => `${point.x},${point.y}`)
@@ -156,27 +245,39 @@ export function RouteMapPreview({
         : null}
 
       {showLabels
-        ? projected.map((point) => (
-            <View
-              key={`label-${point.stop.id}`}
-              style={[
-                styles.label,
-                {
-                  left: point.x - 60,
-                  top: Math.min(point.y + HIGHLIGHTED_RADIUS + 6, height - 18),
-                },
-              ]}
-              pointerEvents="none"
-            >
-              <Text
-                style={styles.labelText}
-                numberOfLines={1}
-                ellipsizeMode="tail"
+        ? projected.map((point) => {
+            // Place the label above the pin when it sits in the top half of
+            // the canvas, and below otherwise. Stadium layouts therefore
+            // surround the polyline with their stop names instead of
+            // stacking them all below.
+            const labelAbove = point.y < height / 2;
+            return (
+              <View
+                key={`label-${point.stop.id}`}
+                style={[
+                  styles.label,
+                  {
+                    left: point.x - 60,
+                    top: labelAbove
+                      ? Math.max(2, point.y - HIGHLIGHTED_RADIUS - 22)
+                      : Math.min(
+                          point.y + HIGHLIGHTED_RADIUS + 6,
+                          height - 18,
+                        ),
+                  },
+                ]}
+                pointerEvents="none"
               >
-                {point.stop.name}
-              </Text>
-            </View>
-          ))
+                <Text
+                  style={styles.labelText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {point.stop.name}
+                </Text>
+              </View>
+            );
+          })
         : null}
     </View>
   );
