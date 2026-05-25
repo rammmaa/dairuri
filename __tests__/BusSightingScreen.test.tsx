@@ -9,6 +9,7 @@ import {
 import * as Location from "expo-location";
 
 import { BusSightingScreen } from "../screens/BusSightingScreen";
+import { resetMockDatabase } from "../services/mockDb";
 
 // expo-location is a native module that cannot run inside jest without a
 // stub. We replace the surface we use with bare jest mocks; each test then
@@ -28,8 +29,8 @@ const mockedWatchPosition = Location.watchPositionAsync as jest.MockedFunction<
   typeof Location.watchPositionAsync
 >;
 
-// Coordinates of the Cheongdo Koaru-bluepin mock stop, so the in-screen
-// snap resolves to it (id: stop-koaru-bluepin).
+// Coordinates of the Cheongdo Koaru-bluepin mock stop (id: stop-koaru-bluepin).
+// Inference picks the lowest-code route that visits this stop, which is H1.
 const NEAREST_STOP_COORDS = { latitude: 35.6474, longitude: 128.7338 };
 
 function grantPermissionWithLocation(coords = NEAREST_STOP_COORDS) {
@@ -41,8 +42,6 @@ function grantPermissionWithLocation(coords = NEAREST_STOP_COORDS) {
   } as Awaited<ReturnType<typeof Location.requestForegroundPermissionsAsync>>);
 
   mockedWatchPosition.mockImplementation(async (_options, callback) => {
-    // Fire one position update immediately so the screen leaves the loading
-    // state on the next microtask.
     callback({
       coords: {
         latitude: coords.latitude,
@@ -64,6 +63,7 @@ function grantPermissionWithLocation(coords = NEAREST_STOP_COORDS) {
 describe("BusSightingScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetMockDatabase();
   });
 
   it("shows the permission guidance when location access is denied", async () => {
@@ -82,12 +82,12 @@ describe("BusSightingScreen", () => {
       ).toBeTruthy();
     });
 
-    expect(screen.getByTestId("bus-sighting-record-button").props.accessibilityState).toMatchObject(
-      { disabled: true },
-    );
+    expect(
+      screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
+    ).toMatchObject({ disabled: true });
   });
 
-  it("resolves the nearest stop name from the live location", async () => {
+  it("surfaces the inferred stop name on the recorder current-location chip", async () => {
     grantPermissionWithLocation();
 
     render(<BusSightingScreen />);
@@ -97,24 +97,13 @@ describe("BusSightingScreen", () => {
     });
   });
 
-  it("enables the record button only after a route is selected, then surfaces the record card", async () => {
+  it("happy path: bus button -> confirmation -> 맞아요 -> confirmed", async () => {
     grantPermissionWithLocation();
 
     render(<BusSightingScreen />);
 
-    // Wait until routes are loaded; the H1 chip should appear.
-    const routeChip = await screen.findByLabelText("H1 노선");
-
-    // Before route selection: button disabled and the help text nudges the user
-    // to pick a route.
-    expect(screen.getByText(/보신 버스의 노선을 골라주세요/)).toBeTruthy();
-    expect(
-      screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
-    ).toMatchObject({ disabled: true });
-
-    fireEvent.press(routeChip);
-
-    // After route selection: button enabled.
+    // Wait until inference is ready; the bus button becomes enabled when
+    // routes, stops, route-stops, and location have all loaded.
     await waitFor(() => {
       expect(
         screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
@@ -125,12 +114,118 @@ describe("BusSightingScreen", () => {
       fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
     });
 
-    // The recent-record card should render with the koaru-bluepin stop name
-    // and the 6-char reporter label that the mock API derives from "me". We
-    // scope the query to the card because the stop name also appears in the
-    // live current-location chip above.
+    // Confirmation state: the inferred (route, stop) panel shows.
+    expect(await screen.findByText("이 정류장이 맞나요?")).toBeTruthy();
+    expect(screen.getByText("행복버스 1호선")).toBeTruthy();
+    expect(screen.getByText("청도 코아루블루핀")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-accept-button"));
+    });
+
+    // Confirmed state: the recent-record card shows the cafe stop name and
+    // the 6-char reporter label that the mock API derives from "me".
     const recent = await screen.findByTestId("bus-sighting-recent");
     expect(within(recent).getByText(/청도 코아루블루핀/)).toBeTruthy();
     expect(within(recent).getByText(/기록자 ID:/)).toBeTruthy();
+    expect(screen.getByText("확정이 되었습니다")).toBeTruthy();
+  });
+
+  it("rejection path: 틀려요 -> route grid -> tile -> stop selection -> 확정 -> confirmed", async () => {
+    grantPermissionWithLocation();
+
+    render(<BusSightingScreen />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
+      ).toMatchObject({ disabled: false });
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
+    });
+
+    // Reject the inference; the route grid should render with all six tiles.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-reject-button"));
+    });
+
+    expect(await screen.findByText("기록을 원하시는 호선을 골라주세요")).toBeTruthy();
+    for (const code of ["H1", "H2", "H3", "H4", "H5", "H6"]) {
+      expect(screen.getByTestId(`bus-sighting-route-tile-${code}`)).toBeTruthy();
+    }
+
+    // Pick H6 deliberately so we can tell it apart from the inferred H1.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-route-tile-H6"));
+    });
+
+    expect(await screen.findByText("해당 노선에서 정류장을 선택해주세요")).toBeTruthy();
+    // The final-confirm button stays disabled until a stop is picked.
+    expect(
+      screen.getByTestId("bus-sighting-final-confirm-button").props
+        .accessibilityState,
+    ).toMatchObject({ disabled: true });
+
+    // H6 visits koaru-bluepin among others; pick it so the test verifies the
+    // stop list rendered the right route.
+    fireEvent.press(screen.getByTestId("bus-sighting-stop-tile-stop-koaru-bluepin"));
+    expect(
+      screen.getByTestId("bus-sighting-final-confirm-button").props
+        .accessibilityState,
+    ).toMatchObject({ disabled: false });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-final-confirm-button"));
+    });
+
+    // Confirmed state shows H6 as the recorded route.
+    const recent = await screen.findByTestId("bus-sighting-recent");
+    expect(within(recent).getByText(/H6/)).toBeTruthy();
+  });
+
+  it("back arrow walks the state machine in reverse", async () => {
+    grantPermissionWithLocation();
+    const onBack = jest.fn();
+
+    render(<BusSightingScreen onBack={onBack} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
+      ).toMatchObject({ disabled: false });
+    });
+
+    // Enter confirmation, then rejection, then stop-selection.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-reject-button"));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-route-tile-H2"));
+    });
+    expect(screen.getByText("해당 노선에서 정류장을 선택해주세요")).toBeTruthy();
+
+    // First back: stop-selection -> route-grid
+    fireEvent.press(screen.getByLabelText("뒤로가기"));
+    expect(await screen.findByText("기록을 원하시는 호선을 골라주세요")).toBeTruthy();
+
+    // Second back: route-grid -> confirmation
+    fireEvent.press(screen.getByLabelText("뒤로가기"));
+    expect(await screen.findByText("이 정류장이 맞나요?")).toBeTruthy();
+
+    // Third back: confirmation -> recorder
+    fireEvent.press(screen.getByLabelText("뒤로가기"));
+    await waitFor(() => {
+      expect(screen.getByText("방금 버스 봤어요!")).toBeTruthy();
+    });
+    expect(onBack).not.toHaveBeenCalled();
+
+    // Fourth back from recorder pops the screen.
+    fireEvent.press(screen.getByLabelText("뒤로가기"));
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 });

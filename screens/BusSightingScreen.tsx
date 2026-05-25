@@ -1,4 +1,4 @@
-import { Bus, MapPin } from "lucide-react-native";
+import { Bus, Check, ChevronRight, MapPin } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
@@ -8,12 +8,21 @@ import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import {
+  getBusRouteStops,
   getBusRoutes,
   getBusStops,
   recordBusSighting,
 } from "../services/api";
-import { resolveNearestStop } from "../services/busArchiveCore";
-import type { BusRoute, BusSighting, BusStop } from "../types/domain";
+import {
+  inferRouteAndStop,
+  type InferenceResult,
+} from "../services/busArchiveCore";
+import type {
+  BusRoute,
+  BusRouteStop,
+  BusSighting,
+  BusStop,
+} from "../types/domain";
 
 export type BusSightingScreenProps = {
   onBack?: () => void;
@@ -21,36 +30,70 @@ export type BusSightingScreenProps = {
 
 type LocationStatus = "loading" | "granted" | "denied" | "error";
 
+// The five-state flow follows the Figma frame the user shared on 2026-05-23
+// and the refinement spec at docs/superpowers/specs/2026-05-23-bus-archive-
+// flow-refinement.md. The screen is a single component that switches its
+// body based on `flowState`; the live clock, the location watcher, and the
+// pager strip render across all states so the UI feels continuous.
+type FlowState =
+  | "recorder"
+  | "confirmation"
+  | "route-grid"
+  | "stop-selection"
+  | "confirmed";
+
 const LOCATION_DISTANCE_INTERVAL_M = 10;
 const CLOCK_TICK_MS = 1_000;
 
 export function BusSightingScreen({ onBack }: BusSightingScreenProps) {
+  const [flowState, setFlowState] = useState<FlowState>("recorder");
+
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading");
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
+
   const [routes, setRoutes] = useState<BusRoute[]>([]);
   const [stops, setStops] = useState<BusStop[]>([]);
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [routeStops, setRouteStops] = useState<BusRouteStop[]>([]);
+
+  // Frozen at the moment the user pressed the recorder bus button. The pager
+  // and the "이 정류장이 맞나요?" panel both read from this so the values do
+  // not jitter while the user is still on the confirmation screen.
+  const [inferredResult, setInferredResult] = useState<
+    InferenceResult<BusRoute, BusStop> | null
+  >(null);
+
+  const [chosenRouteId, setChosenRouteId] = useState<string | null>(null);
+  const [chosenStopId, setChosenStopId] = useState<string | null>(null);
+
   const [recording, setRecording] = useState(false);
   const [recordError, setRecordError] = useState<string | null>(null);
   const [recentRecord, setRecentRecord] = useState<BusSighting | null>(null);
+  // The route id we committed alongside `recentRecord`. Needed because the
+  // returned sighting carries the routeId but the UI label wants the human
+  // code and name from the route catalog.
+  const [recordedRouteId, setRecordedRouteId] = useState<string | null>(null);
+
   const [now, setNow] = useState(() => new Date());
 
   // The location subscription is kept in a ref so the cleanup in the unmount
   // effect can remove it even if a re-render replaces the watcher reference.
   const subscriptionRef = useRef<Location.LocationSubscription | null>(null);
 
-  // 1) Load routes + stops once. Mock-mode shapes match live shapes via the
-  //    services/api aggregator, so there is no branching needed here.
+  // 1) Load routes + stops + route-stops once. The bundle is small enough
+  //    that a single Promise.all is the cheapest path; we do not paginate
+  //    because the topology rarely changes and never grows past a few dozen
+  //    rows in the prototype.
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([getBusRoutes(), getBusStops()]).then(
-      ([loadedRoutes, loadedStops]) => {
+    void Promise.all([getBusRoutes(), getBusStops(), getBusRouteStops()]).then(
+      ([loadedRoutes, loadedStops, loadedRouteStops]) => {
         if (cancelled) return;
         setRoutes(loadedRoutes);
         setStops(loadedStops);
+        setRouteStops(loadedRouteStops);
       },
     );
     return () => {
@@ -59,7 +102,8 @@ export function BusSightingScreen({ onBack }: BusSightingScreenProps) {
   }, []);
 
   // 2) Request foreground location permission and start watching the position.
-  //    On denial we keep the screen visible but disable the record button.
+  //    The cleanup guards both the "subscription resolves after unmount" race
+  //    and "remove throws on the web fallback" by catching silently.
   useEffect(() => {
     let cancelled = false;
 
@@ -74,18 +118,30 @@ export function BusSightingScreen({ onBack }: BusSightingScreenProps) {
         }
 
         setLocationStatus("granted");
-        subscriptionRef.current = await Location.watchPositionAsync(
+        const sub = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.Balanced,
             distanceInterval: LOCATION_DISTANCE_INTERVAL_M,
           },
           (event) => {
+            if (cancelled) return;
             setUserLocation({
               latitude: event.coords.latitude,
               longitude: event.coords.longitude,
             });
           },
         );
+
+        if (cancelled) {
+          try {
+            sub.remove();
+          } catch {
+            // ignore: web fallback may have already torn down the watchId
+          }
+          return;
+        }
+
+        subscriptionRef.current = sub;
       } catch {
         if (!cancelled) {
           setLocationStatus("error");
@@ -95,15 +151,18 @@ export function BusSightingScreen({ onBack }: BusSightingScreenProps) {
 
     return () => {
       cancelled = true;
-      subscriptionRef.current?.remove();
+      const current = subscriptionRef.current;
       subscriptionRef.current = null;
+      try {
+        current?.remove();
+      } catch {
+        // ignore: see comment above
+      }
     };
   }, []);
 
-  // 3) Tick the live clock so the user can see they are still looking at the
-  //    moment they will commit when pressing the bus button. A self-scheduling
-  //    setTimeout is used here so the loop can be cancelled cleanly on
-  //    unmount. The effect ticks every CLOCK_TICK_MS until unmount.
+  // 3) Tick the live clock. A self-scheduling setTimeout (rather than
+  //    setInterval) lets the loop be cancelled cleanly on unmount.
   useEffect(() => {
     let cancelled = false;
     let timerId: ReturnType<typeof setTimeout> | undefined;
@@ -111,6 +170,7 @@ export function BusSightingScreen({ onBack }: BusSightingScreenProps) {
     const tick = () => {
       if (cancelled) return;
       setNow(new Date());
+      if (cancelled) return;
       timerId = setTimeout(tick, CLOCK_TICK_MS);
     };
 
@@ -120,186 +180,339 @@ export function BusSightingScreen({ onBack }: BusSightingScreenProps) {
       cancelled = true;
       if (timerId !== undefined) {
         clearTimeout(timerId);
+        timerId = undefined;
       }
     };
   }, []);
 
-  // The nearest stop is recomputed whenever location or stops change. We use
-  // the same haversine helper the server uses, so the on-screen current
-  // location chip names the stop the server would also snap to.
-  const nearestStop = useMemo<BusStop | null>(() => {
-    if (!userLocation || stops.length === 0) {
+  // The inference is the same routine the server uses, so the on-screen
+  // current-location chip names the stop the server would also snap to. We
+  // recompute on every location/topology change but freeze the result into
+  // `inferredResult` only when the user actually commits via the bus button.
+  const liveInference = useMemo<InferenceResult<BusRoute, BusStop> | null>(() => {
+    if (
+      !userLocation ||
+      routes.length === 0 ||
+      stops.length === 0 ||
+      routeStops.length === 0
+    ) {
       return null;
     }
-    const snapped = resolveNearestStop(
-      userLocation,
-      stops.map((stop) => ({
-        stopId: stop.id,
-        latitude: stop.latitude,
-        longitude: stop.longitude,
-      })),
-    );
-    if (!snapped) return null;
-    return stops.find((stop) => stop.id === snapped.stopId) ?? null;
-  }, [userLocation, stops]);
+    return inferRouteAndStop(userLocation, routes, routeStops, stops);
+  }, [userLocation, routes, stops, routeStops]);
 
-  const canRecord =
+  const canStartConfirmation =
+    flowState === "recorder" &&
     locationStatus === "granted" &&
     Boolean(userLocation) &&
-    Boolean(nearestStop) &&
-    Boolean(selectedRouteId) &&
+    Boolean(liveInference) &&
     !recording;
 
-  const handleRecord = async () => {
-    if (!canRecord || !userLocation || !selectedRouteId) {
+  // The pager strip highlights different routes per state so the user always
+  // sees which route the current step is talking about.
+  const activeRouteIdForPager = useMemo<string | null>(() => {
+    switch (flowState) {
+      case "confirmation":
+        return inferredResult?.route.id ?? null;
+      case "stop-selection":
+        return chosenRouteId;
+      case "confirmed":
+        return recordedRouteId;
+      default:
+        return null;
+    }
+  }, [flowState, inferredResult, chosenRouteId, recordedRouteId]);
+
+  // The chosen route's stop catalog for the stop-selection screen.
+  const stopsForChosenRoute = useMemo<BusStop[]>(() => {
+    if (!chosenRouteId) return [];
+    const stopIds = new Set(
+      routeStops
+        .filter((link) => link.routeId === chosenRouteId)
+        .sort((a, b) => a.sequence - b.sequence)
+        .map((link) => link.stopId),
+    );
+    return stops.filter((stop) => stopIds.has(stop.id));
+  }, [chosenRouteId, routeStops, stops]);
+
+  const recordedRoute = useMemo<BusRoute | null>(
+    () => routes.find((route) => route.id === recordedRouteId) ?? null,
+    [routes, recordedRouteId],
+  );
+
+  // ---------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------
+
+  const handleBusButton = () => {
+    if (!canStartConfirmation || !liveInference) {
       return;
     }
+    setInferredResult(liveInference);
+    setRecordError(null);
+    setFlowState("confirmation");
+  };
+
+  const commitSighting = async (routeId: string) => {
+    if (!userLocation) return;
     setRecording(true);
     setRecordError(null);
     try {
       const sighting = await recordBusSighting({
-        routeId: selectedRouteId,
+        routeId,
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
       });
       setRecentRecord(sighting);
+      setRecordedRouteId(routeId);
+      setFlowState("confirmed");
     } catch (error) {
       setRecordError(
-        error instanceof Error ? error.message : "기록에 실패했어요. 다시 시도해 주세요.",
+        error instanceof Error
+          ? error.message
+          : "기록에 실패했어요. 다시 시도해 주세요.",
       );
     } finally {
       setRecording(false);
     }
   };
 
-  const helpText = resolveHelpText({
-    locationStatus,
-    userLocation,
-    nearestStop,
-    selectedRouteId,
-    recordError,
-  });
+  const handleConfirmAccept = () => {
+    if (!inferredResult) return;
+    void commitSighting(inferredResult.route.id);
+  };
 
-  const selectedRouteCode =
-    routes.find((route) => route.id === selectedRouteId)?.code ?? null;
+  const handleConfirmReject = () => {
+    setRecordError(null);
+    setFlowState("route-grid");
+  };
+
+  const handleRouteTile = (routeId: string) => {
+    setChosenRouteId(routeId);
+    setChosenStopId(null);
+    setRecordError(null);
+    setFlowState("stop-selection");
+  };
+
+  const handleStopTile = (stopId: string) => {
+    setChosenStopId(stopId);
+  };
+
+  const handleFinalConfirm = () => {
+    if (!chosenRouteId || !chosenStopId) return;
+    void commitSighting(chosenRouteId);
+  };
+
+  const handleRestart = () => {
+    setFlowState("recorder");
+    setInferredResult(null);
+    setChosenRouteId(null);
+    setChosenStopId(null);
+    setRecentRecord(null);
+    setRecordedRouteId(null);
+    setRecordError(null);
+  };
+
+  // The back affordance walks the state machine in reverse instead of
+  // popping the screen, except in the recorder and confirmed states where
+  // there is no previous step to return to.
+  const handleStateBack = () => {
+    switch (flowState) {
+      case "confirmation":
+        setFlowState("recorder");
+        setInferredResult(null);
+        return;
+      case "route-grid":
+        setFlowState("confirmation");
+        return;
+      case "stop-selection":
+        setFlowState("route-grid");
+        setChosenStopId(null);
+        return;
+      case "recorder":
+      case "confirmed":
+      default:
+        onBack?.();
+        return;
+    }
+  };
 
   return (
     <View style={styles.root}>
-      <Header title="방금 버스 봤어요?" showBack onBack={onBack} border />
+      <Header
+        title="버스 아카이빙"
+        showBack
+        onBack={handleStateBack}
+        border
+      />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text accessibilityRole="header" style={styles.headline}>
-          방금 버스 봤어요!
-        </Text>
+        <PagerStrip routes={routes} activeRouteId={activeRouteIdForPager} />
 
-        <Text style={styles.clock} accessibilityLabel="현재 시각">
-          {formatClock(now)}
-        </Text>
-
-        <View style={styles.locationChip}>
-          <View style={styles.locationDot} />
-          <Text style={styles.locationText} numberOfLines={1}>
-            현위치: {nearestStop ? nearestStop.name : "확인 중…"}
-          </Text>
-        </View>
-
-        <View style={styles.routePicker} accessibilityLabel="어떤 버스를 보셨나요?">
-          <Text style={styles.routePickerLabel}>어떤 버스인가요?</Text>
-          <View style={styles.routeRow}>
-            {routes.length === 0 ? (
-              <Text style={styles.routePlaceholder}>노선 불러오는 중…</Text>
-            ) : (
-              routes.map((route) => {
-                const selected = route.id === selectedRouteId;
-                return (
-                  <Pressable
-                    key={route.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${route.code} 노선`}
-                    accessibilityState={{ selected }}
-                    onPress={() => setSelectedRouteId(route.id)}
-                    style={({ pressed }) => [
-                      styles.routeChip,
-                      selected && styles.routeChipSelected,
-                      pressed && styles.routeChipPressed,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.routeChipText,
-                        selected && styles.routeChipTextSelected,
-                      ]}
-                    >
-                      {route.code}
-                    </Text>
-                  </Pressable>
-                );
-              })
-            )}
-          </View>
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="방금 버스 봤어요 기록하기"
-          accessibilityState={{ disabled: !canRecord }}
-          disabled={!canRecord}
-          onPress={handleRecord}
-          testID="bus-sighting-record-button"
-          style={({ pressed }) => [
-            styles.busButton,
-            !canRecord && styles.busButtonDisabled,
-            pressed && canRecord && styles.busButtonPressed,
-          ]}
-        >
-          <Bus
-            size={56}
-            color={canRecord ? colors.blue : colors.gray400}
-            strokeWidth={2.2}
+        {flowState === "recorder" ? (
+          <RecorderView
+            now={now}
+            locationStatus={locationStatus}
+            userLocation={userLocation}
+            liveInference={liveInference}
+            canStartConfirmation={canStartConfirmation}
+            onPressBusButton={handleBusButton}
           />
-        </Pressable>
+        ) : null}
 
-        <Text style={styles.helpText}>{helpText}</Text>
+        {flowState === "confirmation" && inferredResult ? (
+          <ConfirmationView
+            inference={inferredResult}
+            recording={recording}
+            recordError={recordError}
+            onAccept={handleConfirmAccept}
+            onReject={handleConfirmReject}
+          />
+        ) : null}
 
-        {recentRecord ? (
-          <View style={styles.recentRecord} testID="bus-sighting-recent">
-            <Text style={styles.recentRecordTitle}>최근 기록</Text>
-            <View style={styles.recentRecordRow}>
-              <MapPin size={14} color={colors.mintDark} />
-              <Text style={styles.recentRecordText}>
-                {formatClock(new Date(recentRecord.createdAt))} ·{" "}
-                {stopNameFor(stops, recentRecord.stopId)}
-                {selectedRouteCode ? ` · ${selectedRouteCode}` : ""}
-              </Text>
-            </View>
-            <Text style={styles.recentRecordHint}>
-              기록자 ID: {recentRecord.reporterLabel}
-            </Text>
-          </View>
+        {flowState === "route-grid" ? (
+          <RouteGridView routes={routes} onSelect={handleRouteTile} />
+        ) : null}
+
+        {flowState === "stop-selection" && chosenRouteId ? (
+          <StopSelectionView
+            route={routes.find((route) => route.id === chosenRouteId) ?? null}
+            stops={stopsForChosenRoute}
+            chosenStopId={chosenStopId}
+            recording={recording}
+            recordError={recordError}
+            onPickStop={handleStopTile}
+            onConfirm={handleFinalConfirm}
+          />
+        ) : null}
+
+        {flowState === "confirmed" && recentRecord ? (
+          <ConfirmedView
+            sighting={recentRecord}
+            route={recordedRoute}
+            stops={stops}
+            onRestart={handleRestart}
+          />
         ) : null}
       </ScrollView>
     </View>
   );
 }
 
-function resolveHelpText({
+// ---------------------------------------------------------------------------
+// Pager strip
+// ---------------------------------------------------------------------------
+
+function PagerStrip({
+  routes,
+  activeRouteId,
+}: {
+  routes: BusRoute[];
+  activeRouteId: string | null;
+}) {
+  if (routes.length === 0) {
+    return null;
+  }
+  return (
+    <View style={styles.pagerStrip} accessibilityLabel="호선 인디케이터">
+      {routes.map((route, index) => {
+        const active = route.id === activeRouteId;
+        return (
+          <View
+            key={route.id}
+            style={[styles.pagerChip, active && styles.pagerChipActive]}
+            accessibilityLabel={`${index + 1}호선${active ? " (선택됨)" : ""}`}
+          >
+            <Text
+              style={[styles.pagerText, active && styles.pagerTextActive]}
+            >
+              {index + 1}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Recorder view (state 1)
+// ---------------------------------------------------------------------------
+
+function RecorderView({
+  now,
   locationStatus,
   userLocation,
-  nearestStop,
-  selectedRouteId,
-  recordError,
+  liveInference,
+  canStartConfirmation,
+  onPressBusButton,
+}: {
+  now: Date;
+  locationStatus: LocationStatus;
+  userLocation: { latitude: number; longitude: number } | null;
+  liveInference: InferenceResult<BusRoute, BusStop> | null;
+  canStartConfirmation: boolean;
+  onPressBusButton: () => void;
+}) {
+  const helpText = resolveRecorderHelpText({
+    locationStatus,
+    userLocation,
+    liveInference,
+  });
+
+  return (
+    <View style={styles.stateBlock}>
+      <Text accessibilityRole="header" style={styles.headline}>
+        방금 버스 봤어요!
+      </Text>
+
+      <Text style={styles.clock} accessibilityLabel="현재 시각">
+        {formatClock(now)}
+      </Text>
+
+      <View style={styles.locationChip}>
+        <View style={styles.locationDot} />
+        <Text style={styles.locationText} numberOfLines={1}>
+          현위치: {liveInference ? liveInference.stop.name : "확인 중"}
+        </Text>
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="방금 버스 봤어요 기록 시작"
+        accessibilityState={{ disabled: !canStartConfirmation }}
+        disabled={!canStartConfirmation}
+        onPress={onPressBusButton}
+        testID="bus-sighting-record-button"
+        style={({ pressed }) => [
+          styles.busButton,
+          !canStartConfirmation && styles.busButtonDisabled,
+          pressed && canStartConfirmation && styles.busButtonPressed,
+        ]}
+      >
+        <Bus
+          size={56}
+          color={canStartConfirmation ? colors.blue : colors.gray400}
+          strokeWidth={2.2}
+        />
+      </Pressable>
+
+      <Text style={styles.helpText}>{helpText}</Text>
+    </View>
+  );
+}
+
+function resolveRecorderHelpText({
+  locationStatus,
+  userLocation,
+  liveInference,
 }: {
   locationStatus: LocationStatus;
   userLocation: { latitude: number; longitude: number } | null;
-  nearestStop: BusStop | null;
-  selectedRouteId: string | null;
-  recordError: string | null;
+  liveInference: InferenceResult<BusRoute, BusStop> | null;
 }) {
-  if (recordError) {
-    return recordError;
-  }
   if (locationStatus === "denied") {
     return "위치 권한이 없으면 정류장을 자동으로 인식할 수 없어요. 설정에서 허용해 주세요.";
   }
@@ -307,24 +520,291 @@ function resolveHelpText({
     return "위치를 가져오는 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.";
   }
   if (locationStatus === "loading" || !userLocation) {
-    return "위치를 가져오는 중이에요…";
+    return "위치를 가져오는 중이에요";
   }
-  if (!nearestStop) {
-    return "지금 위치에서는 다로리 정류장을 찾을 수 없어요.";
-  }
-  if (!selectedRouteId) {
-    return "보신 버스의 노선을 골라주세요.";
+  if (!liveInference) {
+    return "지금 위치 근처에서 노선을 찾을 수 없어요.";
   }
   return "버튼을 누르면, 현재 시각과 위치가 즉시 저장됩니다.";
 }
 
+// ---------------------------------------------------------------------------
+// Confirmation view (state 2)
+// ---------------------------------------------------------------------------
+
+function ConfirmationView({
+  inference,
+  recording,
+  recordError,
+  onAccept,
+  onReject,
+}: {
+  inference: InferenceResult<BusRoute, BusStop>;
+  recording: boolean;
+  recordError: string | null;
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  return (
+    <View style={styles.stateBlock}>
+      <Text accessibilityRole="header" style={styles.confirmHeadline}>
+        이 정류장이 맞나요?
+      </Text>
+
+      <Text style={styles.confirmRouteName}>{inference.route.name}</Text>
+
+      <View style={styles.stopCard}>
+        <MapPin size={18} color={colors.mintDark} strokeWidth={2.4} />
+        <Text style={styles.stopCardText}>{inference.stop.name}</Text>
+      </View>
+
+      <View style={styles.mapPreview} accessibilityLabel="노선 미리보기">
+        <Text style={styles.mapPreviewText}>
+          {inference.route.code} 노선 미리보기
+        </Text>
+      </View>
+
+      {recordError ? (
+        <Text style={styles.errorText}>{recordError}</Text>
+      ) : null}
+
+      <View style={styles.confirmButtonRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="틀려요"
+          onPress={onReject}
+          disabled={recording}
+          testID="bus-sighting-reject-button"
+          style={({ pressed }) => [
+            styles.rejectButton,
+            pressed && styles.rejectButtonPressed,
+            recording && styles.buttonDisabled,
+          ]}
+        >
+          <Text style={styles.rejectButtonText}>틀려요</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="맞아요"
+          onPress={onAccept}
+          disabled={recording}
+          testID="bus-sighting-accept-button"
+          style={({ pressed }) => [
+            styles.acceptButton,
+            pressed && styles.acceptButtonPressed,
+            recording && styles.buttonDisabled,
+          ]}
+        >
+          <Text style={styles.acceptButtonText}>
+            {recording ? "기록 중" : "맞아요"}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Route grid view (state 3)
+// ---------------------------------------------------------------------------
+
+function RouteGridView({
+  routes,
+  onSelect,
+}: {
+  routes: BusRoute[];
+  onSelect: (routeId: string) => void;
+}) {
+  return (
+    <View style={styles.stateBlock}>
+      <Text accessibilityRole="header" style={styles.confirmHeadline}>
+        기록을 원하시는 호선을 골라주세요
+      </Text>
+      <View style={styles.routeGrid}>
+        {routes.map((route, index) => (
+          <Pressable
+            key={route.id}
+            accessibilityRole="button"
+            accessibilityLabel={`${route.name} 선택`}
+            onPress={() => onSelect(route.id)}
+            testID={`bus-sighting-route-tile-${route.code}`}
+            style={({ pressed }) => [
+              styles.routeTile,
+              pressed && styles.routeTilePressed,
+            ]}
+          >
+            <View style={styles.routeTileNumber}>
+              <Text style={styles.routeTileNumberText}>{index + 1}</Text>
+            </View>
+            <Text style={styles.routeTileName}>{route.name}</Text>
+            <Bus size={20} color={colors.mintDark} strokeWidth={2.2} />
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stop selection view (state 4)
+// ---------------------------------------------------------------------------
+
+function StopSelectionView({
+  route,
+  stops,
+  chosenStopId,
+  recording,
+  recordError,
+  onPickStop,
+  onConfirm,
+}: {
+  route: BusRoute | null;
+  stops: BusStop[];
+  chosenStopId: string | null;
+  recording: boolean;
+  recordError: string | null;
+  onPickStop: (stopId: string) => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <View style={styles.stateBlock}>
+      <Text accessibilityRole="header" style={styles.confirmHeadline}>
+        해당 노선에서 정류장을 선택해주세요
+      </Text>
+      <Text style={styles.confirmRouteName}>{route?.name ?? ""}</Text>
+
+      <View style={styles.mapPreview} accessibilityLabel="노선 정류장 지도">
+        <Text style={styles.mapPreviewText}>
+          {route ? `${route.code} 정류장 지도` : ""}
+        </Text>
+      </View>
+
+      <View style={styles.stopList}>
+        {stops.map((stop) => {
+          const selected = stop.id === chosenStopId;
+          return (
+            <Pressable
+              key={stop.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${stop.name} 선택`}
+              accessibilityState={{ selected }}
+              onPress={() => onPickStop(stop.id)}
+              testID={`bus-sighting-stop-tile-${stop.id}`}
+              style={({ pressed }) => [
+                styles.stopTile,
+                selected && styles.stopTileSelected,
+                pressed && styles.stopTilePressed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.stopTileText,
+                  selected && styles.stopTileTextSelected,
+                ]}
+              >
+                {stop.name}
+              </Text>
+              {selected ? (
+                <Check size={16} color={colors.mintDark} strokeWidth={2.6} />
+              ) : (
+                <ChevronRight size={16} color={colors.gray400} />
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {recordError ? (
+        <Text style={styles.errorText}>{recordError}</Text>
+      ) : null}
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="확정"
+        accessibilityState={{ disabled: !chosenStopId || recording }}
+        disabled={!chosenStopId || recording}
+        onPress={onConfirm}
+        testID="bus-sighting-final-confirm-button"
+        style={({ pressed }) => [
+          styles.finalConfirmButton,
+          (!chosenStopId || recording) && styles.buttonDisabled,
+          pressed && chosenStopId && !recording && styles.finalConfirmButtonPressed,
+        ]}
+      >
+        <Text style={styles.finalConfirmButtonText}>
+          {recording ? "기록 중" : "확정"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Confirmed view (state 5)
+// ---------------------------------------------------------------------------
+
+function ConfirmedView({
+  sighting,
+  route,
+  stops,
+  onRestart,
+}: {
+  sighting: BusSighting;
+  route: BusRoute | null;
+  stops: BusStop[];
+  onRestart: () => void;
+}) {
+  const stopName = stops.find((stop) => stop.id === sighting.stopId)?.name
+    ?? sighting.stopId;
+
+  return (
+    <View style={styles.stateBlock}>
+      <View style={styles.confirmedBadge}>
+        <Check size={28} color={colors.mintDark} strokeWidth={2.6} />
+      </View>
+      <Text accessibilityRole="header" style={styles.confirmedHeadline}>
+        확정이 되었습니다
+      </Text>
+      <Text style={styles.confirmedSubtext}>감사합니다 :)</Text>
+
+      <View style={styles.recentRecord} testID="bus-sighting-recent">
+        <Text style={styles.recentRecordTitle}>최근 기록</Text>
+        <View style={styles.recentRecordRow}>
+          <MapPin size={14} color={colors.mintDark} />
+          <Text style={styles.recentRecordText}>
+            {formatClock(new Date(sighting.createdAt))} {" · "}
+            {stopName}
+            {route ? ` · ${route.code}` : ""}
+          </Text>
+        </View>
+        <Text style={styles.recentRecordHint}>
+          기록자 ID: {sighting.reporterLabel}
+        </Text>
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="다시 기록하기"
+        onPress={onRestart}
+        testID="bus-sighting-restart-button"
+        style={({ pressed }) => [
+          styles.restartButton,
+          pressed && styles.restartButtonPressed,
+        ]}
+      >
+        <Text style={styles.restartButtonText}>다시 기록하기</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
+
 function formatClock(date: Date) {
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
-
-function stopNameFor(stops: BusStop[], stopId: string) {
-  return stops.find((stop) => stop.id === stopId)?.name ?? stopId;
 }
 
 const styles = StyleSheet.create({
@@ -337,8 +817,44 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     alignItems: "center",
   },
+  stateBlock: {
+    width: "100%",
+    alignItems: "center",
+  },
+  pagerStrip: {
+    marginTop: 16,
+    marginBottom: 8,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  pagerChip: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pagerChipActive: {
+    borderColor: colors.mintDark,
+    backgroundColor: colors.yellow,
+  },
+  pagerText: {
+    color: colors.gray400,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+  pagerTextActive: {
+    color: colors.black,
+  },
+
+  // recorder
   headline: {
-    marginTop: 28,
+    marginTop: 18,
     color: colors.blue,
     fontFamily: typography.family.medium,
     fontSize: typography.size.lg,
@@ -383,56 +899,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
   },
-  routePicker: {
-    width: "100%",
-    marginTop: 28,
-    alignItems: "center",
-  },
-  routePickerLabel: {
-    color: colors.grayText,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
-  },
-  routeRow: {
-    marginTop: 10,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 8,
-  },
-  routePlaceholder: {
-    color: colors.gray400,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-  },
-  routeChip: {
-    minWidth: 64,
-    paddingHorizontal: 14,
-    height: spacing.chipHeight,
-    borderRadius: spacing.chipHeight / 2,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  routeChipSelected: {
-    borderColor: colors.mintDark,
-    backgroundColor: colors.mintLight,
-  },
-  routeChipPressed: {
-    opacity: 0.7,
-  },
-  routeChipText: {
-    color: colors.grayIcon,
-    fontFamily: typography.family.medium,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-  routeChipTextSelected: {
-    color: colors.mintDark,
-  },
   busButton: {
     marginTop: 32,
     width: 180,
@@ -459,8 +925,231 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 12,
   },
-  recentRecord: {
+
+  // confirmation
+  confirmHeadline: {
+    marginTop: 18,
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
+    fontWeight: typography.weight.bold,
+    textAlign: "center",
+  },
+  confirmRouteName: {
+    marginTop: 8,
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+  },
+  stopCard: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+  },
+  stopCardText: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.bold,
+  },
+  mapPreview: {
+    marginTop: 16,
+    width: "100%",
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: colors.mintLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mapPreviewText: {
+    color: colors.mintDark,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+  },
+  errorText: {
+    marginTop: 12,
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    textAlign: "center",
+  },
+  confirmButtonRow: {
+    marginTop: 18,
+    width: "100%",
+    flexDirection: "row",
+    gap: 12,
+  },
+  rejectButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 12,
+    backgroundColor: colors.gray100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rejectButtonPressed: {
+    opacity: 0.82,
+  },
+  rejectButtonText: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.bold,
+  },
+  acceptButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 12,
+    backgroundColor: colors.yellow,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  acceptButtonPressed: {
+    opacity: 0.86,
+  },
+  acceptButtonText: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.bold,
+  },
+  buttonDisabled: {
+    opacity: 0.55,
+  },
+
+  // route grid
+  routeGrid: {
+    marginTop: 18,
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "space-between",
+  },
+  routeTile: {
+    width: "48%",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  routeTilePressed: {
+    backgroundColor: colors.mintLight,
+  },
+  routeTileNumber: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.mintDark,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  routeTileNumberText: {
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.bold,
+  },
+  routeTileName: {
+    flex: 1,
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+  },
+
+  // stop selection
+  stopList: {
+    marginTop: 16,
+    width: "100%",
+    gap: 8,
+  },
+  stopTile: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  stopTileSelected: {
+    borderColor: colors.mintDark,
+    backgroundColor: colors.mintLight,
+  },
+  stopTilePressed: {
+    opacity: 0.85,
+  },
+  stopTileText: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+  },
+  stopTileTextSelected: {
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontWeight: typography.weight.bold,
+  },
+  finalConfirmButton: {
+    marginTop: 18,
+    width: "100%",
+    minHeight: 52,
+    borderRadius: 12,
+    backgroundColor: colors.blue,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  finalConfirmButtonPressed: {
+    opacity: 0.88,
+  },
+  finalConfirmButtonText: {
+    color: colors.surface,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.bold,
+  },
+
+  // confirmed
+  confirmedBadge: {
     marginTop: 28,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.mintLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmedHeadline: {
+    marginTop: 14,
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.bold,
+  },
+  confirmedSubtext: {
+    marginTop: 4,
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+  },
+  recentRecord: {
+    marginTop: 24,
     width: "100%",
     padding: 14,
     borderRadius: spacing.cardRadius,
@@ -491,5 +1180,25 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     fontFamily: typography.family.body,
     fontSize: typography.size.xs,
+  },
+  restartButton: {
+    marginTop: 18,
+    paddingHorizontal: 18,
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.mintDark,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  restartButtonPressed: {
+    backgroundColor: colors.mintLight,
+  },
+  restartButtonText: {
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.bold,
   },
 });
