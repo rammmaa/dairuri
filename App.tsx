@@ -189,6 +189,7 @@ export default function App() {
         <BusSightingScreen
           onBack={() => setBusSightingOpen(false)}
           onOpenRouteInfo={() => setBusRouteInfoOpen(true)}
+          onOpenArrivalTimes={() => setBusArrivalTimesOpen(true)}
         />
         <StatusBar style="dark" />
       </>

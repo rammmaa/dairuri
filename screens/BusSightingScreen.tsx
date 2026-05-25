@@ -1,9 +1,18 @@
-import { Bus, Check, ChevronRight, Info, MapPin } from "lucide-react-native";
+import {
+  AlertTriangle,
+  Bus,
+  Check,
+  ChevronRight,
+  Clock3,
+  Info,
+  MapPin,
+} from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
 
 import { Header } from "../components/Header";
+import { RouteMapPreview } from "../components/RouteMapPreview";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
@@ -30,6 +39,10 @@ export type BusSightingScreenProps = {
    *  renders and tapping it opens the per-route info screen. Phase 1 wires
    *  this to a Coming Soon stub; Phase 2 will replace the stub. */
   onOpenRouteInfo?: () => void;
+  /** Optional callback for the "버스 도착 시간 기록 보기" entry row that
+   *  renders above the recorder body, matching the Figma frame. Phase 1
+   *  wires this to a Coming Soon stub; Phase 2 will replace the stub. */
+  onOpenArrivalTimes?: () => void;
 };
 
 type LocationStatus = "loading" | "granted" | "denied" | "error";
@@ -48,10 +61,14 @@ type FlowState =
 
 const LOCATION_DISTANCE_INTERVAL_M = 10;
 const CLOCK_TICK_MS = 1_000;
+const MAP_PREVIEW_WIDTH = 320;
+const MAP_PREVIEW_HEIGHT = 140;
+const STOP_SELECT_MAP_HEIGHT = 220;
 
 export function BusSightingScreen({
   onBack,
   onOpenRouteInfo,
+  onOpenArrivalTimes,
 }: BusSightingScreenProps) {
   const [flowState, setFlowState] = useState<FlowState>("recorder");
 
@@ -383,12 +400,15 @@ export function BusSightingScreen({
             liveInference={liveInference}
             canStartConfirmation={canStartConfirmation}
             onPressBusButton={handleBusButton}
+            onOpenArrivalTimes={onOpenArrivalTimes}
           />
         ) : null}
 
         {flowState === "confirmation" && inferredResult ? (
           <ConfirmationView
             inference={inferredResult}
+            stops={stops}
+            routeStops={routeStops}
             recording={recording}
             recordError={recordError}
             onAccept={handleConfirmAccept}
@@ -403,7 +423,10 @@ export function BusSightingScreen({
         {flowState === "stop-selection" && chosenRouteId ? (
           <StopSelectionView
             route={routes.find((route) => route.id === chosenRouteId) ?? null}
-            stops={stopsForChosenRoute}
+            routeId={chosenRouteId}
+            stops={stops}
+            routeStops={routeStops}
+            stopsForRoute={stopsForChosenRoute}
             chosenStopId={chosenStopId}
             recording={recording}
             recordError={recordError}
@@ -472,6 +495,7 @@ function RecorderView({
   liveInference,
   canStartConfirmation,
   onPressBusButton,
+  onOpenArrivalTimes,
 }: {
   now: Date;
   locationStatus: LocationStatus;
@@ -479,6 +503,7 @@ function RecorderView({
   liveInference: InferenceResult<BusRoute, BusStop> | null;
   canStartConfirmation: boolean;
   onPressBusButton: () => void;
+  onOpenArrivalTimes?: () => void;
 }) {
   const helpText = resolveRecorderHelpText({
     locationStatus,
@@ -488,6 +513,23 @@ function RecorderView({
 
   return (
     <View style={styles.stateBlock}>
+      {onOpenArrivalTimes ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="버스 도착 시간 기록 보기"
+          onPress={onOpenArrivalTimes}
+          testID="bus-sighting-arrival-times-entry"
+          style={({ pressed }) => [
+            styles.arrivalEntry,
+            pressed && styles.arrivalEntryPressed,
+          ]}
+        >
+          <Clock3 size={16} color={colors.mintDark} strokeWidth={2.2} />
+          <Text style={styles.arrivalEntryLabel}>버스 도착 시간 기록 보기</Text>
+          <ChevronRight size={16} color={colors.gray400} />
+        </Pressable>
+      ) : null}
+
       <Text accessibilityRole="header" style={styles.headline}>
         방금 버스 봤어요!
       </Text>
@@ -517,7 +559,7 @@ function RecorderView({
         ]}
       >
         <Bus
-          size={56}
+          size={36}
           color={canStartConfirmation ? colors.blue : colors.gray400}
           strokeWidth={2.2}
         />
@@ -558,12 +600,16 @@ function resolveRecorderHelpText({
 
 function ConfirmationView({
   inference,
+  stops,
+  routeStops,
   recording,
   recordError,
   onAccept,
   onReject,
 }: {
   inference: InferenceResult<BusRoute, BusStop>;
+  stops: BusStop[];
+  routeStops: BusRouteStop[];
   recording: boolean;
   recordError: string | null;
   onAccept: () => void;
@@ -582,10 +628,15 @@ function ConfirmationView({
         <Text style={styles.stopCardText}>{inference.stop.name}</Text>
       </View>
 
-      <View style={styles.mapPreview} accessibilityLabel="노선 미리보기">
-        <Text style={styles.mapPreviewText}>
-          {inference.route.code} 노선 미리보기
-        </Text>
+      <View style={styles.mapWrapper}>
+        <RouteMapPreview
+          routeId={inference.route.id}
+          stops={stops}
+          routeStops={routeStops}
+          width={MAP_PREVIEW_WIDTH}
+          height={MAP_PREVIEW_HEIGHT}
+          highlightedStopId={inference.stop.id}
+        />
       </View>
 
       {recordError ? (
@@ -600,11 +651,13 @@ function ConfirmationView({
           disabled={recording}
           testID="bus-sighting-reject-button"
           style={({ pressed }) => [
+            styles.pillButton,
             styles.rejectButton,
             pressed && styles.rejectButtonPressed,
             recording && styles.buttonDisabled,
           ]}
         >
+          <AlertTriangle size={16} color={colors.red} strokeWidth={2.4} />
           <Text style={styles.rejectButtonText}>틀려요</Text>
         </Pressable>
         <Pressable
@@ -614,11 +667,13 @@ function ConfirmationView({
           disabled={recording}
           testID="bus-sighting-accept-button"
           style={({ pressed }) => [
+            styles.pillButton,
             styles.acceptButton,
             pressed && styles.acceptButtonPressed,
             recording && styles.buttonDisabled,
           ]}
         >
+          <Bus size={16} color={colors.black} strokeWidth={2.4} />
           <Text style={styles.acceptButtonText}>
             {recording ? "기록 중" : "맞아요"}
           </Text>
@@ -675,7 +730,10 @@ function RouteGridView({
 
 function StopSelectionView({
   route,
+  routeId,
   stops,
+  routeStops,
+  stopsForRoute,
   chosenStopId,
   recording,
   recordError,
@@ -683,7 +741,10 @@ function StopSelectionView({
   onConfirm,
 }: {
   route: BusRoute | null;
+  routeId: string;
   stops: BusStop[];
+  routeStops: BusRouteStop[];
+  stopsForRoute: BusStop[];
   chosenStopId: string | null;
   recording: boolean;
   recordError: string | null;
@@ -697,46 +758,22 @@ function StopSelectionView({
       </Text>
       <Text style={styles.confirmRouteName}>{route?.name ?? ""}</Text>
 
-      <View style={styles.mapPreview} accessibilityLabel="노선 정류장 지도">
-        <Text style={styles.mapPreviewText}>
-          {route ? `${route.code} 정류장 지도` : ""}
-        </Text>
+      <View style={styles.mapWrapper}>
+        <RouteMapPreview
+          routeId={routeId}
+          stops={stops}
+          routeStops={routeStops}
+          width={MAP_PREVIEW_WIDTH}
+          height={STOP_SELECT_MAP_HEIGHT}
+          highlightedStopId={chosenStopId}
+          onPickStop={onPickStop}
+          showLabels
+        />
       </View>
 
-      <View style={styles.stopList}>
-        {stops.map((stop) => {
-          const selected = stop.id === chosenStopId;
-          return (
-            <Pressable
-              key={stop.id}
-              accessibilityRole="button"
-              accessibilityLabel={`${stop.name} 선택`}
-              accessibilityState={{ selected }}
-              onPress={() => onPickStop(stop.id)}
-              testID={`bus-sighting-stop-tile-${stop.id}`}
-              style={({ pressed }) => [
-                styles.stopTile,
-                selected && styles.stopTileSelected,
-                pressed && styles.stopTilePressed,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.stopTileText,
-                  selected && styles.stopTileTextSelected,
-                ]}
-              >
-                {stop.name}
-              </Text>
-              {selected ? (
-                <Check size={16} color={colors.mintDark} strokeWidth={2.6} />
-              ) : (
-                <ChevronRight size={16} color={colors.gray400} />
-              )}
-            </Pressable>
-          );
-        })}
-      </View>
+      <Text style={styles.stopSelectionHint}>
+        지도의 정류장을 눌러 선택하세요. ({stopsForRoute.length}개 정류장)
+      </Text>
 
       {recordError ? (
         <Text style={styles.errorText}>{recordError}</Text>
@@ -933,11 +970,35 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
   },
+  arrivalEntry: {
+    marginTop: 8,
+    minHeight: 44,
+    width: "100%",
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 12,
+    backgroundColor: colors.gray50,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  arrivalEntryPressed: {
+    backgroundColor: colors.mintLight,
+  },
+  arrivalEntryLabel: {
+    flex: 1,
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.semibold,
+  },
   busButton: {
-    marginTop: 32,
-    width: 180,
-    height: 130,
-    borderRadius: 22,
+    marginTop: 28,
+    width: 110,
+    height: 80,
+    borderRadius: 18,
     backgroundColor: colors.gray100,
     alignItems: "center",
     justifyContent: "center",
@@ -994,19 +1055,18 @@ const styles = StyleSheet.create({
     fontSize: typography.size.base,
     fontWeight: typography.weight.bold,
   },
-  mapPreview: {
+  mapWrapper: {
     marginTop: 16,
     width: "100%",
-    height: 140,
-    borderRadius: 12,
-    backgroundColor: colors.mintLight,
     alignItems: "center",
-    justifyContent: "center",
   },
-  mapPreviewText: {
-    color: colors.mintDark,
+  stopSelectionHint: {
+    marginTop: 10,
+    color: colors.grayText,
     fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    textAlign: "center",
   },
   errorText: {
     marginTop: 12,
@@ -1019,15 +1079,21 @@ const styles = StyleSheet.create({
     marginTop: 18,
     width: "100%",
     flexDirection: "row",
+    justifyContent: "center",
     gap: 12,
   },
-  rejectButton: {
-    flex: 1,
-    minHeight: 52,
-    borderRadius: 12,
-    backgroundColor: colors.gray100,
+  pillButton: {
+    minWidth: 120,
+    paddingHorizontal: 20,
+    minHeight: 44,
+    borderRadius: 22,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
+  },
+  rejectButton: {
+    backgroundColor: colors.gray100,
   },
   rejectButtonPressed: {
     opacity: 0.82,
@@ -1039,12 +1105,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.bold,
   },
   acceptButton: {
-    flex: 1,
-    minHeight: 52,
-    borderRadius: 12,
     backgroundColor: colors.yellow,
-    alignItems: "center",
-    justifyContent: "center",
   },
   acceptButtonPressed: {
     opacity: 0.86,
@@ -1106,40 +1167,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
   },
 
-  // stop selection
-  stopList: {
-    marginTop: 16,
-    width: "100%",
-    gap: 8,
-  },
-  stopTile: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  stopTileSelected: {
-    borderColor: colors.mintDark,
-    backgroundColor: colors.mintLight,
-  },
-  stopTilePressed: {
-    opacity: 0.85,
-  },
-  stopTileText: {
-    color: colors.black,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-  },
-  stopTileTextSelected: {
-    color: colors.mintDark,
-    fontFamily: typography.family.bold,
-    fontWeight: typography.weight.bold,
-  },
   finalConfirmButton: {
     marginTop: 18,
     width: "100%",
