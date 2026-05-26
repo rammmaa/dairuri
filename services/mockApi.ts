@@ -247,12 +247,18 @@ export async function recordBusSighting(
       longitude: stop.longitude,
     }));
 
-  const snapped = resolveNearestStop(
-    { latitude: validated.latitude, longitude: validated.longitude },
-    candidates,
-  );
+  const selectedStop = validated.stopId
+    ? candidates.find((stop) => stop.stopId === validated.stopId)
+    : resolveNearestStop(
+        { latitude: validated.latitude, longitude: validated.longitude },
+        candidates,
+      );
 
-  if (!snapped) {
+  if (validated.stopId && !selectedStop) {
+    throw new BusSightingInputError("stop not on route");
+  }
+
+  if (!selectedStop) {
     throw new BusSightingInputError("no nearby stop on route");
   }
 
@@ -264,7 +270,7 @@ export async function recordBusSighting(
   const raw = {
     id: `sighting-${Date.now()}`,
     routeId: validated.routeId,
-    stopId: snapped.stopId,
+    stopId: selectedStop.stopId,
     reporterId,
     latitude: validated.latitude,
     longitude: validated.longitude,

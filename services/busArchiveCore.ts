@@ -60,12 +60,14 @@ export type RouteStopForSnap = {
 
 export type RecordBusSightingInput = {
   routeId?: string;
+  stopId?: string;
   latitude?: number;
   longitude?: number;
 };
 
 export type ValidatedSightingInput = {
   routeId: string;
+  stopId?: string;
   latitude: number;
   longitude: number;
 };
@@ -122,6 +124,14 @@ export function normalizeRecordSightingInput(
     throw new BusSightingInputError("routeId is required");
   }
 
+  let stopId: string | undefined;
+  if (input.stopId !== undefined) {
+    if (typeof input.stopId !== "string" || !input.stopId.trim()) {
+      throw new BusSightingInputError("stopId is required");
+    }
+    stopId = input.stopId.trim();
+  }
+
   if (typeof input.latitude !== "number" || !Number.isFinite(input.latitude)) {
     throw new BusSightingInputError("latitude must be a finite number");
   }
@@ -135,7 +145,7 @@ export function normalizeRecordSightingInput(
     throw new BusSightingInputError("longitude out of range");
   }
 
-  return { routeId, latitude: input.latitude, longitude: input.longitude };
+  return { routeId, stopId, latitude: input.latitude, longitude: input.longitude };
 }
 
 /**

@@ -170,9 +170,10 @@ describe("BusSightingScreen", () => {
         .accessibilityState,
     ).toMatchObject({ disabled: true });
 
-    // H6 visits koaru-bluepin among others; pick it so the test verifies the
-    // stop list rendered the right route.
-    fireEvent.press(screen.getByTestId("route-map-pin-stop-koaru-bluepin"));
+    // H6 visits koaru-bluepin among others. Pick a different stop from the
+    // current GPS position so the test proves the manual stop selection is
+    // what gets recorded.
+    fireEvent.press(screen.getByTestId("route-map-pin-stop-cheongdo-terminal"));
     expect(
       screen.getByTestId("bus-sighting-final-confirm-button").props
         .accessibilityState,
@@ -185,6 +186,7 @@ describe("BusSightingScreen", () => {
     // Confirmed state shows H6 as the recorded route.
     const recent = await screen.findByTestId("bus-sighting-recent");
     expect(within(recent).getByText(/H6/)).toBeTruthy();
+    expect(within(recent).getByText(/청도 버스 터미널/)).toBeTruthy();
   });
 
   it("renders the arrival-times entry only when onOpenArrivalTimes is provided and forwards taps", async () => {

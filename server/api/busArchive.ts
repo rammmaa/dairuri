@@ -203,15 +203,15 @@ export async function listBusStops(): Promise<BusStop[]> {
     `,
   );
 
-  return Promise.all(
-    rows.map(async (row) => ({
+  const lastSightingsByStop = await resolveLastSightingsAt(rows);
+
+  return rows.map((row) => ({
       id: row.id,
       name: row.name,
       latitude: Number(row.latitude),
       longitude: Number(row.longitude),
-      lastSightingAt: await resolveLastSightingAt(row.id, row.last_sighting_at),
-    })),
-  );
+      lastSightingAt: lastSightingsByStop.get(row.id),
+    }));
 }
 
 export async function listSightingsForStop(
@@ -254,16 +254,24 @@ export async function recordBusSighting(
     throw new BusSightingInputError("route not found");
   }
 
-  const snapped = resolveNearestStop(
-    { latitude: validated.latitude, longitude: validated.longitude },
-    candidates.map((row) => ({
-      stopId: row.stop_id,
-      latitude: Number(row.latitude),
-      longitude: Number(row.longitude),
-    })),
-  );
+  const routeStops = candidates.map((row) => ({
+    stopId: row.stop_id,
+    latitude: Number(row.latitude),
+    longitude: Number(row.longitude),
+  }));
 
-  if (!snapped) {
+  const selectedStop = validated.stopId
+    ? routeStops.find((stop) => stop.stopId === validated.stopId)
+    : resolveNearestStop(
+        { latitude: validated.latitude, longitude: validated.longitude },
+        routeStops,
+      );
+
+  if (validated.stopId && !selectedStop) {
+    throw new BusSightingInputError("stop not on route");
+  }
+
+  if (!selectedStop) {
     throw new BusSightingInputError("no nearby stop on route");
   }
 
@@ -280,7 +288,7 @@ export async function recordBusSighting(
     [
       id,
       validated.routeId,
-      snapped.stopId,
+      selectedStop.stopId,
       userId,
       validated.latitude,
       validated.longitude,
@@ -288,25 +296,40 @@ export async function recordBusSighting(
     ],
   );
 
-  await updateLastSightingCache(snapped.stopId, createdAt);
+  await updateLastSightingCache(selectedStop.stopId, createdAt);
 
   return mapSightingRow(rows[0]);
 }
 
-async function resolveLastSightingAt(
-  stopId: string,
-  fallback: Date | null,
-): Promise<string | undefined> {
+async function resolveLastSightingsAt(
+  rows: Pick<BusStopRow, "id" | "last_sighting_at">[],
+): Promise<Map<string, string | undefined>> {
+  const lastSightingsByStop = new Map(
+    rows.map((row) => [
+      row.id,
+      row.last_sighting_at ? row.last_sighting_at.toISOString() : undefined,
+    ]),
+  );
+
+  if (rows.length === 0) {
+    return lastSightingsByStop;
+  }
+
   try {
     const client = await getRedisClient();
-    const cached = await client.get(`${REDIS_LAST_SIGHTING_KEY_PREFIX}${stopId}`);
-    if (cached) {
-      return cached;
+    const keys = rows.map((row) => `${REDIS_LAST_SIGHTING_KEY_PREFIX}${row.id}`);
+    const cachedValues = await client.mGet(keys);
+    for (let index = 0; index < cachedValues.length; index += 1) {
+      const cached = cachedValues[index];
+      if (cached) {
+        lastSightingsByStop.set(rows[index].id, cached);
+      }
     }
   } catch {
     // Redis is best-effort cache; fall back to the SQL value.
   }
-  return fallback ? fallback.toISOString() : undefined;
+
+  return lastSightingsByStop;
 }
 
 async function updateLastSightingCache(stopId: string, createdAt: string) {

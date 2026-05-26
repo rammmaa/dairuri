@@ -319,7 +319,7 @@ export function BusSightingScreen({
     setFlowState("confirmation");
   };
 
-  const commitSighting = async (routeId: string) => {
+  const commitSighting = async (routeId: string, stopId?: string) => {
     // Always prefer the location captured when the user first pressed the
     // bus button; only fall back to the live location when no commit point
     // exists yet (the rejection branch can enter stop-selection without
@@ -331,6 +331,7 @@ export function BusSightingScreen({
     try {
       const sighting = await recordBusSighting({
         routeId,
+        stopId,
         latitude: location.latitude,
         longitude: location.longitude,
       });
@@ -371,7 +372,7 @@ export function BusSightingScreen({
 
   const handleFinalConfirm = () => {
     if (!chosenRouteId || !chosenStopId) return;
-    void commitSighting(chosenRouteId);
+    void commitSighting(chosenRouteId, chosenStopId);
   };
 
   const handleRestart = () => {

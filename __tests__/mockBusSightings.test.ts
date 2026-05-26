@@ -8,6 +8,8 @@ import {
 import { mockReporterLabel } from "../services/busArchiveCore";
 import { resetMockDatabase } from "../services/mockDb";
 
+const NEAREST_KOARU_COORDS = { latitude: 35.6474, longitude: 128.7338 };
+
 describe("mock Happy Bus archive API", () => {
   // The mock connection is a module-level singleton that accumulates writes
   // across cases. Reset it before each test so order-of-execution does not
@@ -77,6 +79,20 @@ describe("mock Happy Bus archive API", () => {
       longitude: 128.7378,
     });
     expect(recorded.stopId).toBe("stop-cheongdo-terminal");
+  });
+
+  it("records the selected stop when the user manually overrides the nearest stop", async () => {
+    const recorded = await recordBusSighting({
+      routeId: "route-happy-6",
+      stopId: "stop-cheongdo-terminal",
+      latitude: NEAREST_KOARU_COORDS.latitude,
+      longitude: NEAREST_KOARU_COORDS.longitude,
+    });
+
+    expect(recorded.stopId).toBe("stop-cheongdo-terminal");
+
+    const terminalSightings = await getStopSightings("stop-cheongdo-terminal");
+    expect(terminalSightings[0]?.id).toBe(recorded.id);
   });
 
   it("rejects when the reporter is too far from every stop on the route", async () => {

@@ -14,11 +14,13 @@ describe("normalizeRecordSightingInput", () => {
     expect(
       normalizeRecordSightingInput({
         routeId: "  route-happy-1  ",
+        stopId: "  stop-koaru-bluepin  ",
         latitude: 35.6474,
         longitude: 128.7338,
       }),
     ).toEqual({
       routeId: "route-happy-1",
+      stopId: "stop-koaru-bluepin",
       latitude: 35.6474,
       longitude: 128.7338,
     });
@@ -55,6 +57,12 @@ describe("normalizeRecordSightingInput", () => {
         latitude: undefined,
       }),
     ).toThrow("latitude must be a finite number");
+  });
+
+  it("rejects a blank manual stopId", () => {
+    expect(() =>
+      normalizeRecordSightingInput({ ...validInput, stopId: "   " }),
+    ).toThrow("stopId is required");
   });
 
   it("rejects a latitude outside [-90, 90]", () => {
