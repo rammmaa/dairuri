@@ -22,4 +22,15 @@ describe("server seed data", () => {
       ]),
     );
   });
+
+  it("keeps the resource profile fields in PostgreSQL seed records", () => {
+    const records = createSeedRecords();
+    const resourceProfile = records.posts.find((post) => post.id === "job-1");
+
+    expect(resourceProfile).toMatchObject({
+      profileMode: "resource",
+      availableTasks: ["카페 보조", "농번기 일손", "아이 등하원 동행"],
+      preferredPay: "시급 12,000원부터",
+    });
+  });
 });

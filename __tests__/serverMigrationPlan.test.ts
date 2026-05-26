@@ -1,4 +1,4 @@
-import { createMigrationPlan } from "../server/db/migrate";
+import { createMigrationPlan, readSchemaMigrations } from "../server/db/migrate";
 
 describe("server database migration plan", () => {
   it("returns only migrations that have not been applied", () => {
@@ -17,5 +17,14 @@ describe("server database migration plan", () => {
         { id: "001_initial_schema", sql: "select 2" },
       ]),
     ).toThrow("duplicate migration id: 001_initial_schema");
+  });
+
+  it("loads the human-resource profile migration after the initial schema", async () => {
+    await expect(readSchemaMigrations()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "001_initial_schema" }),
+        expect.objectContaining({ id: "002_human_resource_profiles" }),
+      ]),
+    );
   });
 });
