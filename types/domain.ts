@@ -112,3 +112,43 @@ export type RouteOption = {
   color: string;
   coordinates: Array<{ latitude: number; longitude: number }>;
 };
+
+export type BusRoute = {
+  id: string;
+  code: string;
+  name: string;
+  color: string;
+  /** ISO timestamp of the most recent community sighting on any stop of this
+   *  route. Server-derived; undefined when no sighting has been recorded yet. */
+  lastSightingAt?: string;
+};
+
+export type BusStop = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  /** ISO timestamp of the most recent community sighting at this stop.
+   *  Server-derived; clients never write it directly. */
+  lastSightingAt?: string;
+};
+
+export type BusRouteStop = {
+  routeId: string;
+  stopId: string;
+  sequence: number;
+};
+
+export type BusSighting = {
+  id: string;
+  routeId: string;
+  stopId: string;
+  /** 6-char anonymized identifier of the reporter, stable per reporter under
+   *  a fixed salt. Derived server-side from
+   *  sha256(reporter_id + DARORI_REPORTER_LABEL_SALT)[0..5].
+   *  Equals the literal "deleted" when the reporter account has been removed. */
+  reporterLabel: string;
+  latitude: number;
+  longitude: number;
+  createdAt: string;
+};

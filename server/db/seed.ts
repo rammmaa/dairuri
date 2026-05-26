@@ -214,10 +214,70 @@ async function main() {
       );
     }
 
+    for (const route of records.busRoutes) {
+      await client.query(
+        `
+          insert into bus_routes (id, code, name, color)
+          values ($1, $2, $3, $4)
+          on conflict (id) do update set
+            code = excluded.code,
+            name = excluded.name,
+            color = excluded.color
+        `,
+        [route.id, route.code, route.name, route.color],
+      );
+    }
+
+    for (const stop of records.busStops) {
+      await client.query(
+        `
+          insert into bus_stops (id, name, latitude, longitude)
+          values ($1, $2, $3, $4)
+          on conflict (id) do update set
+            name = excluded.name,
+            latitude = excluded.latitude,
+            longitude = excluded.longitude
+        `,
+        [stop.id, stop.name, stop.latitude, stop.longitude],
+      );
+    }
+
+    for (const link of records.busRouteStops) {
+      await client.query(
+        `
+          insert into bus_route_stops (route_id, stop_id, sequence)
+          values ($1, $2, $3)
+          on conflict (route_id, stop_id) do update set
+            sequence = excluded.sequence
+        `,
+        [link.routeId, link.stopId, link.sequence],
+      );
+    }
+
+    for (const sighting of records.busSightings) {
+      await client.query(
+        `
+          insert into bus_sightings (
+            id, route_id, stop_id, reporter_id, latitude, longitude, created_at
+          ) values ($1, $2, $3, $4, $5, $6, $7)
+          on conflict (id) do nothing
+        `,
+        [
+          sighting.id,
+          sighting.routeId,
+          sighting.stopId,
+          sighting.reporterId,
+          sighting.latitude,
+          sighting.longitude,
+          sighting.createdAt,
+        ],
+      );
+    }
+
     await client.query("commit");
     console.log("postgres seed: applied");
     console.log(
-      `seeded users=${records.users.length} posts=${records.posts.length} chatRooms=${records.chatRooms.length}`,
+      `seeded users=${records.users.length} posts=${records.posts.length} chatRooms=${records.chatRooms.length} busRoutes=${records.busRoutes.length} busStops=${records.busStops.length} busSightings=${records.busSightings.length}`,
     );
   } catch (error) {
     await client.query("rollback");

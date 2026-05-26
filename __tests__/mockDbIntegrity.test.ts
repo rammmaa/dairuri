@@ -41,6 +41,12 @@ describe("mock database integrity", () => {
           roomId: "missing-room",
         },
       ],
+      // Bus collections are empty here; the post/application/message errors
+      // above are the focus of this test.
+      busRoutes: [],
+      busStops: [],
+      busRouteStops: [],
+      busSightings: [],
     };
 
     const result = validateDatabaseConsistency(invalidDatabase);

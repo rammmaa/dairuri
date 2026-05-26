@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import type { PoolClient } from "pg";
 
@@ -28,42 +28,56 @@ export function createMigrationPlan(
   return migrations.filter((migration) => !applied.has(migration.id));
 }
 
+/**
+ * Returns the ordered list of schema migrations: first the initial schema
+ * (001_initial_schema, loaded from schema.sql for backward compatibility with
+ * already-deployed databases), then any per-feature migration files found in
+ * server/db/migrations/*.sql sorted by filename. Each filename becomes the
+ * migration id with the ".sql" suffix stripped.
+ *
+ * The function tolerates a missing migrations directory so the initial schema
+ * path keeps working on fresh checkouts and in tests that do not need extra
+ * migrations.
+ */
 export async function readSchemaMigrations(
   schemaPath = path.resolve(process.cwd(), "server/db/schema.sql"),
   migrationsDir = path.resolve(process.cwd(), "server/db/migrations"),
 ): Promise<MigrationFile[]> {
-  const extraMigrations = await readMigrationDirectory(migrationsDir);
+  const initial: MigrationFile = {
+    id: "001_initial_schema",
+    sql: await readFile(schemaPath, "utf8"),
+  };
 
-  return [
-    {
-      id: "001_initial_schema",
-      sql: await readFile(schemaPath, "utf8"),
-    },
-    ...extraMigrations,
-  ];
+  const extras = await readMigrationDirectory(migrationsDir);
+  return [initial, ...extras];
 }
 
-async function readMigrationDirectory(migrationsDir: string): Promise<MigrationFile[]> {
-  let filenames: string[];
-
+async function readMigrationDirectory(
+  migrationsDir: string,
+): Promise<MigrationFile[]> {
+  let entries: string[];
   try {
-    filenames = await readdir(migrationsDir);
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+    const dirInfo = await stat(migrationsDir);
+    if (!dirInfo.isDirectory()) {
       return [];
     }
-
+    entries = await readdir(migrationsDir);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
     throw error;
   }
 
+  const sqlEntries = entries
+    .filter((name) => name.toLowerCase().endsWith(".sql"))
+    .sort((a, b) => a.localeCompare(b));
+
   return Promise.all(
-    filenames
-      .filter((filename) => filename.endsWith(".sql"))
-      .sort()
-      .map(async (filename) => ({
-        id: path.basename(filename, ".sql"),
-        sql: await readFile(path.join(migrationsDir, filename), "utf8"),
-      })),
+    sqlEntries.map(async (name) => ({
+      id: name.replace(/\.sql$/i, ""),
+      sql: await readFile(path.join(migrationsDir, name), "utf8"),
+    })),
   );
 }
 

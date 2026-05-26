@@ -1,4 +1,12 @@
-import { mockApplications, mockChatRooms, mockPosts } from "../data/mockDomain";
+import {
+  mockApplications,
+  mockBusRoutes,
+  mockBusRouteStops,
+  mockBusSightings,
+  mockBusStops,
+  mockChatRooms,
+  mockPosts,
+} from "../data/mockDomain";
 import { applyToPost, getPost, sendMessage } from "../services/mockApi";
 
 describe("mock domain service", () => {
@@ -27,5 +35,78 @@ describe("mock domain service", () => {
       senderId: "me",
       type: "text",
     });
+  });
+});
+
+describe("mock Happy Bus fixtures", () => {
+  it("exposes six Happy Bus routes, six stops, and historical sightings", () => {
+    expect(mockBusRoutes).toHaveLength(6);
+    expect(mockBusStops).toHaveLength(6);
+    expect(mockBusSightings.length).toBeGreaterThanOrEqual(3);
+    expect(mockBusSightings.length).toBeLessThanOrEqual(6);
+  });
+
+  it("uses the H1 through H6 codes for the Happy Bus routes", () => {
+    expect(mockBusRoutes.map((route) => route.code)).toEqual([
+      "H1",
+      "H2",
+      "H3",
+      "H4",
+      "H5",
+      "H6",
+    ]);
+  });
+
+  it("assigns a single mint color to every Happy Bus route", () => {
+    const distinctColors = new Set(mockBusRoutes.map((route) => route.color));
+    expect(distinctColors.size).toBe(1);
+  });
+
+  it("uses the six stop names sourced from the Figma frame", () => {
+    expect(mockBusStops.map((stop) => stop.name)).toEqual([
+      "청도 코아루블루핀",
+      "청도군청",
+      "청도 버스 터미널",
+      "성조 아파트 앞",
+      "부민 아파트",
+      "어린이집",
+    ]);
+  });
+
+  it("assigns a unique sequence within each route", () => {
+    const seen = new Map<string, Set<number>>();
+    for (const link of mockBusRouteStops) {
+      const slots = seen.get(link.routeId) ?? new Set<number>();
+      expect(slots.has(link.sequence)).toBe(false);
+      slots.add(link.sequence);
+      seen.set(link.routeId, slots);
+    }
+  });
+
+  it("only references known routes and stops from sightings and links", () => {
+    const routeIds = new Set(mockBusRoutes.map((route) => route.id));
+    const stopIds = new Set(mockBusStops.map((stop) => stop.id));
+
+    for (const link of mockBusRouteStops) {
+      expect(routeIds.has(link.routeId)).toBe(true);
+      expect(stopIds.has(link.stopId)).toBe(true);
+    }
+
+    for (const sighting of mockBusSightings) {
+      expect(routeIds.has(sighting.routeId)).toBe(true);
+      expect(stopIds.has(sighting.stopId)).toBe(true);
+    }
+  });
+
+  it("only records sightings at stops that actually belong to the route", () => {
+    const routeStopPairs = new Set(
+      mockBusRouteStops.map((link) => `${link.routeId}::${link.stopId}`),
+    );
+
+    for (const sighting of mockBusSightings) {
+      expect(routeStopPairs.has(`${sighting.routeId}::${sighting.stopId}`)).toBe(
+        true,
+      );
+    }
   });
 });

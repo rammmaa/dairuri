@@ -118,6 +118,11 @@ Server entrypoints:
 | `POST /posts/:id/applications` | required | yes | `createApplication(postId, intro, userId)` |
 | `POST /applications/:id/accept` | required | yes | `updateApplicationStatus(id, "accepted")` |
 | `POST /applications/:id/reject` | required | yes | `updateApplicationStatus(id, "rejected", reason)` |
+| `GET /bus/routes` | no | no | `listBusRoutes()` |
+| `GET /bus/stops` | no | no | `listBusStops()` |
+| `GET /bus/route-stops` | no | no | `listBusRouteStops()` |
+| `GET /bus/stops/:id/sightings` | no | no | `listSightingsForStop(stopId, limit)` |
+| `POST /bus/sightings` | required | yes | `recordBusSighting(body, userId)` |
 | `GET /chat/rooms` | no | no | `listChatRooms()` |
 | `GET /chat/rooms/:roomId/messages` | no | no | `listChatMessages(roomId)` |
 | `POST /chat/rooms/:roomId/messages` | required | yes | `createChatMessage(roomId, text, userId)` |
@@ -151,6 +156,11 @@ erDiagram
   users ||--o{ chat_messages : sends
   users ||--o{ reports : creates
   chat_rooms ||--o{ reports : can_reference
+  bus_routes ||--o{ bus_route_stops : has
+  bus_stops ||--o{ bus_route_stops : serves
+  bus_routes ||--o{ bus_sightings : receives
+  bus_stops ||--o{ bus_sightings : receives
+  users ||--o{ bus_sightings : reports
 ```
 
 Main schema file: `server/db/schema.sql`
@@ -166,6 +176,10 @@ Durable PostgreSQL tables:
 - `chat_room_participants`
 - `chat_messages`
 - `reports`
+- `bus_routes`
+- `bus_stops`
+- `bus_route_stops`
+- `bus_sightings`
 
 The `posts` table includes human-resource profile columns for the `work` map pivot: `profile_mode`, `available_tasks`, `employment_types`, `preferred_pay`, `availability_note`, and `contact_note`.
 
@@ -178,6 +192,7 @@ Migration tracking:
 Redis usage:
 
 - rate limit counters for write endpoints.
+- bus stop latest-sighting cache.
 - planned future usage: token denylist, verification nonce, presence, unread cache, map/directions cache.
 
 ## Build And Deployment

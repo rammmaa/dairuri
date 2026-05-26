@@ -11,6 +11,15 @@ import {
 } from "./auth";
 import { checkRedisRateLimit, RateLimitExceededError } from "./rateLimit";
 import {
+  BusSightingInputError,
+  listBusRouteStops,
+  listBusRoutes,
+  listBusStops,
+  listSightingsForStop,
+  recordBusSighting,
+  type RecordBusSightingInput,
+} from "./busArchive";
+import {
   createApplication,
   createPost,
   createChatMessage,
@@ -33,6 +42,7 @@ const writeRateLimits = {
   createApplication: { limit: 10, windowSeconds: 60 },
   reviewApplication: { limit: 60, windowSeconds: 60 },
   sendChatMessage: { limit: 60, windowSeconds: 60 },
+  recordBusSighting: { limit: 30, windowSeconds: 60 },
 } as const;
 
 export async function handleApiRequest(
@@ -186,6 +196,54 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
     const body = await readJsonBody<{ reason?: string }>(request);
     await updateApplicationStatus(rejectMatch[1], "rejected", body.reason?.trim());
     sendJson(response, 204);
+    return;
+  }
+
+  if (method === "GET" && pathname === "/bus/routes") {
+    sendJson(response, 200, await listBusRoutes());
+    return;
+  }
+
+  if (method === "GET" && pathname === "/bus/stops") {
+    sendJson(response, 200, await listBusStops());
+    return;
+  }
+
+  if (method === "GET" && pathname === "/bus/route-stops") {
+    sendJson(response, 200, await listBusRouteStops());
+    return;
+  }
+
+  const busStopSightingsMatch = pathname.match(
+    /^\/bus\/stops\/([^/]+)\/sightings$/,
+  );
+  if (method === "GET" && busStopSightingsMatch) {
+    const limitParam = url.searchParams.get("limit");
+    const limit = limitParam ? Number(limitParam) : undefined;
+    if (limit !== undefined && !Number.isFinite(limit)) {
+      sendJson(response, 400, { error: "limit must be a number" });
+      return;
+    }
+    sendJson(
+      response,
+      200,
+      await listSightingsForStop(busStopSightingsMatch[1], limit),
+    );
+    return;
+  }
+
+  if (method === "POST" && pathname === "/bus/sightings") {
+    const context = await requireWriteContext(request, "recordBusSighting");
+    const body = await readJsonBody<RecordBusSightingInput>(request);
+    try {
+      sendJson(response, 201, await recordBusSighting(body, context.userId));
+    } catch (error) {
+      if (error instanceof BusSightingInputError) {
+        sendJson(response, 400, { error: error.message });
+        return;
+      }
+      throw error;
+    }
     return;
   }
 
