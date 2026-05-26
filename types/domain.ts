@@ -49,6 +49,7 @@ export type CarpoolPost = BasePost & {
 
 export type JobPost = BasePost & {
   type: "job";
+  profileMode?: "resource";
   placeName: string;
   placeAddress?: string;
   days: Weekday[];
@@ -57,6 +58,11 @@ export type JobPost = BasePost & {
   wageType: "hourly" | "monthly";
   wageAmount: number;
   jobCategory?: string;
+  availableTasks?: string[];
+  employmentTypes?: Array<"fullTime" | "partTime" | "shortTerm">;
+  preferredPay?: string;
+  availabilityNote?: string;
+  contactNote?: string;
 };
 
 export type Post = CarpoolPost | JobPost;

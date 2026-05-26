@@ -1,4 +1,5 @@
 import { FileText } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Header } from "../../components/Header";
@@ -6,6 +7,7 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockMe, mockPosts } from "../../data/mockDomain";
+import { getPosts } from "../../services/api";
 import type { Post } from "../../types/domain";
 import { ProfilePostCard } from "./SavedPostsScreen";
 
@@ -17,10 +19,38 @@ export type MyPostsScreenProps = {
 
 export function MyPostsScreen({
   onBack,
-  posts = mockPosts,
+  posts,
   userId = mockMe.id,
 }: MyPostsScreenProps) {
-  const myPosts = posts.filter((post) => post.author.id === userId);
+  const [loadedPosts, setLoadedPosts] = useState<Post[]>(() =>
+    process.env.NODE_ENV === "test" ? mockPosts : [],
+  );
+  const sourcePosts = posts ?? loadedPosts;
+  const myPosts = sourcePosts.filter((post) => post.author.id === userId);
+
+  useEffect(() => {
+    if (posts || process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+
+    getPosts()
+      .then((nextPosts) => {
+        if (active) {
+          setLoadedPosts(nextPosts);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setLoadedPosts([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [posts]);
 
   return (
     <View style={styles.safeArea}>

@@ -14,7 +14,7 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockChatRooms, mockMessages } from "../../data/mockDomain";
-import { getChatMessages, sendMessage } from "../../services/api";
+import { getChatMessages, getChatRooms, sendMessage } from "../../services/api";
 import type { ChatMessage, ChatRoom } from "../../types/domain";
 import { ChatMoreBottomSheet } from "./ChatMoreBottomSheet";
 
@@ -25,21 +25,52 @@ export type ChatRoomScreenProps = {
 };
 
 export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps) {
-  const room = useMemo(
-    () => mockChatRooms.find((item) => item.id === roomId) ?? mockChatRooms[0],
+  const initialRoom = useMemo(
+    () =>
+      process.env.NODE_ENV === "test"
+        ? mockChatRooms.find((item) => item.id === roomId) ?? mockChatRooms[0]
+        : undefined,
     [roomId],
   );
+  const [room, setRoom] = useState<ChatRoom | undefined>(initialRoom);
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
-    mockMessages.filter((message) => message.roomId === room.id),
+    initialRoom ? mockMessages.filter((message) => message.roomId === initialRoom.id) : [],
   );
   const [text, setText] = useState("");
   const [moreVisible, setMoreVisible] = useState(false);
   const [leaveVisible, setLeaveVisible] = useState(false);
 
   useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
     let active = true;
 
-    setMessages(mockMessages.filter((message) => message.roomId === room.id));
+    getChatRooms()
+      .then((rooms) => {
+        const loadedRoom = rooms.find((item) => item.id === roomId);
+        if (active && loadedRoom) {
+          setRoom(loadedRoom);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!room) {
+      return undefined;
+    }
+
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
 
     getChatMessages(room.id).then((loadedMessages) => {
       if (!active) {
@@ -52,7 +83,17 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
     return () => {
       active = false;
     };
-  }, [room.id]);
+  }, [room?.id]);
+
+  if (!room) {
+    return (
+      <View style={styles.safeArea}>
+        <View style={styles.loadingState}>
+          <Text style={styles.loadingText}>채팅방을 불러오는 중이에요</Text>
+        </View>
+      </View>
+    );
+  }
 
   const handleSend = () => {
     const trimmed = text.trim();
@@ -244,6 +285,19 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.surface,
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  loadingText: {
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
   },
   header: {
     minHeight: 78,

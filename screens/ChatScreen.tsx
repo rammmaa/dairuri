@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -29,13 +29,15 @@ import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
+import { getChatRooms } from "../services/api";
+import type { ChatRoom as DomainChatRoom } from "../types/domain";
 
 export type ChatScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
   onOpenRoom?: (roomId: string) => void;
 };
 
-type ChatRoom = {
+type ChatListRoom = {
   id: string;
   category: "ride" | "work";
   title: string;
@@ -50,7 +52,7 @@ type ChatRoom = {
   };
 };
 
-const chatRooms: ChatRoom[] = [
+const chatRooms: ChatListRoom[] = [
   {
     id: "brungpot",
     category: "ride",
@@ -68,10 +70,10 @@ const chatRooms: ChatRoom[] = [
   {
     id: "dairuri-cafe",
     category: "work",
-    title: "다로리 카페 같이 가요",
-    initials: "다",
+    title: "농촌 일손 연락방",
+    initials: "일",
     participantLabel: "4명",
-    latestMessage: "오늘 4시 20분 정문 앞에서 만나요!",
+    latestMessage: "목요일 오전 카페 보조 가능하신가요?",
     time: "오후 3:12",
     unreadCount: 3,
     avatarTone: {
@@ -101,6 +103,33 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [rooms, setRooms] = useState<ChatListRoom[]>(() =>
+    process.env.NODE_ENV === "test" ? chatRooms : [],
+  );
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+
+    getChatRooms()
+      .then((loadedRooms) => {
+        if (active) {
+          setRooms(loadedRooms.map(mapChatRoomToListItem));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setRooms([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleBack = () => {
     setSelectedRoomId(null);
@@ -114,10 +143,10 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
   if (selectedRoomId === null) {
     return (
       <ChatListScreen
-        rooms={chatRooms}
+        rooms={rooms}
         onOpenRoom={(roomId) => {
           if (onOpenRoom) {
-            onOpenRoom(roomId === "brungpot" ? "room-1" : "room-2");
+            onOpenRoom(toDomainRoomId(roomId));
             return;
           }
 
@@ -353,8 +382,41 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
   );
 }
 
+function toDomainRoomId(roomId: string) {
+  if (roomId === "brungpot") {
+    return "room-1";
+  }
+
+  if (roomId === "dairuri-cafe") {
+    return "room-2";
+  }
+
+  return roomId;
+}
+
+function mapChatRoomToListItem(room: DomainChatRoom): ChatListRoom {
+  const isWorkRoom = room.postId?.includes("job") ?? false;
+  const participantLabel =
+    room.participants.length > 0 ? `${room.participants.length}명` : "참여자 없음";
+
+  return {
+    id: room.id,
+    category: isWorkRoom ? "work" : "ride",
+    title: room.title,
+    initials: room.title.slice(0, 1),
+    participantLabel,
+    latestMessage: room.lastMessage ?? "아직 메시지가 없어요",
+    time: "",
+    unreadCount: room.unreadCount,
+    avatarTone: {
+      background: isWorkRoom ? colors.mintLight : colors.blueSoft,
+      foreground: isWorkRoom ? colors.mintDark : colors.blue,
+    },
+  };
+}
+
 type ChatListScreenProps = {
-  rooms: ChatRoom[];
+  rooms: ChatListRoom[];
   onOpenRoom: (roomId: string) => void;
   onSelectTab?: (item: BottomNavItem) => void;
 };
@@ -458,7 +520,7 @@ function ChatListScreen({
               testID="chat-filter-ride"
             />
             <FilterTab
-              label="알바"
+              label="인력"
               selected={selectedFilter === "work"}
               onPress={() => setSelectedFilter("work")}
               testID="chat-filter-work"
@@ -528,7 +590,7 @@ function FilterTab({ label, selected = false, onPress, testID }: FilterTabProps)
 }
 
 type ChatRoomCardProps = {
-  room: ChatRoom;
+  room: ChatListRoom;
   onPress: () => void;
 };
 

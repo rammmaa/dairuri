@@ -3,23 +3,23 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { PostDetailScreen } from "../screens/post/PostDetailScreen";
 
 describe("PostDetailScreen", () => {
-  it("renders a job detail with job-specific metadata", () => {
+  it("renders a resource profile detail with seeker-specific metadata", () => {
     render(<PostDetailScreen postId="job-1" />);
 
-    expect(screen.getByText("알바")).toBeTruthy();
+    expect(screen.getByText("인적 자원")).toBeTruthy();
     expect(screen.getByText("우리마이사랑해")).toBeTruthy();
     expect(screen.getByText("80°C")).toBeTruthy();
     expect(
-      screen.getByText("‘청도감 학원’ 함께 다니면서 알바하실 분 구해요"),
+      screen.getByText("농촌 일손과 카페 보조 도울 수 있어요"),
     ).toBeTruthy();
-    expect(screen.getByText("일하는 장소")).toBeTruthy();
-    expect(screen.getByText("청도명어학원")).toBeTruthy();
-    expect(screen.getByText("시급")).toBeTruthy();
-    expect(screen.getByText("10,000원")).toBeTruthy();
-    expect(screen.getByText("근무시간")).toBeTruthy();
-    expect(screen.getByText("화, 목 18:00 - 20:00")).toBeTruthy();
-    expect(screen.getByText("카테고리")).toBeTruthy();
-    expect(screen.getByText("라이딩 교육")).toBeTruthy();
+    expect(screen.getByText("활동 가능 지역")).toBeTruthy();
+    expect(screen.getByText("다로리 카페 인근")).toBeTruthy();
+    expect(screen.getByText("희망 급여")).toBeTruthy();
+    expect(screen.getByText("시급 12,000원부터")).toBeTruthy();
+    expect(screen.getByText("가능 시간")).toBeTruthy();
+    expect(screen.getByText("화, 목 09:00 - 15:00")).toBeTruthy();
+    expect(screen.getByText("가능 업무")).toBeTruthy();
+    expect(screen.getByText("카페 보조 · 농번기 일손 · 아이 등하원 동행")).toBeTruthy();
   });
 
   it("renders a carpool detail with carpool-specific metadata", () => {
@@ -43,9 +43,9 @@ describe("PostDetailScreen", () => {
 
     render(<PostDetailScreen postId="job-1" onOpenChat={onOpenChat} />);
 
-    fireEvent.press(screen.getByText("지원하기"));
+    fireEvent.press(screen.getByText("연락하기"));
 
-    expect(screen.getByText("자기소개서를 작성해주세요")).toBeTruthy();
+    expect(screen.getByText("연락 내용을 작성해주세요")).toBeTruthy();
     expect(screen.getByTestId("apply-next-button").props.accessibilityState.disabled).toBe(
       true,
     );
@@ -76,12 +76,12 @@ describe("PostDetailScreen", () => {
     fireEvent.press(screen.getByTestId("apply-terms-confirm-button"));
 
     await waitFor(() => {
-      expect(screen.getAllByText("지원 완료").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("연락 요청 완료").length).toBeGreaterThan(0);
     });
 
     fireEvent.press(screen.getByTestId("apply-complete-button"));
 
     expect(onOpenChat).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText("지원 완료")).toBeNull();
+    expect(screen.queryByText("연락 요청 완료")).toBeNull();
   });
 });

@@ -1,8 +1,18 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 
 import App from "../App";
+import * as api from "../services/api";
 
 describe("Recruitment creation flow", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("opens the ride creation flow from the post tab and enters chat after publishing", async () => {
     render(<App />);
 
@@ -60,11 +70,13 @@ describe("Recruitment creation flow", () => {
     expect(screen.getByText("청도역 → 대전역")).toBeTruthy();
 
     fireEvent.press(screen.getByText("라이드 모집 시작하기"));
-    expect(screen.getByText("지금 함께 이동할 대화를 확인하세요")).toBeTruthy();
+    expect(await screen.findByText("지금 함께 이동할 대화를 확인하세요")).toBeTruthy();
     expect(screen.getByText("부릉팟")).toBeTruthy();
   });
 
-  it("branches to the job flow and requires job-specific fields before the final check", async () => {
+  it("branches to the resource profile flow and requires profile fields before the final check", async () => {
+    const createPostSpy = jest.spyOn(api, "createPost");
+
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
@@ -72,25 +84,26 @@ describe("Recruitment creation flow", () => {
     fireEvent.press(screen.getByTestId("recruitment-type-work"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
-    expect(screen.getByText("어떤 파트너를 찾으시나요?")).toBeTruthy();
+    expect(screen.getByText("어떤 일을 할 수 있나요?")).toBeTruthy();
     expect(screen.getByTestId("recruitment-next").props.accessibilityState).toMatchObject({
       disabled: true,
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText("공고 제목 입력"), "다로리 카페 평일 근무");
+    fireEvent.changeText(screen.getByPlaceholderText("나를 소개하는 제목"), "농촌 일손과 카페 보조 가능");
     fireEvent.press(screen.getByText("유통/판매"));
+    fireEvent.press(screen.getByText("생산/건설"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
-    expect(screen.getByText("근무 일정을 알려주세요.")).toBeTruthy();
+    expect(screen.getByText("가능한 시간대를 알려주세요.")).toBeTruthy();
     fireEvent.press(screen.getByText("화"));
     fireEvent.press(screen.getByText("목"));
     fireEvent.changeText(screen.getByPlaceholderText("시작 시간"), "09:00");
     fireEvent.changeText(screen.getByPlaceholderText("종료 시간"), "15:00");
-    fireEvent.changeText(screen.getByPlaceholderText("급여"), "123123");
+    fireEvent.changeText(screen.getByPlaceholderText("희망 급여"), "123123");
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
-    expect(screen.getByText("업무 상세 내용을 설명해주세요.")).toBeTruthy();
-    fireEvent.changeText(screen.getByPlaceholderText("상세설명을 써주세요"), "카운터와 음료 제조를 도와주세요.");
+    expect(screen.getByText("가능 업무와 연락 전 참고사항을 알려주세요.")).toBeTruthy();
+    fireEvent.changeText(screen.getByPlaceholderText("상세설명을 써주세요"), "카운터와 농번기 일손을 도울 수 있어요.");
     fireEvent.press(screen.getByLabelText("상호 채팅 동의"));
     fireEvent.press(screen.getByLabelText("서비스 이용약관"));
     fireEvent.press(screen.getByLabelText("개인정보 수집 및 이용 동의"));
@@ -98,8 +111,28 @@ describe("Recruitment creation flow", () => {
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
     expect(screen.getByText("마지막으로 확인해주세요.")).toBeTruthy();
-    expect(screen.getByText("다로리 카페 평일 근무")).toBeTruthy();
+    expect(screen.getByText("농촌 일손과 카페 보조 가능")).toBeTruthy();
+    expect(screen.getByText("유통/판매 · 생산/건설")).toBeTruthy();
     expect(screen.getByText("화 · 목")).toBeTruthy();
+    expect(screen.getByText("시간당 123,123원")).toBeTruthy();
+    expect(screen.getByText("인적 자원")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("인적 자원 등록하기"));
+
+    await waitFor(() => {
+      expect(createPostSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "job",
+          profileMode: "resource",
+          title: "농촌 일손과 카페 보조 가능",
+          body: "카운터와 농번기 일손을 도울 수 있어요.",
+          wageType: "hourly",
+          wageAmount: 123123,
+          availableTasks: ["유통/판매", "생산/건설"],
+          preferredPay: "시간당 123,123원",
+        }),
+      );
+    });
   });
 
   it("formats work time and pay fields while typing", async () => {
@@ -109,8 +142,9 @@ describe("Recruitment creation flow", () => {
     fireEvent.press(screen.getByTestId("map-home-bottom-nav-posts"));
     fireEvent.press(screen.getByTestId("recruitment-type-work"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
-    fireEvent.changeText(screen.getByPlaceholderText("공고 제목 입력"), "다로리 카페 평일 근무");
+    fireEvent.changeText(screen.getByPlaceholderText("나를 소개하는 제목"), "농촌 일손과 카페 보조 가능");
     fireEvent.press(screen.getByText("유통/판매"));
+    fireEvent.press(screen.getByText("생산/건설"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
     const startTimeInput = screen.getByPlaceholderText("시작 시간");
@@ -128,11 +162,11 @@ describe("Recruitment creation flow", () => {
     fireEvent.changeText(endTimeInput, "930");
     expect(screen.getByPlaceholderText("종료 시간").props.value).toBe("930");
     fireEvent(screen.getByPlaceholderText("종료 시간"), "blur");
-    fireEvent.changeText(screen.getByPlaceholderText("급여"), "123123");
+    fireEvent.changeText(screen.getByPlaceholderText("희망 급여"), "123123");
 
     expect(screen.getByPlaceholderText("시작 시간").props.value).toBe("20:00");
     expect(screen.getByPlaceholderText("종료 시간").props.value).toBe("09:30");
-    expect(screen.getByPlaceholderText("급여").props.value).toBe("123,123");
+    expect(screen.getByPlaceholderText("희망 급여").props.value).toBe("123,123");
   });
 
   it("formats ride departure time while typing", async () => {

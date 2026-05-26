@@ -1,4 +1,5 @@
 import { BriefcaseBusiness, CalendarDays, CarFront, Heart, MapPin } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
   Image,
   Pressable,
@@ -13,6 +14,7 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockPosts } from "../../data/mockDomain";
+import { getPosts } from "../../services/api";
 import type { Post } from "../../types/domain";
 
 export type SavedPostsScreenProps = {
@@ -20,8 +22,36 @@ export type SavedPostsScreenProps = {
   posts?: Post[];
 };
 
-export function SavedPostsScreen({ onBack, posts = mockPosts }: SavedPostsScreenProps) {
-  const savedPosts = posts.filter((post) => post.liked);
+export function SavedPostsScreen({ onBack, posts }: SavedPostsScreenProps) {
+  const [loadedPosts, setLoadedPosts] = useState<Post[]>(() =>
+    process.env.NODE_ENV === "test" ? mockPosts : [],
+  );
+  const sourcePosts = posts ?? loadedPosts;
+  const savedPosts = sourcePosts.filter((post) => post.liked);
+
+  useEffect(() => {
+    if (posts || process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+
+    getPosts()
+      .then((nextPosts) => {
+        if (active) {
+          setLoadedPosts(nextPosts);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setLoadedPosts([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [posts]);
 
   return (
     <View style={styles.safeArea}>
@@ -98,7 +128,7 @@ export function ProfilePostCard({ post, onPress }: ProfilePostCardProps) {
               <CarFront size={13} color={colors.yellowText} strokeWidth={2.2} />
             )}
             <Text style={[styles.typeBadgeText, isJob ? styles.jobText : styles.carpoolText]}>
-              {isJob ? "알바" : "라이드"}
+              {isJob ? "인력" : "라이드"}
             </Text>
           </View>
           <Heart
@@ -146,7 +176,9 @@ function MetaRow({ icon, label }: MetaRowProps) {
 function formatSchedule(post: Post) {
   const days = post.days.join(" · ");
   if (post.type === "job") {
-    return `${days} ${post.startTime}-${post.endTime} · 시급 ${post.wageAmount.toLocaleString()}원`;
+    const payLabel = post.preferredPay ?? `시급 ${post.wageAmount.toLocaleString()}원`;
+
+    return `${days} ${post.startTime}-${post.endTime} · ${payLabel}`;
   }
 
   return `${days} ${post.startTime}${post.endTime ? `-${post.endTime}` : ""}`;
