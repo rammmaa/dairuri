@@ -34,12 +34,55 @@ describe("server create post input", () => {
     });
   });
 
+  it("normalizes a resource profile payload with human-resource fields", () => {
+    expect(
+      normalizeCreatePostInput(
+        {
+          type: "job",
+          profileMode: "resource",
+          title: "농촌 일손과 카페 보조 가능",
+          body: "카운터와 농번기 일손을 도울 수 있어요.",
+          placeName: "다로리 일대",
+          days: ["화", "목"],
+          startTime: "09:00",
+          endTime: "15:00",
+          wageType: "hourly",
+          wageAmount: 123123,
+          jobCategory: "유통/판매 · 생산/건설",
+          availableTasks: ["유통/판매", "생산/건설"],
+          employmentTypes: ["partTime", "shortTerm"],
+          preferredPay: "시간당 123,123원",
+          availabilityNote: "화 · 목 09:00 - 15:00",
+          contactNote: "문자로 먼저 연락주세요.",
+        },
+        {
+          id: "post-resource",
+          authorId: "me",
+          createdAt: "2026-05-25T00:00:00.000Z",
+        },
+      ),
+    ).toMatchObject({
+      id: "post-resource",
+      type: "job",
+      profileMode: "resource",
+      placeName: "다로리 일대",
+      wageType: "hourly",
+      wageAmount: 123123,
+      jobCategory: "유통/판매 · 생산/건설",
+      availableTasks: ["유통/판매", "생산/건설"],
+      employmentTypes: ["partTime", "shortTerm"],
+      preferredPay: "시간당 123,123원",
+      availabilityNote: "화 · 목 09:00 - 15:00",
+      contactNote: "문자로 먼저 연락주세요.",
+    });
+  });
+
   it("rejects post payloads without type-specific required fields", () => {
     expect(() =>
       normalizeCreatePostInput(
         {
           type: "job",
-          title: "알바 구해요",
+          title: "인적 자원 등록",
           body: "등원 도우미를 구합니다.",
           days: ["월"],
           startTime: "09:00",

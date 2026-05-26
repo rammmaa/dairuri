@@ -22,6 +22,16 @@ describe("server database migration plan", () => {
       ]),
     ).toThrow("duplicate migration id: 001_initial_schema");
   });
+
+  it("loads the shipped feature migrations after the initial schema", async () => {
+    await expect(readSchemaMigrations()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "001_initial_schema" }),
+        expect.objectContaining({ id: "002_bus_archive" }),
+        expect.objectContaining({ id: "002_human_resource_profiles" }),
+      ]),
+    );
+  });
 });
 
 describe("readSchemaMigrations", () => {
@@ -87,13 +97,17 @@ describe("readSchemaMigrations", () => {
     ]);
   });
 
-  it("includes the real 002_bus_archive migration shipped with the repository", async () => {
+  it("includes the real feature migrations shipped with the repository", async () => {
     const migrations = await readSchemaMigrations();
     const ids = migrations.map((migration) => migration.id);
 
     expect(ids[0]).toBe("001_initial_schema");
     expect(ids).toContain("002_bus_archive");
+    expect(ids).toContain("002_human_resource_profiles");
     expect(ids.indexOf("002_bus_archive")).toBeGreaterThan(
+      ids.indexOf("001_initial_schema"),
+    );
+    expect(ids.indexOf("002_human_resource_profiles")).toBeGreaterThan(
       ids.indexOf("001_initial_schema"),
     );
   });

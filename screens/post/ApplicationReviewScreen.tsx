@@ -100,7 +100,7 @@ export function ApplicationReviewScreen({
             <Text style={styles.sectionLabel}>연결된 모집글</Text>
             <View style={styles.linkedPostCard}>
               <Text style={styles.linkedPostType}>
-                {linkedPost.type === "job" ? "알바" : "정기 라이딩"}
+                {linkedPost.type === "job" ? "인적 자원" : "정기 라이딩"}
               </Text>
               <Text style={styles.linkedPostTitle}>{linkedPost.title}</Text>
             </View>

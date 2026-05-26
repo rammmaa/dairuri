@@ -1,8 +1,23 @@
-import { hasLiveApiBaseUrl } from "./apiClient";
 import * as liveApi from "./liveApi";
 import * as mockApi from "./mockApi";
 
-const activeApi = () => (hasLiveApiBaseUrl() ? liveApi : mockApi);
+type ApiMode = "live" | "mock";
+type ApiModeEnv = Partial<
+  Record<
+    "NODE_ENV" | "EXPO_PUBLIC_DARORI_API_BASE_URL" | "EXPO_PUBLIC_DARORI_USE_MOCK_API",
+    string
+  >
+>;
+
+export function resolveApiMode(env: ApiModeEnv = process.env): ApiMode {
+  if (env.NODE_ENV === "test" || env.EXPO_PUBLIC_DARORI_USE_MOCK_API === "true") {
+    return "mock";
+  }
+
+  return "live";
+}
+
+const activeApi = () => (resolveApiMode() === "mock" ? mockApi : liveApi);
 
 export const getPosts = (...args: Parameters<typeof mockApi.getPosts>) =>
   activeApi().getPosts(...args);

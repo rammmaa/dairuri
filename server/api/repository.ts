@@ -41,6 +41,12 @@ type PostRow = {
   wage_type: "hourly" | "monthly" | null;
   wage_amount: number | null;
   job_category: string | null;
+  profile_mode: "resource" | null;
+  available_tasks: string[];
+  employment_types: Array<"fullTime" | "partTime" | "shortTerm">;
+  preferred_pay: string | null;
+  availability_note: string | null;
+  contact_note: string | null;
   price: number | null;
   seats: number | null;
   author_id: string;
@@ -65,6 +71,12 @@ type CreatePostInput = Partial<Post> & {
   endTime?: string;
   imageUrls?: string[];
   jobCategory?: string;
+  profileMode?: "resource";
+  availableTasks?: string[];
+  employmentTypes?: Array<"fullTime" | "partTime" | "shortTerm">;
+  preferredPay?: string;
+  availabilityNote?: string;
+  contactNote?: string;
   placeAddress?: string;
   placeName?: string;
   price?: number;
@@ -98,6 +110,12 @@ export type CreatePostRecord = {
   wageType: "hourly" | "monthly" | null;
   wageAmount: number | null;
   jobCategory: string | null;
+  profileMode: "resource" | null;
+  availableTasks: string[];
+  employmentTypes: Array<"fullTime" | "partTime" | "shortTerm">;
+  preferredPay: string | null;
+  availabilityNote: string | null;
+  contactNote: string | null;
   price: number | null;
   seats: number | null;
   createdAt: string;
@@ -163,12 +181,14 @@ export async function createPost(
         id, type, title, body, author_id, image_urls, status,
         place_name, place_address, departure, destination, days,
         start_time, end_time, wage_type, wage_amount, job_category,
-        price, seats, created_at
+        profile_mode, available_tasks, employment_types, preferred_pay,
+        availability_note, contact_note, price, seats, created_at
       ) values (
         $1, $2, $3, $4, $5, $6, $7,
         $8, $9, $10, $11, $12,
         $13, $14, $15, $16, $17,
-        $18, $19, $20
+        $18, $19, $20, $21,
+        $22, $23, $24, $25, $26
       )
     `,
     [
@@ -189,6 +209,12 @@ export async function createPost(
       record.wageType,
       record.wageAmount,
       record.jobCategory,
+      record.profileMode,
+      record.availableTasks,
+      record.employmentTypes,
+      record.preferredPay,
+      record.availabilityNote,
+      record.contactNote,
       record.price,
       record.seats,
       record.createdAt,
@@ -240,6 +266,12 @@ export function normalizeCreatePostInput(
       wageType: input.wageType ?? "hourly",
       wageAmount: input.wageAmount,
       jobCategory: optionalText(input.jobCategory),
+      profileMode: input.profileMode ?? null,
+      availableTasks: input.availableTasks ?? [],
+      employmentTypes: input.employmentTypes ?? [],
+      preferredPay: optionalText(input.preferredPay),
+      availabilityNote: optionalText(input.availabilityNote),
+      contactNote: optionalText(input.contactNote),
       price: null,
       seats: null,
     };
@@ -261,6 +293,12 @@ export function normalizeCreatePostInput(
     wageType: null,
     wageAmount: null,
     jobCategory: null,
+    profileMode: null,
+    availableTasks: [],
+    employmentTypes: [],
+    preferredPay: null,
+    availabilityNote: null,
+    contactNote: null,
     price: input.price ?? null,
     seats: input.seats ?? null,
   };
@@ -522,6 +560,12 @@ function mapPostRow(row: PostRow): Post {
       wageType: row.wage_type ?? "hourly",
       wageAmount: row.wage_amount ?? 0,
       jobCategory: row.job_category ?? undefined,
+      profileMode: row.profile_mode ?? undefined,
+      availableTasks: row.available_tasks ?? [],
+      employmentTypes: row.employment_types ?? [],
+      preferredPay: row.preferred_pay ?? undefined,
+      availabilityNote: row.availability_note ?? undefined,
+      contactNote: row.contact_note ?? undefined,
     };
   }
 

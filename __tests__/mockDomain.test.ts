@@ -21,9 +21,11 @@ describe("mock domain service", () => {
     await expect(getPost("job-1")).resolves.toMatchObject({
       id: "job-1",
       type: "job",
+      profileMode: "resource",
+      availableTasks: ["카페 보조", "농번기 일손", "아이 등하원 동행"],
     });
 
-    await expect(applyToPost("job-1", "지원 자기소개입니다.")).resolves.toMatchObject({
+    await expect(applyToPost("job-1", "연락 요청 메시지입니다.")).resolves.toMatchObject({
       postId: "job-1",
       status: "pending",
     });

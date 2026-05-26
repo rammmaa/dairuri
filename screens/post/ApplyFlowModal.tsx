@@ -55,18 +55,19 @@ export function ApplyFlowModal({
   const introValid = intro.trim().length >= 10;
   const requiredTermsChecked = terms.service && terms.privacy && terms.thirdParty;
   const themeColor = post.type === "job" ? colors.yellow : colors.mint;
+  const isResourceProfile = post.type === "job" && post.profileMode === "resource";
 
   const stepTitle = useMemo(() => {
     if (step === 1) {
-      return "자기소개 작성";
+      return isResourceProfile ? "연락 내용 작성" : "자기소개 작성";
     }
 
     if (step === 2) {
       return "약관 동의";
     }
 
-    return "지원 완료";
-  }, [step]);
+    return isResourceProfile ? "연락 요청 완료" : "지원 완료";
+  }, [isResourceProfile, step]);
 
   if (!visible) {
     return null;
@@ -117,11 +118,19 @@ export function ApplyFlowModal({
 
         {step === 1 ? (
           <View style={styles.content}>
-            <Text style={styles.title}>자기소개서를 작성해주세요</Text>
+            <Text style={styles.title}>
+              {isResourceProfile
+                ? "연락 내용을 작성해주세요"
+                : "자기소개서를 작성해주세요"}
+            </Text>
             <TextInputField
               value={intro}
               onChangeText={setIntro}
-              placeholder="자기소개를 작성해주세요"
+              placeholder={
+                isResourceProfile
+                  ? "요청할 일과 시간을 작성해주세요"
+                  : "자기소개를 작성해주세요"
+              }
               multiline
               maxLength={300}
               testID="apply-intro-input"
@@ -180,10 +189,13 @@ export function ApplyFlowModal({
             <View style={styles.completeIcon}>
               <CheckCircle2 size={34} color={colors.mintDark} strokeWidth={2.3} />
             </View>
-            <Text style={styles.completeTitle}>지원 완료</Text>
+            <Text style={styles.completeTitle}>
+              {isResourceProfile ? "연락 요청 완료" : "지원 완료"}
+            </Text>
             <Text style={styles.description}>
-              작성하신 지원서가 작성자에게 전달되었습니다.{"\n"}
-              검토 후 연락 드릴게요!
+              {isResourceProfile
+                ? "작성하신 연락 내용이 등록자에게 전달되었습니다.\n채팅에서 이어서 이야기해보세요."
+                : "작성하신 지원서가 작성자에게 전달되었습니다.\n검토 후 연락 드릴게요!"}
             </Text>
             <AppButton label="확인" onPress={complete} testID="apply-complete-button" />
           </View>

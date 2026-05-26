@@ -13,10 +13,13 @@ flowchart TD
   MapSurface["components/NaverMapSurface.*"]
   NaverMaps[Naver Maps Dynamic Map]
   BusArchive[Bus sighting archive panel]
+  ResourceMap[Human resource map profiles]
   ServiceSwitch[services/api.ts]
-  MockApi[services/mockApi.ts]
+  MockApi[Test/local mock API]
   LiveApi[services/liveApi.ts]
+  VercelApi["api/[...path].ts"]
   ApiServer[server/api/server.ts]
+  ApiHandler[server/api/handler.ts]
   Auth[server/api/auth.ts]
   RateLimit[server/api/rateLimit.ts]
   Repository[server/api/repository.ts]
@@ -31,14 +34,18 @@ flowchart TD
   MapScreen --> MapSurface
   MapSurface --> NaverMaps
   MapScreen --> BusArchive
+  MapScreen --> ResourceMap
   Screens --> ServiceSwitch
-  ServiceSwitch -->|no EXPO_PUBLIC_DARORI_API_BASE_URL| MockApi
-  ServiceSwitch -->|EXPO_PUBLIC_DARORI_API_BASE_URL set| LiveApi
+  ServiceSwitch -->|test or explicit mock opt-in| MockApi
+  ServiceSwitch -->|default runtime| LiveApi
+  LiveApi --> VercelApi
   LiveApi --> ApiServer
-  ApiServer --> Auth
-  ApiServer --> RateLimit
+  VercelApi --> ApiHandler
+  ApiServer --> ApiHandler
+  ApiHandler --> Auth
+  ApiHandler --> RateLimit
   RateLimit --> Redis
-  ApiServer --> Repository
+  ApiHandler --> Repository
   Repository --> Postgres
   App --> Vercel
   App --> Apk
@@ -49,10 +56,10 @@ flowchart TD
 | Area | Files | Role |
 | --- | --- | --- |
 | Entry | `index.ts`, `App.tsx` | Expo entry and root screen/tab orchestration |
-| Screens | `screens/*.tsx` | Map, route/bus, archive, create post, chat, profile flows |
+| Screens | `screens/*.tsx` | Map, route/bus, archive, human-resource registration, chat, profile flows |
 | Components | `components/*.tsx` | Shared UI controls, bottom nav, cards, native/web map surfaces |
 | Domain types | `types/domain.ts` | Shared app/domain model types |
-| Mock data | `data/mockDomain.ts`, `data/mapHome.ts` | Local fixture source for mock mode and UI demos |
+| Test/local data | `data/mockDomain.ts`, `data/mapHome.ts` | Fixture source for Jest and explicit local mock mode |
 | List helpers | `data/mapPostList.ts` | Shared map/archive filtering, sorting, paging |
 | Design tokens | `constants/*.ts` | Colors, spacing, typography |
 
@@ -62,21 +69,21 @@ flowchart TD
 flowchart LR
   Screen[Screen action]
   ApiSwitch[services/api.ts]
-  Mock[Mock in-memory API]
+  Mock[Test/local mock API]
   Client[services/apiClient.ts]
   Live[Live HTTP API]
 
   Screen --> ApiSwitch
-  ApiSwitch -->|no live base URL| Mock
-  ApiSwitch -->|live base URL exists| Client
+  ApiSwitch -->|NODE_ENV=test or EXPO_PUBLIC_DARORI_USE_MOCK_API=true| Mock
+  ApiSwitch -->|default runtime| Client
   Client --> Live
 ```
 
-The app defaults to mock mode. Live mode is enabled only when `EXPO_PUBLIC_DARORI_API_BASE_URL` exists.
+The app defaults to live API mode. If `EXPO_PUBLIC_DARORI_API_BASE_URL` is missing outside tests, live calls fail loudly instead of silently reading mock data. Mock mode is available only in Jest or with `EXPO_PUBLIC_DARORI_USE_MOCK_API=true` for controlled local demos.
 
 Live requests can include:
 
-- `EXPO_PUBLIC_DARORI_API_BASE_URL`: API server base URL.
+- `EXPO_PUBLIC_DARORI_API_BASE_URL`: API server base URL. Local server uses `http://localhost:8787`; same-origin Vercel web deploy can use `/api`.
 - `EXPO_PUBLIC_DARORI_USER_ID`: sent as `X-Darori-User-Id` for write requests.
 
 These names are current code-level identifiers. The user context is still a development contract, not production-grade auth.
@@ -91,11 +98,15 @@ The map home screen uses two implementations behind the same UI surface:
 | Web | `components/NaverMapSurface.web.tsx` | Loads the Naver Web Dynamic Map script with `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID` |
 | Fallback | `components/FallbackMapSurface.tsx` | Draws a lightweight local map-like view when the real map cannot be used |
 
-`screens/MapScreen.tsx` owns the map camera state, category chips, current-location button, recruitment bottom sheet, and the bus sighting archive panel. The current-location button asks the browser/native geolocation API for permission, moves the map camera, and falls back to the default campus coordinate when location is unavailable.
+`screens/MapScreen.tsx` owns the map camera state, category chips, current-location button, recruitment/resource bottom sheet, and the bus sighting archive panel. The `work` category currently represents the human-resource map: job seekers register possible tasks, availability, and preferred conditions so local residents or employers can discover and contact them. The current-location button asks the browser/native geolocation API for permission, moves the map camera, and falls back to the default campus coordinate when location is unavailable.
 
 ## Server API
 
-Server entrypoint: `server/api/server.ts`
+Server entrypoints:
+
+- Local long-running HTTP server: `server/api/server.ts`
+- Vercel Function catch-all: `api/[...path].ts`
+- Shared request handler: `server/api/handler.ts`
 
 | Route | Auth | Rate limit | Repository action |
 | --- | --- | --- | --- |
@@ -107,6 +118,11 @@ Server entrypoint: `server/api/server.ts`
 | `POST /posts/:id/applications` | required | yes | `createApplication(postId, intro, userId)` |
 | `POST /applications/:id/accept` | required | yes | `updateApplicationStatus(id, "accepted")` |
 | `POST /applications/:id/reject` | required | yes | `updateApplicationStatus(id, "rejected", reason)` |
+| `GET /bus/routes` | no | no | `listBusRoutes()` |
+| `GET /bus/stops` | no | no | `listBusStops()` |
+| `GET /bus/route-stops` | no | no | `listBusRouteStops()` |
+| `GET /bus/stops/:id/sightings` | no | no | `listSightingsForStop(stopId, limit)` |
+| `POST /bus/sightings` | required | yes | `recordBusSighting(body, userId)` |
 | `GET /chat/rooms` | no | no | `listChatRooms()` |
 | `GET /chat/rooms/:roomId/messages` | no | no | `listChatMessages(roomId)` |
 | `POST /chat/rooms/:roomId/messages` | required | yes | `createChatMessage(roomId, text, userId)` |
@@ -140,6 +156,11 @@ erDiagram
   users ||--o{ chat_messages : sends
   users ||--o{ reports : creates
   chat_rooms ||--o{ reports : can_reference
+  bus_routes ||--o{ bus_route_stops : has
+  bus_stops ||--o{ bus_route_stops : serves
+  bus_routes ||--o{ bus_sightings : receives
+  bus_stops ||--o{ bus_sightings : receives
+  users ||--o{ bus_sightings : reports
 ```
 
 Main schema file: `server/db/schema.sql`
@@ -155,6 +176,12 @@ Durable PostgreSQL tables:
 - `chat_room_participants`
 - `chat_messages`
 - `reports`
+- `bus_routes`
+- `bus_stops`
+- `bus_route_stops`
+- `bus_sightings`
+
+The `posts` table includes human-resource profile columns for the `work` map pivot: `profile_mode`, `available_tasks`, `employment_types`, `preferred_pay`, `availability_note`, and `contact_note`.
 
 Migration tracking:
 
@@ -165,6 +192,7 @@ Migration tracking:
 Redis usage:
 
 - rate limit counters for write endpoints.
+- bus stop latest-sighting cache.
 - planned future usage: token denylist, verification nonce, presence, unread cache, map/directions cache.
 
 ## Build And Deployment
@@ -172,6 +200,7 @@ Redis usage:
 | Target | Current path |
 | --- | --- |
 | Web production | Vercel uses `vercel.json` to run `npx expo export --platform web --output-dir dist` |
+| API production | Vercel serves `api/[...path].ts` under `/api/*`, or `npm run api:start` can run the same handler on a separate Node host |
 | Web local | `npm run web` |
 | API local | `npm run api:start` |
 | DB local | `docker-compose.yml` runs PostgreSQL on `54320`, Redis on `63790` |
@@ -183,6 +212,7 @@ Redis usage:
 | --- | --- | --- |
 | `EXPO_PUBLIC_DARORI_API_BASE_URL` | app client | live API mode |
 | `EXPO_PUBLIC_DARORI_USER_ID` | app client | development write user header |
+| `EXPO_PUBLIC_DARORI_USE_MOCK_API` | app client | test/local mock opt-in only |
 | `EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID` | Expo app / native map | public native Dynamic Map key fallback |
 | `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID` | web map surface | Naver Web Dynamic Map script auth |
 | `NAVER_MAP_NCP_KEY_ID` | Expo config | native Naver map client id |
@@ -198,8 +228,9 @@ Redis usage:
 These are not finished yet:
 
 - Real auth token/session verification. Current write auth is a development header contract.
+- Application review still reads seeded fixture data until an application-list/detail endpoint exists.
+- Profile edit/settings still read the local development user fixture until user profile endpoints exist.
 - Role/ownership checks for accepting or rejecting applications.
-- Production migration history beyond the current initial schema migration.
 - Production `DATABASE_URL` and `REDIS_URL` verification against real infrastructure.
 - Production Naver Maps domain/environment verification for the final deployment URL.
 - App UI for real login session propagation into `EXPO_PUBLIC_DARORI_USER_ID` replacement.
