@@ -68,18 +68,40 @@ async function main() {
             id, type, title, body, author_id, image_urls, status,
             place_name, place_address, departure, destination, days,
             start_time, end_time, wage_type, wage_amount, job_category,
-            price, seats, created_at
+            profile_mode, available_tasks, employment_types, preferred_pay,
+            availability_note, contact_note, price, seats, created_at
           ) values (
             $1, $2, $3, $4, $5, $6, $7,
             $8, $9, $10, $11, $12,
             $13, $14, $15, $16, $17,
-            $18, $19, $20
+            $18, $19, $20, $21,
+            $22, $23, $24, $25, $26
           )
           on conflict (id) do update set
+            type = excluded.type,
             title = excluded.title,
             body = excluded.body,
+            author_id = excluded.author_id,
             image_urls = excluded.image_urls,
             status = excluded.status,
+            place_name = excluded.place_name,
+            place_address = excluded.place_address,
+            departure = excluded.departure,
+            destination = excluded.destination,
+            days = excluded.days,
+            start_time = excluded.start_time,
+            end_time = excluded.end_time,
+            wage_type = excluded.wage_type,
+            wage_amount = excluded.wage_amount,
+            job_category = excluded.job_category,
+            profile_mode = excluded.profile_mode,
+            available_tasks = excluded.available_tasks,
+            employment_types = excluded.employment_types,
+            preferred_pay = excluded.preferred_pay,
+            availability_note = excluded.availability_note,
+            contact_note = excluded.contact_note,
+            price = excluded.price,
+            seats = excluded.seats,
             updated_at = now()
         `,
         [
@@ -100,6 +122,12 @@ async function main() {
           post.wageType,
           post.wageAmount,
           post.jobCategory,
+          post.profileMode,
+          post.availableTasks,
+          post.employmentTypes,
+          post.preferredPay,
+          post.availabilityNote,
+          post.contactNote,
           post.price,
           post.seats,
           post.createdAt,

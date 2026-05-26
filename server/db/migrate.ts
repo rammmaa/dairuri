@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { PoolClient } from "pg";
 
@@ -30,13 +30,41 @@ export function createMigrationPlan(
 
 export async function readSchemaMigrations(
   schemaPath = path.resolve(process.cwd(), "server/db/schema.sql"),
+  migrationsDir = path.resolve(process.cwd(), "server/db/migrations"),
 ): Promise<MigrationFile[]> {
+  const extraMigrations = await readMigrationDirectory(migrationsDir);
+
   return [
     {
       id: "001_initial_schema",
       sql: await readFile(schemaPath, "utf8"),
     },
+    ...extraMigrations,
   ];
+}
+
+async function readMigrationDirectory(migrationsDir: string): Promise<MigrationFile[]> {
+  let filenames: string[];
+
+  try {
+    filenames = await readdir(migrationsDir);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return [];
+    }
+
+    throw error;
+  }
+
+  return Promise.all(
+    filenames
+      .filter((filename) => filename.endsWith(".sql"))
+      .sort()
+      .map(async (filename) => ({
+        id: path.basename(filename, ".sql"),
+        sql: await readFile(path.join(migrationsDir, filename), "utf8"),
+      })),
+  );
 }
 
 export async function runMigrations() {
