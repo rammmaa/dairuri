@@ -23,7 +23,9 @@ import { MapPreview } from "../components/MapPreview";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
+import { createPost } from "../services/api";
 import { searchPlaceCandidates as searchApiPlaceCandidates } from "../services/places";
+import type { Post, Weekday } from "../types/domain";
 import type { PlaceCandidate } from "../types/place";
 
 type RecruitmentType = "ride" | "work";
@@ -128,7 +130,7 @@ export function CreateRecruitmentScreen({
   const [rideDetails, setRideDetails] = useState("");
 
   const [workTitle, setWorkTitle] = useState("");
-  const [workCategory, setWorkCategory] = useState<string | null>(null);
+  const [workTaskCategories, setWorkTaskCategories] = useState<string[]>([]);
   const [workDays, setWorkDays] = useState<string[]>([]);
   const [workStartTime, setWorkStartTime] = useState("");
   const [workEndTime, setWorkEndTime] = useState("");
@@ -136,6 +138,8 @@ export function CreateRecruitmentScreen({
   const [workDetails, setWorkDetails] = useState("");
 
   const [agreements, setAgreements] = useState<Agreements>(initialAgreements);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const accent = selectedType === "work" ? colors.yellow : colors.mint;
   const accentDark = selectedType === "work" ? colors.yellowText : colors.mintDark;
@@ -174,7 +178,7 @@ export function CreateRecruitmentScreen({
 
     if (selectedType === "work") {
       if (branchStepIndex === 0) {
-        return hasText(workTitle) && workCategory !== null;
+        return hasText(workTitle) && workTaskCategories.length > 0;
       }
       if (branchStepIndex === 1) {
         return (
@@ -204,12 +208,12 @@ export function CreateRecruitmentScreen({
     rideTitle,
     screenIndex,
     selectedType,
-    workCategory,
     workDays.length,
     workDetails,
     workEndTime,
     workPay,
     workStartTime,
+    workTaskCategories.length,
     workTitle,
   ]);
 
@@ -222,10 +226,12 @@ export function CreateRecruitmentScreen({
     setScreenIndex((current) => current - 1);
   };
 
-  const handleNext = () => {
-    if (!isValid || selectedType === null) {
+  const handleNext = async () => {
+    if (!isValid || submitting || selectedType === null) {
       return;
     }
+
+    setSubmitError(null);
 
     if (selectedType === "ride" && branchStepIndex === 1) {
       setRideTime((current) => commitTimeInput(current));
@@ -238,7 +244,15 @@ export function CreateRecruitmentScreen({
 
     const maxIndex = selectedType === "work" ? 4 : 5;
     if (screenIndex === maxIndex) {
-      onComplete?.(selectedType);
+      setSubmitting(true);
+      try {
+        await createPost(buildCreatePostInput(selectedType));
+        onComplete?.(selectedType);
+      } catch {
+        setSubmitError("모집글 등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -270,6 +284,46 @@ export function CreateRecruitmentScreen({
     setWorkDays((current) => toggleValue(current, day));
   };
 
+  const toggleWorkTaskCategory = (category: string) => {
+    setWorkTaskCategories((current) => toggleValue(current, category));
+  };
+
+  function buildCreatePostInput(type: RecruitmentType): Partial<Post> {
+    if (type === "work") {
+      const scheduleLabel = formatDays(workDays);
+
+      return {
+        type: "job",
+        profileMode: "resource",
+        title: workTitle.trim(),
+        body: workDetails.trim(),
+        placeName: "다로리 일대",
+        days: workDays as Weekday[],
+        startTime: workStartTime,
+        endTime: workEndTime,
+        wageType: "hourly",
+        wageAmount: parseCurrencyNumber(workPay),
+        jobCategory: formatCategories(workTaskCategories),
+        availableTasks: workTaskCategories,
+        employmentTypes: ["partTime", "shortTerm"],
+        preferredPay: formatHourlyPay(workPay),
+        availabilityNote: `${scheduleLabel} ${workStartTime} - ${workEndTime}`.trim(),
+        contactNote: workDetails.trim(),
+      };
+    }
+
+    return {
+      type: "carpool",
+      title: rideTitle.trim(),
+      body: rideDetails.trim(),
+      departure,
+      destination,
+      days: rideDays as Weekday[],
+      startTime: rideTime,
+      seats: parseCurrencyNumber(rideCapacity),
+    };
+  }
+
   const content =
     screenIndex === 0 ? (
       <TypeSelectionStep
@@ -280,12 +334,12 @@ export function CreateRecruitmentScreen({
       branchStepIndex === 0 ? (
         <WorkBasicsStep
           title={workTitle}
-          category={workCategory}
+          selectedCategories={workTaskCategories}
           accent={accent}
           accentDark={accentDark}
           accentLight={accentLight}
           onChangeTitle={setWorkTitle}
-          onSelectCategory={setWorkCategory}
+          onToggleCategory={toggleWorkTaskCategory}
         />
       ) : branchStepIndex === 1 ? (
         <WorkScheduleStep
@@ -322,10 +376,10 @@ export function CreateRecruitmentScreen({
           accent={accent}
           accentDark={accentDark}
           title={workTitle}
-          routeLabel={workCategory ?? "업무 카테고리"}
+          routeLabel={formatCategories(workTaskCategories)}
           scheduleLabel={formatDays(workDays)}
           metaLabel={`${workStartTime} - ${workEndTime}`}
-          detailLabel={`${formatCurrency(workPay)}원`}
+          detailLabel={formatHourlyPay(workPay)}
         />
       )
     ) : branchStepIndex === 0 ? (
@@ -379,11 +433,14 @@ export function CreateRecruitmentScreen({
     );
 
   const buttonLabel =
-    selectedType === "work" && screenIndex === 4
-      ? "일자리 모집 시작하기"
+    submitting
+      ? "등록 중..."
+      : selectedType === "work" && screenIndex === 4
+      ? "인적 자원 등록하기"
       : selectedType === "ride" && screenIndex === 5
         ? "라이드 모집 시작하기"
         : "다음";
+  const canPressNext = isValid && !submitting;
 
   if (placePickerTarget !== null) {
     return (
@@ -433,28 +490,37 @@ export function CreateRecruitmentScreen({
           </View>
 
           {content}
+          {submitError ? (
+            <Text style={styles.submitError} accessibilityRole="alert">
+              {submitError}
+            </Text>
+          ) : null}
         </ScrollView>
 
         <View style={styles.footer}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={buttonLabel}
-            accessibilityState={{ disabled: !isValid }}
-            disabled={!isValid}
-            onPress={handleNext}
+            accessibilityState={{ disabled: !canPressNext }}
+            disabled={!canPressNext}
+            onPress={() => {
+              void handleNext();
+            }}
             testID="recruitment-next"
             style={({ pressed }) => [
               styles.footerButton,
-              isValid
+              canPressNext
                 ? { backgroundColor: accent }
                 : styles.footerButtonDisabled,
-              pressed && isValid && styles.pressed,
+              pressed && canPressNext && styles.pressed,
             ]}
           >
             <Text
               style={[
                 styles.footerButtonText,
-                isValid ? styles.footerButtonTextActive : styles.footerButtonTextDisabled,
+                canPressNext
+                  ? styles.footerButtonTextActive
+                  : styles.footerButtonTextDisabled,
               ]}
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -493,8 +559,8 @@ function TypeSelectionStep({ selectedType, onSelect }: TypeSelectionStepProps) {
         />
         <TypeCard
           type="work"
-          title="일자리"
-          description="함께 일할 근무자를 찾아요"
+          title="인적 자원"
+          description="가능한 업무와 시간을 알려요"
           selected={selectedType === "work"}
           accent={colors.yellow}
           accentDark={colors.yellowText}
@@ -697,29 +763,29 @@ function RideTitleStep({
 
 type WorkBasicsStepProps = {
   title: string;
-  category: string | null;
+  selectedCategories: string[];
   accent: string;
   accentDark: string;
   accentLight: string;
   onChangeTitle: (value: string) => void;
-  onSelectCategory: (value: string) => void;
+  onToggleCategory: (value: string) => void;
 };
 
 function WorkBasicsStep({
   title,
-  category,
+  selectedCategories,
   accent,
   accentDark,
   accentLight,
   onChangeTitle,
-  onSelectCategory,
+  onToggleCategory,
 }: WorkBasicsStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>어떤 파트너를 찾으시나요?</Text>
+      <Text style={styles.title}>어떤 일을 할 수 있나요?</Text>
       <FieldInput
-        label="공고 제목"
-        placeholder="공고 제목 입력"
+        label="소개 제목"
+        placeholder="나를 소개하는 제목"
         value={title}
         onChangeText={onChangeTitle}
         icon={FileText}
@@ -727,17 +793,17 @@ function WorkBasicsStep({
       />
 
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>업무 카테고리</Text>
+        <Text style={styles.label}>가능 업무</Text>
         <View style={styles.categoryGrid}>
           {workCategories.map((item) => {
-            const selected = category === item;
+            const selected = selectedCategories.includes(item);
             return (
               <Pressable
                 key={item}
                 accessibilityRole="button"
                 accessibilityLabel={item}
                 accessibilityState={{ selected }}
-                onPress={() => onSelectCategory(item)}
+                onPress={() => onToggleCategory(item)}
                 style={({ pressed }) => [
                   styles.categoryChip,
                   selected && {
@@ -798,7 +864,7 @@ function WorkScheduleStep({
 }: WorkScheduleStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>근무 일정을 알려주세요.</Text>
+      <Text style={styles.title}>가능한 시간대를 알려주세요.</Text>
       <DaySelector
         selectedDays={selectedDays}
         accent={accent}
@@ -806,7 +872,7 @@ function WorkScheduleStep({
       />
 
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>근무 시간</Text>
+        <Text style={styles.label}>가능 시간</Text>
         <View style={styles.inputRow}>
           <Clock3
             size={17}
@@ -838,11 +904,12 @@ function WorkScheduleStep({
       </View>
 
       <FieldInput
-        label="급여"
-        placeholder="급여"
+        label="시간당 희망 급여"
+        placeholder="희망 급여"
         value={pay}
         onChangeText={onChangePay}
         keyboardType="number-pad"
+        prefix="시간당"
         suffix="원"
         accent={accentDark}
       />
@@ -872,7 +939,9 @@ function DetailsStep({
   return (
     <View style={styles.stepBlock}>
       <Text style={styles.title}>
-        {type === "ride" ? "어떤 라이드를 원하시나요?" : "업무 상세 내용을 설명해주세요."}
+        {type === "ride"
+          ? "어떤 라이드를 원하시나요?"
+          : "가능 업무와 연락 전 참고사항을 알려주세요."}
       </Text>
 
       <View style={styles.fieldBlock}>
@@ -972,7 +1041,7 @@ function ReviewStep({
           </Text>
           <View style={[styles.reviewBadge, { backgroundColor: accent }]}>
             <Text style={styles.reviewBadgeText}>
-              {type === "ride" ? "라이드" : "일자리"}
+              {type === "ride" ? "라이드" : "인적 자원"}
             </Text>
           </View>
         </View>
@@ -1316,6 +1385,10 @@ function formatDays(days: string[]) {
   return days.length > 0 ? days.join(" · ") : "요일 미정";
 }
 
+function formatCategories(categories: string[]) {
+  return categories.length > 0 ? categories.join(" · ") : "가능 업무";
+}
+
 function getFallbackPlaceCandidates(query: string) {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) {
@@ -1354,6 +1427,18 @@ function formatCurrency(value: string) {
   }
 
   return Number(numeric).toLocaleString("ko-KR");
+}
+
+function parseCurrencyNumber(value: string) {
+  const numeric = value.replace(/[^0-9]/g, "");
+
+  return numeric ? Number(numeric) : undefined;
+}
+
+function formatHourlyPay(value: string) {
+  const amount = formatCurrency(value);
+
+  return amount ? `시간당 ${amount}원` : "시간당 협의";
 }
 
 function formatTimeInput(value: string) {
@@ -1395,6 +1480,14 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     paddingBottom: 126,
     gap: 30,
+  },
+  submitError: {
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
+    textAlign: "center",
   },
   header: {
     gap: 18,

@@ -49,7 +49,7 @@ describe("Profile settings flow", () => {
     render(<SavedPostsScreen />);
 
     expect(screen.getByText("내 찜")).toBeTruthy();
-    expect(screen.getByText("‘청도감 학원’ 함께 다니면서 알바하실 분 구해요")).toBeTruthy();
+    expect(screen.getByText("농촌 일손과 카페 보조 도울 수 있어요")).toBeTruthy();
     expect(screen.getByText("총 1건")).toBeTruthy();
   });
 

@@ -51,7 +51,7 @@ describe("ChatScreen", () => {
     });
     expect(screen.getByText("부릉팟")).toBeTruthy();
     expect(screen.getByText("아침 셔틀 공유방")).toBeTruthy();
-    expect(screen.queryByText("다로리 카페 같이 가요")).toBeNull();
+    expect(screen.queryByText("농촌 일손 연락방")).toBeNull();
 
     fireEvent.press(screen.getByTestId("chat-unread-filter"));
     expect(screen.getByTestId("chat-unread-filter").props.accessibilityState).toMatchObject({
@@ -61,7 +61,7 @@ describe("ChatScreen", () => {
     expect(screen.queryByText("아침 셔틀 공유방")).toBeNull();
 
     fireEvent.press(screen.getByTestId("chat-filter-work"));
-    expect(screen.getByText("다로리 카페 같이 가요")).toBeTruthy();
+    expect(screen.getByText("농촌 일손 연락방")).toBeTruthy();
     expect(screen.queryByText("부릉팟")).toBeNull();
   });
 
@@ -73,6 +73,6 @@ describe("ChatScreen", () => {
     expect(screen.getByText("총 1개")).toBeTruthy();
     expect(screen.getByText("아침 셔틀 공유방")).toBeTruthy();
     expect(screen.queryByText("부릉팟")).toBeNull();
-    expect(screen.queryByText("다로리 카페 같이 가요")).toBeNull();
+    expect(screen.queryByText("농촌 일손 연락방")).toBeNull();
   });
 });

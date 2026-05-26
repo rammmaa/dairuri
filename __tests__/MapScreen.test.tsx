@@ -40,7 +40,8 @@ describe("MapScreen", () => {
     expect(screen.getByText("여기서 검색")).toBeTruthy();
     expect(screen.getByText("총")).toBeTruthy();
     expect(screen.getByText("5")).toBeTruthy();
-    expect(screen.getAllByText("다로리 카페 매주 같이 가실 분 구해요")).toHaveLength(2);
+    expect(screen.getByText("다로리 카페 매주 같이 가실 분 구해요")).toBeTruthy();
+    expect(screen.getByText("농촌 일손과 카페 보조 도울 수 있어요")).toBeTruthy();
 
     const bottomNav = within(screen.getByTestId("map-home-bottom-nav"));
 

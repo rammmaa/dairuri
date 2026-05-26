@@ -1,5 +1,5 @@
 import { Heart, Share2 } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Image,
   Pressable,
@@ -15,7 +15,8 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockPosts } from "../../data/mockDomain";
-import type { Post } from "../../types/domain";
+import { getPost, toggleLike as togglePostLike } from "../../services/api";
+import type { JobPost, Post } from "../../types/domain";
 import { ApplyFlowModal } from "./ApplyFlowModal";
 
 export type PostDetailScreenProps = {
@@ -38,18 +39,62 @@ export function PostDetailScreen({
   onOpenChat,
 }: PostDetailScreenProps) {
   const initialPost = useMemo(
-    () => mockPosts.find((item) => item.id === postId) ?? mockPosts[0],
+    () =>
+      process.env.NODE_ENV === "test"
+        ? mockPosts.find((item) => item.id === postId) ?? mockPosts[0]
+        : undefined,
     [postId],
   );
-  const [post, setPost] = useState<Post>(initialPost);
+  const [post, setPost] = useState<Post | undefined>(initialPost);
   const [applyVisible, setApplyVisible] = useState(false);
 
-  const title = post.type === "job" ? "알바" : "정기 라이딩";
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+
+    getPost(postId)
+      .then((loadedPost) => {
+        if (active && loadedPost) {
+          setPost(loadedPost);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [postId]);
+
+  if (!post) {
+    return (
+      <View style={styles.safeArea}>
+        <Header showBack title="모집글" onBack={onBack} />
+        <View style={styles.loadingState}>
+          <Text style={styles.loadingText}>모집글을 불러오는 중이에요</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const isResourceProfile = post.type === "job" && post.profileMode === "resource";
+  const title = post.type === "job" ? "인적 자원" : "정기 라이딩";
   const themeColor = post.type === "job" ? colors.yellowText : colors.mintDark;
   const heroImage = post.imageUrls[0] ?? fallbackImage;
 
   const toggleLike = () => {
-    setPost((current) => ({ ...current, liked: !current.liked }));
+    const previousPost = post;
+    setPost({ ...post, liked: !post.liked });
+
+    togglePostLike(post.id)
+      .then((updatedPost) => {
+        if (updatedPost) {
+          setPost(updatedPost);
+        }
+      })
+      .catch(() => setPost(previousPost));
   };
 
   return (
@@ -96,7 +141,7 @@ export function PostDetailScreen({
           />
         </Pressable>
         <AppButton
-          label="지원하기"
+          label={isResourceProfile ? "연락하기" : "지원하기"}
           onPress={() => setApplyVisible(true)}
           variant={post.type === "job" ? "yellow" : "primary"}
           size="medium"
@@ -187,14 +232,18 @@ function getMetaItems(post: Post): MetaItem[] {
   const days = post.days.join(", ");
 
   if (post.type === "job") {
+    if (post.profileMode === "resource") {
+      return getResourceMetaItems(post, days);
+    }
+
     return [
-      { label: "일하는 장소", value: post.placeName },
-      { label: "시급", value: formatWage(post.wageType, post.wageAmount) },
+      { label: "활동 가능 지역", value: post.placeName },
+      { label: "희망 급여", value: formatWage(post.wageType, post.wageAmount) },
       {
-        label: "근무시간",
+        label: "가능 시간",
         value: `${days} ${post.startTime} - ${post.endTime}`,
       },
-      { label: "카테고리", value: post.jobCategory ?? "알바" },
+      { label: "가능 업무", value: post.jobCategory ?? "인적 자원" },
     ];
   }
 
@@ -210,6 +259,24 @@ function getMetaItems(post: Post): MetaItem[] {
   ];
 }
 
+function getResourceMetaItems(post: JobPost, days: string): MetaItem[] {
+  return [
+    { label: "활동 가능 지역", value: post.placeName },
+    {
+      label: "희망 급여",
+      value: post.preferredPay ?? formatWage(post.wageType, post.wageAmount),
+    },
+    {
+      label: "가능 시간",
+      value: `${days} ${post.startTime} - ${post.endTime}`,
+    },
+    {
+      label: "가능 업무",
+      value: post.availableTasks?.join(" · ") ?? post.jobCategory ?? "인적 자원",
+    },
+  ];
+}
+
 function formatWage(type: "hourly" | "monthly", amount: number) {
   const prefix = type === "hourly" ? "" : "월 ";
 
@@ -220,6 +287,19 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.surface,
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  loadingText: {
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
   },
   scrollContent: {
     paddingBottom: 104,

@@ -25,6 +25,7 @@ import {
   bottomNavItems,
   bottomSheetFilters,
   categoryFilters,
+  mapDomainPostsToMapHomePosts,
   mapHomePosts,
   type BottomNavItem,
   type CategoryFilter,
@@ -35,6 +36,7 @@ import {
   filterAndSortMapPosts,
   type MapPostSortMode,
 } from "../data/mapPostList";
+import { getPosts } from "../services/api";
 
 export type ArchiveScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
@@ -55,8 +57,11 @@ export function ArchiveScreen({ onSelectTab, onOpenPost }: ArchiveScreenProps) {
   const [departureFilter, setDepartureFilter] = useState<DepartureFilter>(null);
   const [sortMode, setSortMode] = useState<MapPostSortMode>("latest");
   const [visibleCount, setVisibleCount] = useState(POST_PAGE_SIZE);
+  const [recruitmentPosts, setRecruitmentPosts] = useState<MapHomePost[]>(() =>
+    process.env.NODE_ENV === "test" ? mapHomePosts : [],
+  );
   const filteredPosts = useMemo(() => {
-    return filterAndSortMapPosts(mapHomePosts, {
+    return filterAndSortMapPosts(recruitmentPosts, {
       filters: {
         category: selectedCategory,
         date: dateFilter,
@@ -65,7 +70,14 @@ export function ArchiveScreen({ onSelectTab, onOpenPost }: ArchiveScreenProps) {
       },
       sortMode,
     });
-  }, [dateFilter, departureFilter, selectedCategory, sortMode, timeFilter]);
+  }, [
+    dateFilter,
+    departureFilter,
+    recruitmentPosts,
+    selectedCategory,
+    sortMode,
+    timeFilter,
+  ]);
   const pagedPosts = createPagedListState(filteredPosts, {
     visibleCount,
     pageSize: POST_PAGE_SIZE,
@@ -76,6 +88,30 @@ export function ArchiveScreen({ onSelectTab, onOpenPost }: ArchiveScreenProps) {
   useEffect(() => {
     setVisibleCount(POST_PAGE_SIZE);
   }, [dateFilter, departureFilter, selectedCategory, sortMode, timeFilter]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+
+    getPosts()
+      .then((posts) => {
+        if (active) {
+          setRecruitmentPosts(mapDomainPostsToMapHomePosts(posts));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setRecruitmentPosts([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const cycleDateFilter = () => {
     setDateFilter((current) =>

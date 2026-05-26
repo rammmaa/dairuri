@@ -56,7 +56,7 @@ describe("mock database integrity", () => {
   });
 
   it("rejects service writes that would break database consistency", async () => {
-    await expect(applyToPost("missing-post", "지원 자기소개입니다.")).rejects.toThrow(
+    await expect(applyToPost("missing-post", "연락 요청 메시지입니다.")).rejects.toThrow(
       "Cannot apply to missing post",
     );
     await expect(sendMessage("missing-room", "안녕하세요")).rejects.toThrow(
@@ -65,7 +65,7 @@ describe("mock database integrity", () => {
   });
 
   it("allows valid service writes and keeps the database valid", async () => {
-    await expect(applyToPost("job-1", "지원 자기소개입니다.")).resolves.toMatchObject({
+    await expect(applyToPost("job-1", "연락 요청 메시지입니다.")).resolves.toMatchObject({
       postId: "job-1",
       status: "pending",
     });
