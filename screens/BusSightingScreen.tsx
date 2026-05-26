@@ -109,6 +109,17 @@ export function BusSightingScreen({
     InferenceResult<BusRoute, BusStop> | null
   >(null);
 
+  // The coordinate captured at the moment the bus button was pressed. We
+  // commit *this* to the server rather than the latest `userLocation`, so
+  // the snap result the server computes matches the stop the user
+  // confirmed on screen. Without this, a position update arriving between
+  // "맞아요" tap and the network call could shift the server snap to a
+  // neighboring stop.
+  const [committedLocation, setCommittedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
   const [chosenRouteId, setChosenRouteId] = useState<string | null>(null);
   const [chosenStopId, setChosenStopId] = useState<string | null>(null);
 
@@ -132,14 +143,21 @@ export function BusSightingScreen({
   //    rows in the prototype.
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([getBusRoutes(), getBusStops(), getBusRouteStops()]).then(
-      ([loadedRoutes, loadedStops, loadedRouteStops]) => {
+    Promise.all([getBusRoutes(), getBusStops(), getBusRouteStops()])
+      .then(([loadedRoutes, loadedStops, loadedRouteStops]) => {
         if (cancelled) return;
         setRoutes(loadedRoutes);
         setStops(loadedStops);
         setRouteStops(loadedRouteStops);
-      },
-    );
+      })
+      .catch((error) => {
+        // The screen still renders if the topology load fails; the user
+        // simply cannot start a confirmation because liveInference returns
+        // null when routes/stops are empty. We log so live-mode failures
+        // are visible during debugging.
+        if (cancelled) return;
+        console.warn("[BusSightingScreen] failed to load bus topology", error);
+      });
     return () => {
       cancelled = true;
     };
@@ -289,23 +307,32 @@ export function BusSightingScreen({
   // ---------------------------------------------------------------------
 
   const handleBusButton = () => {
-    if (!canStartConfirmation || !liveInference) {
+    if (!canStartConfirmation || !liveInference || !userLocation) {
       return;
     }
     setInferredResult(liveInference);
+    setCommittedLocation({
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+    });
     setRecordError(null);
     setFlowState("confirmation");
   };
 
   const commitSighting = async (routeId: string) => {
-    if (!userLocation) return;
+    // Always prefer the location captured when the user first pressed the
+    // bus button; only fall back to the live location when no commit point
+    // exists yet (the rejection branch can enter stop-selection without
+    // first going through the bus button on the recorder).
+    const location = committedLocation ?? userLocation;
+    if (!location) return;
     setRecording(true);
     setRecordError(null);
     try {
       const sighting = await recordBusSighting({
         routeId,
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
+        latitude: location.latitude,
+        longitude: location.longitude,
       });
       setRecentRecord(sighting);
       setRecordedRouteId(routeId);
@@ -350,6 +377,7 @@ export function BusSightingScreen({
   const handleRestart = () => {
     setFlowState("recorder");
     setInferredResult(null);
+    setCommittedLocation(null);
     setChosenRouteId(null);
     setChosenStopId(null);
     setRecentRecord(null);
@@ -365,6 +393,7 @@ export function BusSightingScreen({
       case "confirmation":
         setFlowState("recorder");
         setInferredResult(null);
+        setCommittedLocation(null);
         return;
       case "route-grid":
         setFlowState("confirmation");

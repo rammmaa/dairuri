@@ -4,6 +4,7 @@ import {
   resolveNearestStop,
   NEAREST_STOP_RADIUS_METERS,
 } from "../server/api/busArchive";
+import { parseSnapRadius } from "../services/busArchiveCore";
 
 describe("haversine", () => {
   it("returns 0 for the same coordinate", () => {
@@ -94,6 +95,35 @@ describe("NEAREST_STOP_RADIUS_METERS export", () => {
     // The constant is captured at module load; this test merely asserts the
     // shipped default has not been quietly changed without updating the spec.
     expect(NEAREST_STOP_RADIUS_METERS).toBe(300);
+  });
+});
+
+describe("parseSnapRadius", () => {
+  it("returns the default when the env value is missing or empty", () => {
+    expect(parseSnapRadius(undefined)).toBe(300);
+    expect(parseSnapRadius("")).toBe(300);
+    expect(parseSnapRadius("   ")).toBe(300);
+  });
+
+  it("returns the default when the env value is non-numeric", () => {
+    expect(parseSnapRadius("abc")).toBe(300);
+    expect(parseSnapRadius("250m")).toBe(300);
+    expect(parseSnapRadius("NaN")).toBe(300);
+  });
+
+  it("returns the default for non-positive values", () => {
+    expect(parseSnapRadius("0")).toBe(300);
+    expect(parseSnapRadius("-50")).toBe(300);
+  });
+
+  it("returns the default for non-finite values", () => {
+    expect(parseSnapRadius("Infinity")).toBe(300);
+    expect(parseSnapRadius("-Infinity")).toBe(300);
+  });
+
+  it("returns the parsed value when the env value is a positive number", () => {
+    expect(parseSnapRadius("500")).toBe(500);
+    expect(parseSnapRadius("75.5")).toBe(75.5);
   });
 });
 

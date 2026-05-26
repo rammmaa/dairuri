@@ -145,11 +145,20 @@ export function RouteScreen({
   const [busRoutes, setBusRoutes] = useState<BusRoute[]>([]);
   useEffect(() => {
     let cancelled = false;
-    void getBusRoutes().then((routes) => {
-      if (!cancelled) {
-        setBusRoutes(routes);
-      }
-    });
+    getBusRoutes()
+      .then((routes) => {
+        if (!cancelled) {
+          setBusRoutes(routes);
+        }
+      })
+      .catch((error) => {
+        // The badge is non-critical; if the bus archive endpoint fails we
+        // simply render the route cards without the freshness badge. Avoid
+        // surfacing the error to the user since the rest of the screen is
+        // unaffected.
+        if (cancelled) return;
+        console.warn("[RouteScreen] failed to load bus routes", error);
+      });
     return () => {
       cancelled = true;
     };

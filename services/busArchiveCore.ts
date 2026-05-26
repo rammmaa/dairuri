@@ -8,15 +8,36 @@
 
 const EARTH_RADIUS_METERS = 6_371_000;
 
+const DEFAULT_SNAP_RADIUS_METERS = 300;
+
+/**
+ * Parses the snap radius override into a positive finite number, falling
+ * back to the default when the env value is missing, empty, non-numeric, or
+ * zero/negative. The fallback matters because the radius is used in a
+ * `distance > radius` comparison; a `NaN` radius would make that comparison
+ * always false and silently disable the guard.
+ */
+export function parseSnapRadius(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === "") {
+    return DEFAULT_SNAP_RADIUS_METERS;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_SNAP_RADIUS_METERS;
+  }
+  return parsed;
+}
+
 /**
  * Maximum distance, in meters, between a reporter and the stop their sighting
  * is snapped to. Sightings beyond this radius are rejected. Default 300 m
  * was chosen from the prototype-map stop spacing (~400-600 m) and should be
  * revisited once Darori field data is available. Can be overridden at module
- * load time via `DARORI_BUS_SNAP_RADIUS_M`.
+ * load time via `DARORI_BUS_SNAP_RADIUS_M`; invalid overrides fall back to
+ * the default rather than producing NaN.
  */
-export const NEAREST_STOP_RADIUS_METERS = Number(
-  process.env.DARORI_BUS_SNAP_RADIUS_M ?? 300,
+export const NEAREST_STOP_RADIUS_METERS = parseSnapRadius(
+  process.env.DARORI_BUS_SNAP_RADIUS_M,
 );
 
 export class BusSightingInputError extends Error {

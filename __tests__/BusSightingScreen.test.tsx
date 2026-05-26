@@ -214,6 +214,98 @@ describe("BusSightingScreen", () => {
     expect(onOpenRouteInfo).toHaveBeenCalledTimes(1);
   });
 
+  it("commits the location frozen at bus-button press, not the latest watched location", async () => {
+    // Drive the watcher with a sequence: arrive near 청도 코아루블루핀, then
+    // drift away to a coordinate that snaps to a different stop. The
+    // sighting that gets recorded must use the original position.
+    const koaru = { latitude: 35.6474, longitude: 128.7338 };
+    const drift = { latitude: 35.6492, longitude: 128.7355 }; // 청도군청
+
+    let positionCallback:
+      | ((event: {
+          coords: {
+            latitude: number;
+            longitude: number;
+            accuracy: number;
+            altitude: number | null;
+            altitudeAccuracy: number | null;
+            heading: number | null;
+            speed: number | null;
+          };
+          timestamp: number;
+        }) => void)
+      | null = null;
+    mockedRequestPermissions.mockResolvedValue({
+      status: Location.PermissionStatus.GRANTED,
+      granted: true,
+      canAskAgain: true,
+      expires: "never",
+    } as Awaited<ReturnType<typeof Location.requestForegroundPermissionsAsync>>);
+    mockedWatchPosition.mockImplementation(async (_options, callback) => {
+      positionCallback = callback;
+      callback({
+        coords: {
+          latitude: koaru.latitude,
+          longitude: koaru.longitude,
+          accuracy: 5,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+        },
+        timestamp: Date.now(),
+      });
+      return { remove: jest.fn() } as Awaited<
+        ReturnType<typeof Location.watchPositionAsync>
+      >;
+    });
+
+    render(<BusSightingScreen />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
+      ).toMatchObject({ disabled: false });
+    });
+
+    // Press the bus button at the koaru-bluepin position.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
+    });
+    expect(await screen.findByText("이 정류장이 맞나요?")).toBeTruthy();
+    // Stop name appears in both the header card and the map label.
+    expect(screen.getAllByText("청도 코아루블루핀").length).toBeGreaterThan(0);
+
+    // Now drift the position while still on the confirmation screen.
+    await act(async () => {
+      positionCallback?.({
+        coords: {
+          latitude: drift.latitude,
+          longitude: drift.longitude,
+          accuracy: 5,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+        },
+        timestamp: Date.now(),
+      });
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-accept-button"));
+    });
+
+    // The mock API records the coordinate it was called with on the
+    // sighting record. Verify the recorded latitude matches the koaru
+    // press time, not the post-drift coordinate.
+    const recent = await screen.findByTestId("bus-sighting-recent");
+    // Stop name in the recent card reflects the snap that happened at
+    // press time. Drifting to cheongdo-office would have snapped to a
+    // different stop, so seeing koaru here proves the freeze worked.
+    expect(within(recent).getByText(/청도 코아루블루핀/)).toBeTruthy();
+  });
+
   it("back arrow walks the state machine in reverse", async () => {
     grantPermissionWithLocation();
     const onBack = jest.fn();
