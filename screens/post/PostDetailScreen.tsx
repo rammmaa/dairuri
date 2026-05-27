@@ -14,9 +14,10 @@ import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
-import { mockPosts } from "../../data/mockDomain";
-import { getPost, toggleLike as togglePostLike } from "../../services/api";
-import type { JobPost, Post } from "../../types/domain";
+import { mockMe, mockPosts } from "../../data/mockDomain";
+import { getMe, getPost, toggleLike as togglePostLike } from "../../services/api";
+import { getSessionUser } from "../../services/authSession";
+import type { JobPost, Post, UserProfile } from "../../types/domain";
 import { ApplyFlowModal } from "./ApplyFlowModal";
 
 export type PostDetailScreenProps = {
@@ -46,6 +47,12 @@ export function PostDetailScreen({
     [postId],
   );
   const [post, setPost] = useState<Post | undefined>(initialPost);
+  const [currentUser, setCurrentUser] = useState<UserProfile | undefined>(() =>
+    process.env.NODE_ENV === "test" ? mockMe : getSessionUser(),
+  );
+  const [currentUserChecked, setCurrentUserChecked] = useState(
+    process.env.NODE_ENV === "test" || Boolean(getSessionUser()),
+  );
   const [applyVisible, setApplyVisible] = useState(false);
 
   useEffect(() => {
@@ -68,6 +75,31 @@ export function PostDetailScreen({
     };
   }, [postId]);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+
+    getMe()
+      .then((profile) => {
+        if (active) {
+          setCurrentUser(profile);
+          setCurrentUserChecked(true);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setCurrentUserChecked(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   if (!post) {
     return (
       <View style={styles.safeArea}>
@@ -83,6 +115,15 @@ export function PostDetailScreen({
   const title = post.type === "job" ? "인재 풀 등록" : "정기 라이딩";
   const themeColor = post.type === "job" ? colors.yellowText : colors.mintDark;
   const heroImage = post.imageUrls[0] ?? fallbackImage;
+  const isOwnPost = currentUser?.id === post.author.id;
+  const primaryActionDisabled = !currentUserChecked || !currentUser || isOwnPost;
+  const primaryActionLabel = !currentUserChecked
+    ? "확인 중"
+    : isOwnPost
+      ? "내 모집글"
+      : isResourceProfile
+        ? "연락하기"
+        : "지원하기";
 
   const toggleLike = () => {
     const previousPost = post;
@@ -140,13 +181,21 @@ export function PostDetailScreen({
             strokeWidth={2.1}
           />
         </Pressable>
-        <AppButton
-          label={isResourceProfile ? "연락하기" : "지원하기"}
-          onPress={() => setApplyVisible(true)}
-          variant={post.type === "job" ? "yellow" : "primary"}
-          size="medium"
-          style={styles.applyButton}
-        />
+        <View style={styles.footerActionColumn}>
+          {isOwnPost ? (
+            <Text style={styles.footerHint}>
+              내가 작성한 모집글에는 지원할 수 없어요.
+            </Text>
+          ) : null}
+          <AppButton
+            label={primaryActionLabel}
+            disabled={primaryActionDisabled}
+            onPress={() => setApplyVisible(true)}
+            variant={post.type === "job" ? "yellow" : "primary"}
+            size="medium"
+            style={styles.applyButton}
+          />
+        </View>
       </View>
 
       <ApplyFlowModal
@@ -466,6 +515,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mintLight,
   },
   applyButton: {
+    width: "100%",
+  },
+  footerActionColumn: {
     flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  footerHint: {
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
+    textAlign: "center",
   },
 });

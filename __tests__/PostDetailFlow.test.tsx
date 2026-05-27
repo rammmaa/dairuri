@@ -1,8 +1,25 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+jest.mock("../services/api", () => {
+  const actual = jest.requireActual("../services/api");
+
+  return {
+    ...actual,
+    applyToPost: jest.fn((...args) => actual.applyToPost(...args)),
+  };
+});
+
 import { PostDetailScreen } from "../screens/post/PostDetailScreen";
+import * as api from "../services/api";
 
 describe("PostDetailScreen", () => {
+  afterEach(() => {
+    jest.mocked(api.applyToPost).mockImplementation((...args) => {
+      const actual = jest.requireActual("../services/api");
+      return actual.applyToPost(...args);
+    });
+  });
+
   it("renders a resource profile detail with seeker-specific metadata", () => {
     render(<PostDetailScreen postId="job-1" />);
 
@@ -82,6 +99,34 @@ describe("PostDetailScreen", () => {
     fireEvent.press(screen.getByTestId("apply-complete-button"));
 
     expect(onOpenChat).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("연락 요청 완료")).toBeNull();
+  });
+
+  it("does not let the current user apply to their own post", () => {
+    render(<PostDetailScreen postId="carpool-1" />);
+
+    expect(screen.getByText("내 모집글")).toBeTruthy();
+    expect(screen.getByText("내가 작성한 모집글에는 지원할 수 없어요.")).toBeTruthy();
+    expect(screen.queryByText("지원하기")).toBeNull();
+  });
+
+  it("keeps the apply modal open and shows an error when application creation fails", async () => {
+    jest
+      .mocked(api.applyToPost)
+      .mockRejectedValueOnce(new Error("이미 신청한 모집글입니다."));
+
+    render(<PostDetailScreen postId="job-1" />);
+
+    fireEvent.press(screen.getByText("연락하기"));
+    fireEvent.changeText(
+      screen.getByTestId("apply-intro-input"),
+      "꼼꼼하게 시간 맞춰 참여할 수 있습니다.",
+    );
+    fireEvent.press(screen.getByTestId("apply-next-button"));
+    fireEvent.press(screen.getByTestId("terms-all"));
+    fireEvent.press(screen.getByTestId("apply-terms-confirm-button"));
+
+    expect(await screen.findByText("이미 신청한 모집글입니다.")).toBeTruthy();
     expect(screen.queryByText("연락 요청 완료")).toBeNull();
   });
 });

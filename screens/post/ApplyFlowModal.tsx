@@ -43,12 +43,16 @@ export function ApplyFlowModal({
   const [step, setStep] = useState<ApplyStep>(1);
   const [intro, setIntro] = useState("");
   const [terms, setTerms] = useState<TermsState>(initialTerms);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
       setStep(1);
       setIntro("");
       setTerms(initialTerms);
+      setSubmitting(false);
+      setSubmitError(null);
     }
   }, [visible]);
 
@@ -94,9 +98,24 @@ export function ApplyFlowModal({
     });
   };
 
-  const submitApplication = () => {
-    void applyToPost(post.id, intro.trim());
-    setStep(3);
+  const submitApplication = async () => {
+    if (submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      await applyToPost(post.id, intro.trim());
+      setStep(3);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "지원 요청을 보내지 못했어요.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const complete = () => {
@@ -176,11 +195,12 @@ export function ApplyFlowModal({
               />
             </View>
             <AppButton
-              label="확인"
-              disabled={!requiredTermsChecked}
+              label={submitting ? "처리 중" : "확인"}
+              disabled={!requiredTermsChecked || submitting}
               onPress={submitApplication}
               testID="apply-terms-confirm-button"
             />
+            {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
           </View>
         ) : null}
 
@@ -257,6 +277,13 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
     fontWeight: typography.weight.regular,
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
   },
   termsList: {
     paddingVertical: 4,

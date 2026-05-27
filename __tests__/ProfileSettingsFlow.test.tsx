@@ -6,8 +6,13 @@ import { SettingsScreen } from "../screens/profile/SettingsScreen";
 import { SavedPostsScreen } from "../screens/profile/SavedPostsScreen";
 import { MyPostsScreen } from "../screens/profile/MyPostsScreen";
 import { MyPageScreen } from "../screens/MyPageScreen";
+import { resetMockDatabase } from "../services/mockDb";
 
 describe("Profile settings flow", () => {
+  beforeEach(() => {
+    resetMockDatabase();
+  });
+
   it("renders the profile home dashboard and opens profile actions", () => {
     const onOpenProfileScreen = jest.fn();
 
@@ -25,6 +30,20 @@ describe("Profile settings flow", () => {
 
     fireEvent.press(screen.getByText("설정"));
     expect(onOpenProfileScreen).toHaveBeenCalledWith("settings");
+  });
+
+  it("shows received applications and opens the review screen", async () => {
+    const onOpenApplicationReview = jest.fn();
+
+    render(<MyPageScreen onOpenApplicationReview={onOpenApplicationReview} />);
+
+    expect(await screen.findByText("받은 지원 요청")).toBeTruthy();
+    expect(await screen.findByText("‘청도감 학원’ 함께 다니실 사람 구해요")).toBeTruthy();
+    expect(screen.getByText("우리마이사랑해")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("application-review-entry-application-1"));
+
+    expect(onOpenApplicationReview).toHaveBeenCalledWith("application-1");
   });
 
   it("opens the profile image sheet and saves profile edits", async () => {

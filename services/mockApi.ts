@@ -179,15 +179,21 @@ export async function applyToPost(
 ): Promise<Application> {
   await delay();
   const database = connectMockDatabase();
+  const currentUser = database.users[0];
+  const post = database.posts.find((item) => item.id === postId);
 
-  if (!database.posts.some((post) => post.id === postId)) {
+  if (!post) {
     throw new Error(`Cannot apply to missing post: ${postId}`);
+  }
+
+  if (post.author.id === currentUser.id) {
+    throw new Error("Cannot apply to your own post");
   }
 
   const application: Application = {
     id: `application-${Date.now()}`,
     postId,
-    applicant: database.users[0],
+    applicant: currentUser,
     intro,
     status: "pending",
     createdAt: new Date().toISOString(),

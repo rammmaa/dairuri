@@ -3,6 +3,7 @@ import {
   CircleHelp,
   FileBadge,
   Info,
+  Inbox,
   Megaphone,
   Pencil,
   Settings,
@@ -25,8 +26,8 @@ import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
 import { mockMe } from "../data/mockDomain";
-import { getMe } from "../services/api";
-import type { UserProfile } from "../types/domain";
+import { getMe, getReceivedApplications } from "../services/api";
+import type { ApplicationDetail, ApplicationStatus, UserProfile } from "../types/domain";
 
 export type MyPageScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
@@ -51,10 +52,12 @@ const profileMenuItems: ProfileMenuItem[] = [
 export function MyPageScreen({
   onSelectTab,
   onOpenProfileScreen,
+  onOpenApplicationReview,
 }: MyPageScreenProps) {
   const [profile, setProfile] = useState<UserProfile | undefined>(() =>
     process.env.NODE_ENV === "test" ? mockMe : undefined,
   );
+  const [receivedApplications, setReceivedApplications] = useState<ApplicationDetail[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,8 +87,33 @@ export function MyPageScreen({
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    getReceivedApplications()
+      .then((applications) => {
+        if (active) {
+          setReceivedApplications(applications);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setErrorMessage(
+            error instanceof Error ? error.message : "지원 요청을 불러오지 못했어요.",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const temperature = profile?.temperature ?? 0;
   const progress = `${Math.min(100, Math.max(0, temperature))}%` as `${number}%`;
+  const pendingApplications = receivedApplications.filter(
+    (detail) => detail.application.status === "pending",
+  );
 
   return (
     <View style={styles.safeArea}>
@@ -142,6 +170,36 @@ export function MyPageScreen({
             <Text style={styles.temperatureHint}>추천률 00%</Text>
           </View>
 
+          <View style={styles.applicationCard}>
+            <View style={styles.applicationHeader}>
+              <View style={styles.applicationTitleRow}>
+                <View style={styles.applicationIconFrame}>
+                  <Inbox size={18} color={colors.mintDark} strokeWidth={2.2} />
+                </View>
+                <Text style={styles.applicationTitle}>받은 지원 요청</Text>
+              </View>
+              <Text style={styles.applicationCount}>
+                {pendingApplications.length}건 대기
+              </Text>
+            </View>
+
+            {receivedApplications.length ? (
+              <View style={styles.applicationList}>
+                {receivedApplications.slice(0, 3).map((detail) => (
+                  <ApplicationReviewEntry
+                    key={detail.application.id}
+                    detail={detail}
+                    onPress={() => onOpenApplicationReview?.(detail.application.id)}
+                  />
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.applicationEmpty}>
+                아직 검토할 지원 요청이 없어요
+              </Text>
+            )}
+          </View>
+
           <View style={styles.menuList}>
             {profileMenuItems.map((item) => (
               <ProfileMenuRow
@@ -168,6 +226,51 @@ export function MyPageScreen({
       </View>
     </View>
   );
+}
+
+type ApplicationReviewEntryProps = {
+  detail: ApplicationDetail;
+  onPress: () => void;
+};
+
+function ApplicationReviewEntry({ detail, onPress }: ApplicationReviewEntryProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${detail.application.applicant.nickname} 지원 검토`}
+      onPress={onPress}
+      testID={`application-review-entry-${detail.application.id}`}
+      style={({ pressed }) => [
+        styles.applicationRow,
+        pressed && styles.menuRowPressed,
+      ]}
+    >
+      <View style={styles.applicationCopy}>
+        <Text style={styles.applicationPostTitle} numberOfLines={1}>
+          {detail.post.title}
+        </Text>
+        <Text style={styles.applicationApplicant} numberOfLines={1}>
+          {detail.application.applicant.nickname}
+        </Text>
+      </View>
+      <Text style={styles.applicationStatus}>
+        {formatApplicationStatus(detail.application.status)}
+      </Text>
+      <ChevronRight size={18} color={colors.mutedText} strokeWidth={2.2} />
+    </Pressable>
+  );
+}
+
+function formatApplicationStatus(status: ApplicationStatus) {
+  if (status === "accepted") {
+    return "승인";
+  }
+
+  if (status === "rejected") {
+    return "거절";
+  }
+
+  return "검토";
 }
 
 type ProfileMenuRowProps = {
@@ -342,6 +445,93 @@ const styles = StyleSheet.create({
   menuList: {
     width: "100%",
     gap: 10,
+  },
+  applicationCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    gap: 12,
+  },
+  applicationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  applicationTitleRow: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  applicationIconFrame: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.mintLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  applicationTitle: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.bold,
+  },
+  applicationCount: {
+    color: colors.mintDark,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.medium,
+  },
+  applicationList: {
+    gap: 8,
+  },
+  applicationRow: {
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+    backgroundColor: colors.gray50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  applicationCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  applicationPostTitle: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
+  },
+  applicationApplicant: {
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
+  },
+  applicationStatus: {
+    color: colors.mintDark,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.bold,
+  },
+  applicationEmpty: {
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.regular,
   },
   errorText: {
     color: colors.red,
