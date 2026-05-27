@@ -78,10 +78,17 @@ export async function confirmPhoneVerification(
 }
 
 export async function getPosts(): Promise<Post[]> {
-  return apiRequest<Post[]>("/posts");
+  return withWebTestFallback(
+    () => apiRequest<Post[]>("/posts"),
+    () => mockApi.getPosts(),
+  );
 }
 
 export async function getPost(id: string): Promise<Post | undefined> {
+  if (shouldUseWebTestFallback()) {
+    return mockApi.getPost(id);
+  }
+
   try {
     return await apiRequest<Post>(`/posts/${encodeURIComponent(id)}`);
   } catch (error) {
