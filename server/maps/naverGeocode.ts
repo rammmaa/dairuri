@@ -64,7 +64,7 @@ export function validateNaverMapsRuntimeConfig(
 
 export function buildNaverGeocodeUrl(query: string) {
   const url = new URL(
-    "https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode",
+    "https://maps.apigw.ntruss.com/map-geocode/v2/geocode",
   );
 
   url.searchParams.set("query", query.trim());

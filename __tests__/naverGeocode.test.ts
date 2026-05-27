@@ -24,7 +24,7 @@ describe("Naver geocoding integration", () => {
 
   it("builds the official Naver geocoding endpoint URL", () => {
     expect(buildNaverGeocodeUrl("청도역").toString()).toBe(
-      "https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode?query=%EC%B2%AD%EB%8F%84%EC%97%AD",
+      "https://maps.apigw.ntruss.com/map-geocode/v2/geocode?query=%EC%B2%AD%EB%8F%84%EC%97%AD",
     );
   });
 
