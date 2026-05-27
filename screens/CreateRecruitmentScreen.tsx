@@ -1114,6 +1114,13 @@ function PlacePickerScreen({
   }, [query]);
 
   const firstPlace = places[0];
+  const firstPlaceCamera = firstPlace
+    ? {
+        latitude: firstPlace.latitude,
+        longitude: firstPlace.longitude,
+        zoom: 16,
+      }
+    : undefined;
   const canSelectMapCenter = Boolean(firstPlace);
   const helperText =
     query.trim().length < 2
@@ -1155,8 +1162,12 @@ function PlacePickerScreen({
           />
         </View>
 
-        <View style={styles.placeMapFrame}>
-          <MapPreview style={styles.placeMap} />
+        <View
+          style={styles.placeMapFrame}
+          testID="place-map-frame"
+          accessibilityValue={{ text: firstPlace?.name ?? "검색 결과 없음" }}
+        >
+          <MapPreview style={styles.placeMap} camera={firstPlaceCamera} />
           <View style={[styles.placeMapPin, { backgroundColor: accent }]}>
             <MapPin size={24} color={colors.surface} strokeWidth={2.4} />
           </View>

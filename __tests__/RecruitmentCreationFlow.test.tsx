@@ -81,6 +81,10 @@ describe("Recruitment creation flow", () => {
     fireEvent.press(screen.getByTestId("place-field-departure"));
     expect(screen.getByText("지도에서 출발지 선택")).toBeTruthy();
     fireEvent.changeText(screen.getByPlaceholderText("장소 검색"), "청도");
+    await screen.findByTestId("place-result-api-cheongdo-station");
+    expect(screen.getByTestId("place-map-frame").props.accessibilityValue).toEqual({
+      text: "청도역",
+    });
     fireEvent.press(await screen.findByTestId("place-result-api-cheongdo-station"));
 
     fireEvent.press(screen.getByTestId("place-field-destination"));

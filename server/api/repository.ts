@@ -528,17 +528,18 @@ export function normalizeCreatePostInput(
     title: requiredText(input.title, "title"),
     body: requiredText(input.body, "body"),
     authorId: meta.authorId,
-    imageUrls: input.imageUrls ?? [],
+    imageUrls: optionalTextArray(input.imageUrls, "imageUrls") ?? [],
     status: toDatabasePostStatus(input.status),
-    days: input.days ?? [],
-    startTime: optionalText(input.startTime),
-    endTime: optionalText(input.endTime),
+    days: optionalWeekdayArray(input.days, "days") ?? [],
+    startTime: optionalPostText(input.startTime, "startTime"),
+    endTime: optionalPostText(input.endTime, "endTime"),
     createdAt: meta.createdAt,
   };
 
   if (input.type === "job") {
-    const placeName = optionalText(input.placeName);
-    if (!placeName || input.wageAmount == null) {
+    const placeName = optionalPostText(input.placeName, "placeName");
+    const wageAmount = optionalNumber(input.wageAmount, "wageAmount");
+    if (!placeName || wageAmount == null) {
       throw new CreatePostInputError("job post requires placeName and wageAmount");
     }
 
@@ -546,25 +547,25 @@ export function normalizeCreatePostInput(
       ...base,
       type: "job",
       placeName,
-      placeAddress: optionalText(input.placeAddress),
+      placeAddress: optionalPostText(input.placeAddress, "placeAddress"),
       departure: null,
       destination: null,
-      wageType: input.wageType ?? "hourly",
-      wageAmount: input.wageAmount,
-      jobCategory: optionalText(input.jobCategory),
-      profileMode: input.profileMode ?? null,
-      availableTasks: input.availableTasks ?? [],
-      employmentTypes: input.employmentTypes ?? [],
-      preferredPay: optionalText(input.preferredPay),
-      availabilityNote: optionalText(input.availabilityNote),
-      contactNote: optionalText(input.contactNote),
+      wageType: optionalWageType(input.wageType) ?? "hourly",
+      wageAmount,
+      jobCategory: optionalPostText(input.jobCategory, "jobCategory"),
+      profileMode: optionalProfileMode(input.profileMode),
+      availableTasks: optionalTextArray(input.availableTasks, "availableTasks") ?? [],
+      employmentTypes: optionalEmploymentTypes(input.employmentTypes),
+      preferredPay: optionalPostText(input.preferredPay, "preferredPay"),
+      availabilityNote: optionalPostText(input.availabilityNote, "availabilityNote"),
+      contactNote: optionalPostText(input.contactNote, "contactNote"),
       price: null,
       seats: null,
     };
   }
 
-  const departure = optionalText(input.departure);
-  const destination = optionalText(input.destination);
+  const departure = optionalPostText(input.departure, "departure");
+  const destination = optionalPostText(input.destination, "destination");
   if (!departure || !destination) {
     throw new CreatePostInputError("carpool post requires departure and destination");
   }
@@ -585,8 +586,8 @@ export function normalizeCreatePostInput(
     preferredPay: null,
     availabilityNote: null,
     contactNote: null,
-    price: input.price ?? null,
-    seats: input.seats ?? null,
+    price: optionalNumber(input.price, "price"),
+    seats: optionalNumber(input.seats, "seats"),
   };
 }
 
@@ -1393,8 +1394,8 @@ function mapUserRow(row: UserRow): UserProfile {
   };
 }
 
-function requiredText(value: string | undefined, fieldName: string) {
-  const trimmed = optionalText(value);
+function requiredText(value: unknown, fieldName: string) {
+  const trimmed = optionalPostText(value, fieldName);
   if (!trimmed) {
     throw new CreatePostInputError(`${fieldName} is required`);
   }
@@ -1402,9 +1403,107 @@ function requiredText(value: string | undefined, fieldName: string) {
   return trimmed;
 }
 
+function optionalPostText(value: unknown, fieldName: string) {
+  if (value == null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw new CreatePostInputError(`${fieldName} must be text`);
+  }
+
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 function optionalText(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+function optionalNumber(value: unknown, fieldName: string) {
+  if (value == null) {
+    return null;
+  }
+
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new CreatePostInputError(`${fieldName} must be a number`);
+  }
+
+  return value;
+}
+
+function optionalTextArray(value: unknown, fieldName: string) {
+  if (value == null) {
+    return null;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new CreatePostInputError(`${fieldName} must be a text array`);
+  }
+
+  return value.map((item, index) => requiredText(item, `${fieldName}[${index}]`));
+}
+
+function optionalWeekdayArray(value: unknown, fieldName: string): Post["days"] | null {
+  const days = optionalTextArray(value, fieldName);
+  if (!days) {
+    return null;
+  }
+
+  const validDays = new Set(["월", "화", "수", "목", "금", "토", "일"]);
+  for (const day of days) {
+    if (!validDays.has(day)) {
+      throw new CreatePostInputError(`${fieldName} contains an invalid weekday`);
+    }
+  }
+
+  return days as Post["days"];
+}
+
+function optionalWageType(value: unknown) {
+  if (value == null) {
+    return null;
+  }
+
+  if (value !== "hourly" && value !== "monthly") {
+    throw new CreatePostInputError("wageType must be hourly or monthly");
+  }
+
+  return value;
+}
+
+function optionalProfileMode(value: unknown) {
+  if (value == null) {
+    return null;
+  }
+
+  if (value !== "resource") {
+    throw new CreatePostInputError("profileMode must be resource");
+  }
+
+  return value;
+}
+
+function optionalEmploymentTypes(value: unknown) {
+  if (value == null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new CreatePostInputError("employmentTypes must be a text array");
+  }
+
+  const validTypes = new Set(["fullTime", "partTime", "shortTerm"]);
+  return value.map((item, index) => {
+    if (typeof item !== "string" || !validTypes.has(item)) {
+      throw new CreatePostInputError(
+        `employmentTypes[${index}] must be fullTime, partTime, or shortTerm`,
+      );
+    }
+
+    return item as "fullTime" | "partTime" | "shortTerm";
+  });
 }
 
 function toDatabasePostStatus(status: Post["status"] | undefined): DatabasePostStatus {
