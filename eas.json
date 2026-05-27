@@ -5,11 +5,17 @@
   "build": {
     "apk": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_DARORI_API_BASE_URL": "https://api.dairuri.harammm.me"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_DARORI_API_BASE_URL": "https://api.dairuri.harammm.me"
+      },
       "android": {
         "buildType": "app-bundle"
       }

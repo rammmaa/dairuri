@@ -73,7 +73,7 @@ npm run db:seed
 npm run api:start
 ```
 
-로컬 앱은 `.env`의 `EXPO_PUBLIC_DARORI_API_BASE_URL=http://localhost:8787`을 사용합니다. Vercel의 같은 origin에서 웹과 API를 함께 배포할 때는 `EXPO_PUBLIC_DARORI_API_BASE_URL=/api`로 설정합니다.
+로컬 앱은 `.env`의 `EXPO_PUBLIC_DARORI_API_BASE_URL=http://localhost:8787`을 사용합니다. 프로덕션 웹과 APK는 `EXPO_PUBLIC_DARORI_API_BASE_URL=https://api.dairuri.harammm.me`를 사용합니다.
 
 🔐 Environment
 
@@ -85,7 +85,7 @@ npm run api:start
 | `EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID` | Expo build에서 사용하는 public Dynamic Map key fallback |
 | `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID` | 웹 지도 표면에서 사용하는 public Web Dynamic Map key |
 | `NAVER_MAP_API_KEY` | Directions, Geocoding 같은 서버 사이드 REST API key |
-| `EXPO_PUBLIC_DARORI_API_BASE_URL` | 앱 API 서버 base URL. 로컬은 `http://localhost:8787`, Vercel web은 `/api` |
+| `EXPO_PUBLIC_DARORI_API_BASE_URL` | 앱 API 서버 base URL. 로컬은 `http://localhost:8787`, 프로덕션 웹/APK는 `https://api.dairuri.harammm.me` |
 | `EXPO_PUBLIC_DARORI_USER_ID` | 개발용 write user header |
 | `EXPO_PUBLIC_DARORI_USE_MOCK_API` | 테스트/로컬 전용 mock opt-in. 프로덕션에서는 unset |
 | `DATABASE_URL` | 서버 사이드 PostgreSQL connection string |

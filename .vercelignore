@@ -1,0 +1,17 @@
+node_modules
+.expo
+dist
+build
+builds
+coverage
+screenshots
+*.pem
+.env
+.env.*
+ios
+android
+*.tsbuildinfo
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+

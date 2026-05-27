@@ -1,10 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { handleApiRequest } from "../server/api/handler";
+import handler from "./index";
 
-export default function handler(
+export default function catchAllHandler(
   request: IncomingMessage,
   response: ServerResponse,
 ) {
-  return handleApiRequest(request, response);
+  return handler(request, response);
 }
