@@ -6,6 +6,7 @@ import { TextInputField } from "../../components/TextInputField";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
+import type { PostType } from "../../types/domain";
 
 export type ApplicationDecisionModalMode = "approved" | "rejectReason" | "rejected";
 
@@ -16,11 +17,13 @@ export type ApplicationDecisionModalProps = {
   onReasonChange?: (reason: string) => void;
   onConfirm: () => void;
   onCancel?: () => void;
+  onGoHome?: () => void;
   onOpenChat?: () => void;
   confirmDisabled?: boolean;
+  postType?: PostType;
 };
 
-const completionCopy = {
+const defaultCompletionCopy = {
   approved: {
     title: "승인 완료",
     description: "지원자를 승인했습니다.",
@@ -35,6 +38,22 @@ const completionCopy = {
   },
 } as const;
 
+function getCompletionCopy(
+  mode: Exclude<ApplicationDecisionModalMode, "rejectReason">,
+  postType?: PostType,
+) {
+  if (mode === "approved" && postType === "carpool") {
+    return {
+      title: "승인 완료",
+      description: "자동으로 채팅방에 초대되었어요.\n인사를 나눠보세요!",
+      confirmLabel: "홈으로",
+      confirmTestID: "application-approval-home",
+    };
+  }
+
+  return defaultCompletionCopy[mode];
+}
+
 export function ApplicationDecisionModal({
   visible,
   mode,
@@ -42,8 +61,10 @@ export function ApplicationDecisionModal({
   onReasonChange,
   onConfirm,
   onCancel,
+  onGoHome,
   onOpenChat,
   confirmDisabled = false,
+  postType,
 }: ApplicationDecisionModalProps) {
   if (!visible) {
     return null;
@@ -83,7 +104,9 @@ export function ApplicationDecisionModal({
     );
   }
 
-  const copy = completionCopy[mode];
+  const copy = getCompletionCopy(mode, postType);
+  const showCarpoolApprovalActions =
+    mode === "approved" && postType === "carpool" && Boolean(onOpenChat);
 
   return (
     <View style={styles.overlay} testID={`application-${mode}-modal`}>
@@ -99,16 +122,36 @@ export function ApplicationDecisionModal({
         </View>
         <Text style={styles.title}>{copy.title}</Text>
         <Text style={styles.description}>{copy.description}</Text>
-        <View style={styles.actionColumn}>
-          {mode === "approved" && onOpenChat ? (
-            <AppButton label="채팅방으로 이동하기" onPress={onOpenChat} />
-          ) : null}
-          <AppButton
-            label={copy.confirmLabel}
-            variant={mode === "approved" && onOpenChat ? "outline" : "primary"}
-            onPress={onConfirm}
-            testID={copy.confirmTestID}
-          />
+        <View style={showCarpoolApprovalActions ? styles.actionRow : styles.actionColumn}>
+          {showCarpoolApprovalActions ? (
+            <>
+              <AppButton
+                label="홈으로"
+                onPress={onGoHome ?? onConfirm}
+                testID="application-approval-home"
+                style={styles.actionButton}
+              />
+              <AppButton
+                label="채팅방 이동"
+                variant="yellow"
+                onPress={onOpenChat}
+                testID="application-approval-chat"
+                style={styles.actionButton}
+              />
+            </>
+          ) : (
+            <>
+              {mode === "approved" && onOpenChat ? (
+                <AppButton label="채팅방으로 이동하기" onPress={onOpenChat} />
+              ) : null}
+              <AppButton
+                label={copy.confirmLabel}
+                variant={mode === "approved" && onOpenChat ? "outline" : "primary"}
+                onPress={onConfirm}
+                testID={copy.confirmTestID}
+              />
+            </>
+          )}
         </View>
       </View>
     </View>
@@ -159,5 +202,12 @@ const styles = StyleSheet.create({
   },
   actionColumn: {
     gap: 8,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
   },
 });

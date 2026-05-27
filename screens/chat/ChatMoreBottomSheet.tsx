@@ -1,11 +1,11 @@
 import {
   BellOff,
-  Car,
   LogOut,
   Search,
   ShieldAlert,
+  IdCard,
+  ThumbsUp,
   UserPlus,
-  Users,
   type LucideIcon,
 } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -17,8 +17,14 @@ import { typography } from "../../constants/typography";
 export type ChatMoreBottomSheetProps = {
   visible: boolean;
   onClose: () => void;
+  onOpenManner?: () => void;
+  onOpenCredentials?: () => void;
+  onInvite?: () => void;
+  onSearch?: () => void;
+  onToggleMute?: () => void;
   onReport: () => void;
   onLeave: () => void;
+  muted?: boolean;
 };
 
 type MenuItemProps = {
@@ -32,39 +38,60 @@ type MenuItemProps = {
 export function ChatMoreBottomSheet({
   visible,
   onClose,
+  onOpenManner,
+  onOpenCredentials,
+  onInvite,
+  onSearch,
+  onToggleMute,
   onReport,
   onLeave,
+  muted = false,
 }: ChatMoreBottomSheetProps) {
   return (
     <BottomSheet
       visible={visible}
-      title="채팅방 더보기"
       onClose={onClose}
       testID="chat-more-bottom-sheet"
     >
       <View style={styles.group}>
-        <MenuItem icon={Users} label="매너 평가하기" />
+        <MenuItem icon={ThumbsUp} label="매너 평가하기" onPress={onOpenManner} />
         <MenuItem
           icon={ShieldAlert}
           label="신고하기"
           onPress={onReport}
           testID="chat-more-report"
         />
-        <MenuItem icon={Car} label="연락처, 자동차 번호 조회하기" />
-        <MenuItem icon={UserPlus} label="아는 사용자 초대하기" />
+        <MenuItem
+          icon={IdCard}
+          label="면허증, 자동차 보험 조회하기"
+          onPress={onOpenCredentials}
+        />
+        <MenuItem icon={UserPlus} label="아는 사용자 초대하기" onPress={onInvite} />
       </View>
 
       <View style={styles.group}>
-        <MenuItem icon={Search} label="검색하기" />
-        <MenuItem icon={BellOff} label="알림끄기" />
+        <MenuItem icon={Search} label="검색하기" onPress={onSearch} />
+        <MenuItem
+          icon={BellOff}
+          label={muted ? "알람켜기" : "알람끄기"}
+          onPress={onToggleMute}
+        />
         <MenuItem
           icon={LogOut}
           label="방 나가기"
           onPress={onLeave}
-          danger
           testID="chat-more-leave"
         />
       </View>
+      <View style={styles.spacerCard} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="닫기"
+        onPress={onClose}
+        style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+      >
+        <Text style={styles.closeText}>닫기</Text>
+      </Pressable>
     </BottomSheet>
   );
 }
@@ -86,16 +113,17 @@ function MenuItem({ icon: Icon, label, onPress, danger = false, testID }: MenuIt
 
 const styles = StyleSheet.create({
   group: {
-    paddingVertical: 6,
+    paddingVertical: 15,
     borderRadius: 14,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.gray100,
+    gap: 8,
   },
   item: {
-    minHeight: 48,
-    paddingHorizontal: 14,
+    minHeight: 32,
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 18,
   },
   pressed: {
     opacity: 0.72,
@@ -109,5 +137,22 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: colors.red,
+  },
+  spacerCard: {
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: colors.gray100,
+  },
+  closeButton: {
+    alignSelf: "flex-start",
+    minHeight: 28,
+    justifyContent: "center",
+  },
+  closeText: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.regular,
   },
 });

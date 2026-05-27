@@ -5,6 +5,7 @@ EC2_HOST="${EC2_HOST:?Set EC2_HOST to the EC2 public DNS or IP}"
 EC2_USER="${EC2_USER:-ec2-user}"
 EC2_KEY="${EC2_KEY:-$HOME/Downloads/darolink.pem}"
 EC2_APP_DIR="${EC2_APP_DIR:-/home/$EC2_USER/darori}"
+EC2_RUNTIME_DIR="${EC2_RUNTIME_DIR:-/home/$EC2_USER/darori_runtime}"
 EC2_SERVICE="${EC2_SERVICE:-darori-api}"
 EC2_ENV_FILE="${EC2_ENV_FILE:-.env}"
 DARORI_API_PORT="${DARORI_API_PORT:-8787}"
@@ -46,7 +47,9 @@ ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "set -euo pipefail
     grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
   fi
   mkdir -p '$EC2_APP_DIR'
+  mkdir -p '$EC2_RUNTIME_DIR'
   sudo chown -R '$EC2_USER:$EC2_USER' '$EC2_APP_DIR'
+  sudo chown -R '$EC2_USER:$EC2_USER' '$EC2_RUNTIME_DIR'
 "
 
 rsync -az --delete \
@@ -68,8 +71,15 @@ scp "${SSH_OPTS[@]}" "$EC2_ENV_FILE" "$SSH_TARGET:$EC2_APP_DIR/.env"
 ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "chmod 600 '$EC2_APP_DIR/.env'"
 
 ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "set -euo pipefail
+  sudo systemctl stop '$EC2_SERVICE' >/dev/null 2>&1 || true
+  rm -rf '$EC2_RUNTIME_DIR'
+  mkdir -p '$EC2_RUNTIME_DIR'
+  cd '$EC2_RUNTIME_DIR'
+  npm init -y >/dev/null
+  npm install --no-audit --no-fund tsx dotenv pg redis
   cd '$EC2_APP_DIR'
-  npm ci
+  rm -rf node_modules
+  ln -s '$EC2_RUNTIME_DIR/node_modules' node_modules
   npm run db:check
   npm run db:migrate
   npm run db:seed

@@ -2,11 +2,21 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react-native";
+import * as Location from "expo-location";
 import { StyleSheet } from "react-native";
 
 import { MapScreen } from "../screens/MapScreen";
+
+jest.mock("expo-location", () => ({
+  Accuracy: {
+    Balanced: 3,
+  },
+  getCurrentPositionAsync: jest.fn(),
+  requestForegroundPermissionsAsync: jest.fn(),
+}));
 
 function createPanEvent(previousPageY: number, currentPageY: number) {
   return {
@@ -34,6 +44,19 @@ function createPanEvent(previousPageY: number, currentPageY: number) {
 }
 
 describe("MapScreen", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValue({
+      granted: false,
+    } as never);
+    jest.mocked(Location.getCurrentPositionAsync).mockResolvedValue({
+      coords: {
+        latitude: 35.7153,
+        longitude: 128.7473,
+      },
+    } as never);
+  });
+
   it("renders the home map search, count, first card, and bottom tabs", () => {
     render(<MapScreen />);
 
@@ -50,37 +73,13 @@ describe("MapScreen", () => {
     }
   });
 
-  it("renders an empty-state message when no recruitment posts exist", () => {
-    render(<MapScreen initialPosts={[]} />);
-
-    expect(screen.getByText("아직 등록된 모집글이 없어요")).toBeTruthy();
-    expect(
-      screen.getByText("새 모집글이 올라오면 여기에서 바로 확인할 수 있어요."),
-    ).toBeTruthy();
-  });
-
-  it("renders a filtered empty-state message when filters hide existing posts", () => {
-    render(<MapScreen />);
-
-    fireEvent.press(screen.getByTestId("map-home-category-ride"));
-    fireEvent.press(screen.getByTestId("map-home-filter-날짜"));
-    fireEvent.press(screen.getByTestId("map-home-filter-날짜"));
-    fireEvent.press(screen.getByTestId("map-home-filter-시간"));
-    fireEvent.press(screen.getByTestId("map-home-filter-시간"));
-
-    expect(screen.getByText("조건에 맞는 모집글이 없어요")).toBeTruthy();
-    expect(
-      screen.getByText("필터를 바꾸거나 전체 모집글을 확인해보세요."),
-    ).toBeTruthy();
-  });
-
   it("uses the current-location icon for the top category chips", () => {
     render(<MapScreen />);
 
     expect(screen.getAllByTestId("category-current-location-icon")).toHaveLength(3);
   });
 
-  it("exposes no-op-safe map search, location, and marker callbacks", () => {
+  it("exposes no-op-safe map search and location callbacks without app pins", () => {
     const handleSearchPress = jest.fn();
     const handleCurrentLocationPress = jest.fn();
     const handleMarkerPress = jest.fn();
@@ -95,11 +94,11 @@ describe("MapScreen", () => {
 
     fireEvent.press(screen.getByTestId("map-home-search-button"));
     fireEvent.press(screen.getByTestId("map-home-current-location-button"));
-    fireEvent.press(screen.getByTestId("map-preview-marker-cafe"));
 
     expect(handleSearchPress).toHaveBeenCalledTimes(1);
     expect(handleCurrentLocationPress).toHaveBeenCalledTimes(1);
-    expect(handleMarkerPress).toHaveBeenCalledWith("cafe");
+    expect(screen.queryByTestId("map-preview-marker-cafe")).toBeNull();
+    expect(handleMarkerPress).not.toHaveBeenCalled();
   });
 
   it("requests browser location when pressing the current-location button", () => {
@@ -125,6 +124,38 @@ describe("MapScreen", () => {
         expect.any(Function),
         expect.objectContaining({
           enableHighAccuracy: true,
+        }),
+      );
+    } finally {
+      Object.defineProperty(global, "navigator", {
+        configurable: true,
+        value: originalNavigator,
+      });
+    }
+  });
+
+  it("requests native Expo location when browser geolocation is unavailable", async () => {
+    const originalNavigator = global.navigator;
+
+    Object.defineProperty(global, "navigator", {
+      configurable: true,
+      value: {},
+    });
+    jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValueOnce({
+      granted: true,
+    } as never);
+
+    try {
+      render(<MapScreen />);
+
+      fireEvent.press(screen.getByTestId("map-home-current-location-button"));
+
+      await waitFor(() => {
+        expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
+      });
+      expect(Location.getCurrentPositionAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accuracy: Location.Accuracy.Balanced,
         }),
       );
     } finally {

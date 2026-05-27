@@ -82,7 +82,7 @@ describe("server create post input", () => {
       normalizeCreatePostInput(
         {
           type: "job",
-          title: "인적 자원 등록",
+          title: "인재 풀 등록",
           body: "등원 도우미를 구합니다.",
           days: ["월"],
           startTime: "09:00",

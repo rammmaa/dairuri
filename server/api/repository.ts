@@ -1243,7 +1243,7 @@ function buildChatRoomTitle(review: ApplicationReviewRow) {
 
 function buildChatRoomSubtitle(review: ApplicationReviewRow) {
   if (review.post_type === "job") {
-    return `${review.place_name ?? "모집 장소"} / ${review.job_category ?? "인적 자원"}`;
+    return `${review.place_name ?? "모집 장소"} / ${review.job_category ?? "인재 풀 등록"}`;
   }
 
   const days = review.days.join(", ");

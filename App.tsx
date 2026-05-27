@@ -7,7 +7,7 @@ import {
   NotoSans_600SemiBold,
   NotoSans_700Bold,
 } from "@expo-google-fonts/noto-sans";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 
 import { AuthScreen } from "./screens/auth/AuthScreen";
 import { MapScreen } from "./screens/MapScreen";
@@ -28,13 +28,12 @@ import { ProfileEditScreen } from "./screens/profile/ProfileEditScreen";
 import { SavedPostsScreen } from "./screens/profile/SavedPostsScreen";
 import { SettingsScreen } from "./screens/profile/SettingsScreen";
 import type { BottomNavItem } from "./data/mapHome";
-import { clearAuthSession, hasAuthSession } from "./services/authSession";
 
 type DevStartScreen = "auth" | BottomNavItem["id"];
 type ProfileSubScreen = "edit" | "settings" | "saved" | "mine" | null;
 
 const DEV_START_SCREEN: DevStartScreen =
-  process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH === "true" ? "map" : "auth";
+  process.env.NODE_ENV === "test" ? "auth" : "map";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -43,10 +42,7 @@ export default function App() {
     NotoSans_600SemiBold,
     NotoSans_700Bold,
   });
-  const [authenticated, setAuthenticated] = useState(
-    DEV_START_SCREEN !== "auth" ||
-      (process.env.NODE_ENV !== "test" && hasAuthSession()),
-  );
+  const [authenticated, setAuthenticated] = useState(DEV_START_SCREEN !== "auth");
   const [activeTab, setActiveTab] = useState<BottomNavItem["id"]>(
     DEV_START_SCREEN === "auth" ? "map" : DEV_START_SCREEN,
   );
@@ -84,7 +80,20 @@ export default function App() {
   };
 
   if (!fontsLoaded) {
-    return <View />;
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#FFFFFF",
+        }}
+      >
+        <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
+          다로리를 준비하고 있어요
+        </Text>
+      </View>
+    );
   }
 
   if (!authenticated) {
@@ -102,6 +111,11 @@ export default function App() {
         <PostDetailScreen
           postId={selectedPostId}
           onBack={() => setSelectedPostId(null)}
+          onOpenChat={() => {
+            setSelectedPostId(null);
+            setActiveTab("chat");
+            setSelectedChatRoomId("room-1");
+          }}
         />
         <StatusBar style="dark" />
       </>
@@ -114,6 +128,10 @@ export default function App() {
         <ApplicationReviewScreen
           applicationId={reviewApplicationId}
           onBack={() => setReviewApplicationId(null)}
+          onGoHome={() => {
+            setReviewApplicationId(null);
+            setActiveTab("map");
+          }}
           onOpenChat={(roomId) => {
             setReviewApplicationId(null);
             setActiveTab("chat");
@@ -222,7 +240,6 @@ export default function App() {
         <SettingsScreen
           onBack={() => setProfileSubScreen(null)}
           onLogout={() => {
-            clearAuthSession();
             setProfileSubScreen(null);
             setActiveTab("map");
             setAuthenticated(false);

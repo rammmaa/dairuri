@@ -12,7 +12,7 @@ import {
   getApplicationDetail,
   rejectApplication,
 } from "../../services/api";
-import type { ApplicationDetail } from "../../types/domain";
+import type { ApplicationDetail, UserProfile } from "../../types/domain";
 import {
   ApplicationDecisionModal,
   type ApplicationDecisionModalMode,
@@ -21,10 +21,12 @@ import {
 export type ApplicationReviewScreenProps = {
   applicationId: string;
   onBack?: () => void;
+  onGoHome?: () => void;
   onOpenChat?: (roomId: string) => void;
 };
 
-const formatTemperature = (temperature: number) => `${temperature.toFixed(1)}°C`;
+const formatVehicle = (applicant: UserProfile) =>
+  applicant.vehicle?.modelName ?? applicant.vehicle?.plateNumber ?? "미등록";
 
 function getInitialApplicationDetail(
   applicationId: string,
@@ -42,6 +44,7 @@ function getInitialApplicationDetail(
 export function ApplicationReviewScreen({
   applicationId,
   onBack,
+  onGoHome,
   onOpenChat,
 }: ApplicationReviewScreenProps) {
   const initialDetail = useMemo(
@@ -98,6 +101,8 @@ export function ApplicationReviewScreen({
   }
 
   const { application, post: linkedPost } = detail;
+  const isCarpoolReview = linkedPost.type === "carpool";
+  const headerTitle = isCarpoolReview ? "프로필" : "지원서";
 
   const trimmedReason = rejectReason.trim();
   const isRejectSubmitDisabled = trimmedReason.length < 5;
@@ -166,6 +171,20 @@ export function ApplicationReviewScreen({
     setModalMode(null);
   };
 
+  const goHomeFromModal = () => {
+    closeModal();
+    onGoHome?.();
+  };
+
+  const confirmCompletion = () => {
+    if (modalMode === "rejected" && isCarpoolReview && onGoHome) {
+      goHomeFromModal();
+      return;
+    }
+
+    closeModal();
+  };
+
   const openChatFromModal = () => {
     closeModal();
     if (acceptedRoomId) {
@@ -175,7 +194,7 @@ export function ApplicationReviewScreen({
 
   return (
     <View style={styles.safeArea}>
-      <Header title="지원서" showBack onBack={onBack} />
+      <Header title={headerTitle} showBack onBack={onBack} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -185,20 +204,20 @@ export function ApplicationReviewScreen({
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{application.applicant.nickname.slice(0, 1)}</Text>
           </View>
-          <View style={styles.profileTextBlock}>
-            <Text style={styles.nickname}>{application.applicant.nickname}</Text>
-            {application.applicant.phone ? (
-              <Text style={styles.phone}>{application.applicant.phone}</Text>
-            ) : null}
-          </View>
-          <View style={styles.temperatureBadge}>
-            <Text style={styles.temperatureText}>
-              {formatTemperature(application.applicant.temperature)}
-            </Text>
+          <View style={styles.profileRows}>
+            <ProfileInfoRow
+              label="이름"
+              value={application.applicant.realName ?? application.applicant.nickname}
+            />
+            <ProfileInfoRow
+              label="전화번호"
+              value={application.applicant.phone ?? "미등록"}
+            />
+            <ProfileInfoRow label="차종" value={formatVehicle(application.applicant)} />
           </View>
         </View>
 
-        {linkedPost ? (
+        {!isCarpoolReview ? (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>연결된 모집글</Text>
             <View style={styles.linkedPostCard}>
@@ -243,11 +262,22 @@ export function ApplicationReviewScreen({
         mode={modalMode ?? "approved"}
         reason={rejectReason}
         onReasonChange={setRejectReason}
-        onConfirm={modalMode === "rejectReason" ? handleRejectSubmit : closeModal}
+        onConfirm={modalMode === "rejectReason" ? handleRejectSubmit : confirmCompletion}
         onCancel={closeModal}
+        onGoHome={goHomeFromModal}
         onOpenChat={modalMode === "approved" ? openChatFromModal : undefined}
         confirmDisabled={submitting || isRejectSubmitDisabled}
+        postType={linkedPost.type}
       />
+    </View>
+  );
+}
+
+function ProfileInfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.profileInfoRow}>
+      <Text style={styles.profileInfoLabel}>{label}</Text>
+      <Text style={styles.profileInfoValue}>{value}</Text>
     </View>
   );
 }
@@ -303,32 +333,26 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.lg,
     fontWeight: typography.weight.bold,
   },
-  profileTextBlock: {
+  profileRows: {
     flex: 1,
     gap: 4,
   },
-  nickname: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.base,
-    lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
+  profileInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  phone: {
+  profileInfoLabel: {
+    minWidth: 58,
     color: colors.grayText,
     fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
     fontWeight: typography.weight.regular,
   },
-  temperatureBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: colors.yellowLight,
-  },
-  temperatureText: {
-    color: colors.yellowText,
+  profileInfoValue: {
+    flex: 1,
+    color: colors.black,
     fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,

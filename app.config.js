@@ -1,3 +1,7 @@
+if (!process.env.JEST_WORKER_ID) {
+  require("dotenv").config({ quiet: true });
+}
+
 const naverMapNcpKeyId =
   process.env.NAVER_MAP_NCP_KEY_ID ??
   process.env.EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID ??

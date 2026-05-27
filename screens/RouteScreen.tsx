@@ -17,8 +17,8 @@ import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { formatLastSightingLabel } from "../data/busSightingFormat";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
-import { getBusRouteStops, getBusRoutes, getBusStops } from "../services/api";
-import type { BusRoute, BusRouteStop, BusStop } from "../types/domain";
+import { getBusRoutes } from "../services/api";
+import type { BusRoute } from "../types/domain";
 
 export type RouteScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
@@ -41,13 +41,92 @@ type RouteCardData = {
   durationMinutes: number;
   status: RouteStatus;
   isExpress?: boolean;
-  lastSightingAt?: string;
 };
 
-const routeFilters = ["전체", "운행중", "곧 도착", "배차대기"] as const;
+const routeFilters = ["전체", "운행중", "곧 도착", "급행"] as const;
 type RouteFilter = (typeof routeFilters)[number];
 type RouteSort = "빠른순" | "출발순" | "상태순";
 const routeSortOptions: RouteSort[] = ["빠른순", "출발순", "상태순"];
+
+// Prototype-only data: six Happy Bus rows match the H1 through H6 routes in
+// data/mockDomain so the per-route last-sighting badge can resolve by code.
+// The schedule values (departure time, duration, status, isExpress) are
+// placeholders until a real operator schedule is wired in.
+const routeCards: RouteCardData[] = [
+  {
+    id: "happy-1",
+    routeName: "행복버스 1호선",
+    routeNumber: "H1",
+    departure: "청도 코아루블루핀",
+    arrival: "청도 버스 터미널",
+    departureTime: "06:10 출발",
+    departureMinutes: 370,
+    duration: "12분",
+    durationMinutes: 12,
+    status: "운행중",
+  },
+  {
+    id: "happy-2",
+    routeName: "행복버스 2호선",
+    routeNumber: "H2",
+    departure: "청도군청",
+    arrival: "성조 아파트 앞",
+    departureTime: "06:30 출발",
+    departureMinutes: 390,
+    duration: "14분",
+    durationMinutes: 14,
+    status: "곧 도착",
+    isExpress: true,
+  },
+  {
+    id: "happy-3",
+    routeName: "행복버스 3호선",
+    routeNumber: "H3",
+    departure: "청도 버스 터미널",
+    arrival: "부민 아파트",
+    departureTime: "07:00 출발",
+    departureMinutes: 420,
+    duration: "18분",
+    durationMinutes: 18,
+    status: "운행중",
+  },
+  {
+    id: "happy-4",
+    routeName: "행복버스 4호선",
+    routeNumber: "H4",
+    departure: "성조 아파트 앞",
+    arrival: "어린이집",
+    departureTime: "07:20 출발",
+    departureMinutes: 440,
+    duration: "10분",
+    durationMinutes: 10,
+    status: "배차대기",
+  },
+  {
+    id: "happy-5",
+    routeName: "행복버스 5호선",
+    routeNumber: "H5",
+    departure: "부민 아파트",
+    arrival: "청도 코아루블루핀",
+    departureTime: "07:40 출발",
+    departureMinutes: 460,
+    duration: "22분",
+    durationMinutes: 22,
+    status: "곧 도착",
+  },
+  {
+    id: "happy-6",
+    routeName: "행복버스 6호선",
+    routeNumber: "H6",
+    departure: "어린이집",
+    arrival: "청도 버스 터미널",
+    departureTime: "08:00 출발",
+    departureMinutes: 480,
+    duration: "25분",
+    durationMinutes: 25,
+    status: "운행중",
+  },
+];
 
 export function RouteScreen({
   onSelectTab,
@@ -57,42 +136,52 @@ export function RouteScreen({
 }: RouteScreenProps) {
   const [selectedFilter, setSelectedFilter] = useState<RouteFilter>("전체");
   const [selectedSort, setSelectedSort] = useState<RouteSort>("빠른순");
-  const [busRoutes, setBusRoutes] = useState<BusRoute[]>([]);
-  const [busStops, setBusStops] = useState<BusStop[]>([]);
-  const [busRouteStops, setBusRouteStops] = useState<BusRouteStop[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Pull the community-sighted routes so we can annotate the static prototype
+  // cards with a last-seen badge. The route number on the static card
+  // (e.g. "D-01") is matched against the BusRoute.code we get back. Routes
+  // that have no recorded sighting (or that do not exist in the archive at
+  // all, such as the prototype's "N-10") simply render without a badge.
+  const [busRoutes, setBusRoutes] = useState<BusRoute[]>([]);
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getBusRoutes(), getBusStops(), getBusRouteStops()])
-      .then(([routes, stops, routeStops]) => {
+    getBusRoutes()
+      .then((routes) => {
         if (!cancelled) {
           setBusRoutes(routes);
-          setBusStops(stops);
-          setBusRouteStops(routeStops);
-          setLoadError(null);
         }
       })
       .catch((error) => {
+        // The badge is non-critical; if the bus archive endpoint fails we
+        // simply render the route cards without the freshness badge. Avoid
+        // surfacing the error to the user since the rest of the screen is
+        // unaffected.
         if (cancelled) return;
-        setLoadError(
-          error instanceof Error ? error.message : "노선 정보를 불러오지 못했어요.",
-        );
+        console.warn("[RouteScreen] failed to load bus routes", error);
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const routeCards = useMemo(
-    () => buildRouteCards(busRoutes, busStops, busRouteStops),
-    [busRouteStops, busRoutes, busStops],
-  );
+  const lastSightingByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const route of busRoutes) {
+      if (route.lastSightingAt) {
+        map.set(route.code, route.lastSightingAt);
+      }
+    }
+    return map;
+  }, [busRoutes]);
 
   const visibleRoutes = useMemo(() => {
     const filtered = routeCards.filter((route) => {
       if (selectedFilter === "전체") {
         return true;
+      }
+
+      if (selectedFilter === "급행") {
+        return route.isExpress === true;
       }
 
       return route.status === selectedFilter;
@@ -171,22 +260,20 @@ export function RouteScreen({
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {summaryRoute ? (
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryIconFrame}>
-                <Bus size={22} color={colors.mintDark} strokeWidth={2.4} />
-              </View>
-              <View style={styles.summaryCopy}>
-                <Text style={styles.summaryLabel}>최근 제보 노선</Text>
-                <Text style={styles.summaryTitle}>
-                  {summaryRoute.routeName} · {summaryRoute.duration}
-                </Text>
-              </View>
-              <View style={styles.summaryBadge}>
-                <Text style={styles.summaryBadgeText}>{summaryRoute.status}</Text>
-              </View>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryIconFrame}>
+              <Bus size={22} color={colors.mintDark} strokeWidth={2.4} />
             </View>
-          ) : null}
+            <View style={styles.summaryCopy}>
+              <Text style={styles.summaryLabel}>가장 빠른 노선</Text>
+              <Text style={styles.summaryTitle}>
+                {summaryRoute.routeName} · {summaryRoute.duration}
+              </Text>
+            </View>
+            <View style={styles.summaryBadge}>
+              <Text style={styles.summaryBadgeText}>{summaryRoute.status}</Text>
+            </View>
+          </View>
 
           {onOpenArrivalTimes || onOpenArchiveHistory ? (
             <View style={styles.entryGroup}>
@@ -230,22 +317,15 @@ export function RouteScreen({
             <Text style={styles.sectionMeta}>{visibleRoutes.length}개 노선</Text>
           </View>
 
-          {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
-          {!loadError && routeCards.length === 0 ? (
-            <Text style={styles.emptyText}>등록된 행복버스 노선이 없어요</Text>
-          ) : null}
-
-          {visibleRoutes.length > 0 ? (
-            <View style={styles.cardList}>
-              {visibleRoutes.map((route) => (
-                <RouteCard
-                  key={route.id}
-                  route={route}
-                  lastSightingAt={route.lastSightingAt}
-                />
-              ))}
-            </View>
-          ) : null}
+          <View style={styles.cardList}>
+            {visibleRoutes.map((route) => (
+              <RouteCard
+                key={route.id}
+                route={route}
+                lastSightingAt={lastSightingByCode.get(route.routeNumber)}
+              />
+            ))}
+          </View>
         </ScrollView>
 
         <BottomNav
@@ -257,65 +337,6 @@ export function RouteScreen({
       </View>
     </View>
   );
-}
-
-function buildRouteCards(
-  routes: BusRoute[],
-  stops: BusStop[],
-  routeStops: BusRouteStop[],
-): RouteCardData[] {
-  const stopsById = new Map(stops.map((stop) => [stop.id, stop]));
-
-  return routes.map((route) => {
-    const orderedStops = routeStops
-      .filter((link) => link.routeId === route.id)
-      .sort((a, b) => a.sequence - b.sequence)
-      .map((link) => stopsById.get(link.stopId))
-      .filter((stop): stop is BusStop => Boolean(stop));
-    const firstStop = orderedStops[0];
-    const lastStop = orderedStops[orderedStops.length - 1];
-    const sightingLabel = formatLastSightingLabel(route.lastSightingAt);
-
-    return {
-      id: route.id,
-      routeName: route.name,
-      routeNumber: route.code,
-      departure: firstStop?.name ?? "출발 정류장 미등록",
-      arrival: lastStop?.name ?? "도착 정류장 미등록",
-      departureTime: sightingLabel ? `최근 ${sightingLabel}` : "제보 없음",
-      departureMinutes: getSightingSortMinutes(route.lastSightingAt),
-      duration: `${orderedStops.length}개 정류장`,
-      durationMinutes: orderedStops.length || 999,
-      status: getSightingStatus(route.lastSightingAt),
-      lastSightingAt: route.lastSightingAt,
-    };
-  });
-}
-
-function getSightingSortMinutes(lastSightingAt?: string) {
-  if (!lastSightingAt) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-
-  const timestamp = new Date(lastSightingAt).getTime();
-  if (!Number.isFinite(timestamp)) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-
-  return Math.max(0, Math.round((Date.now() - timestamp) / 60_000));
-}
-
-function getSightingStatus(lastSightingAt?: string): RouteStatus {
-  const minutes = getSightingSortMinutes(lastSightingAt);
-  if (minutes <= 15) {
-    return "운행중";
-  }
-
-  if (minutes <= 60) {
-    return "곧 도착";
-  }
-
-  return "배차대기";
 }
 
 function statusPriority(status: RouteStatus) {
@@ -647,22 +668,6 @@ const styles = StyleSheet.create({
   },
   cardList: {
     gap: 10,
-  },
-  errorText: {
-    color: colors.red,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
-  },
-  emptyText: {
-    paddingVertical: 18,
-    color: colors.grayText,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
-    textAlign: "center",
   },
   routeCard: {
     paddingHorizontal: 18,

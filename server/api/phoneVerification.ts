@@ -14,6 +14,11 @@ import type {
   PhoneVerificationStartResult,
 } from "../../types/domain";
 import { getPostgresPool } from "../db/postgres";
+import {
+  readSolapiSmsConfig,
+  sendSolapiSms,
+  SolapiSmsConfigError,
+} from "../sms/solapi";
 
 type QueryExecutor = {
   query: (
@@ -208,7 +213,15 @@ export function createPhoneVerificationTokenHash(token: string) {
 }
 
 function shouldExposeDebugCode(options: RequestPhoneVerificationOptions) {
-  return options.exposeCode ?? process.env.NODE_ENV !== "production";
+  return (
+    options.exposeCode ??
+    (process.env.NODE_ENV !== "production" ||
+      isPhoneVerificationDebugCodeEnabled())
+  );
+}
+
+function isPhoneVerificationDebugCodeEnabled() {
+  return process.env.PHONE_VERIFICATION_DEBUG_CODE_ENABLED === "true";
 }
 
 function createVerificationCode() {
@@ -216,10 +229,25 @@ function createVerificationCode() {
 }
 
 async function deliverPhoneVerificationCode(phone: string, code: string) {
-  const webhookUrl = process.env.PHONE_VERIFICATION_WEBHOOK_URL?.trim();
+  const text = `[다이루리] 인증번호는 ${code}입니다.`;
+  let config: ReturnType<typeof readSolapiSmsConfig>;
 
-  if (!webhookUrl) {
-    if (process.env.NODE_ENV === "production") {
+  try {
+    config = readSolapiSmsConfig();
+  } catch (error) {
+    if (error instanceof SolapiSmsConfigError) {
+      throw new PhoneVerificationInputError(
+        "phone verification sender is not configured",
+      );
+    }
+    throw error;
+  }
+
+  if (!config) {
+    if (
+      process.env.NODE_ENV === "production" &&
+      !isPhoneVerificationDebugCodeEnabled()
+    ) {
       throw new PhoneVerificationInputError(
         "phone verification sender is not configured",
       );
@@ -227,20 +255,9 @@ async function deliverPhoneVerificationCode(phone: string, code: string) {
     return;
   }
 
-  const response = await fetch(webhookUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(process.env.PHONE_VERIFICATION_WEBHOOK_SECRET
-        ? {
-            Authorization: `Bearer ${process.env.PHONE_VERIFICATION_WEBHOOK_SECRET}`,
-          }
-        : {}),
-    },
-    body: JSON.stringify({ phone, code }),
-  });
-
-  if (!response.ok) {
+  try {
+    await sendSolapiSms({ config, to: phone, text });
+  } catch (error) {
     throw new PhoneVerificationInputError("phone verification delivery failed");
   }
 }

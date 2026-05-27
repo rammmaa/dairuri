@@ -76,41 +76,6 @@ const initialAgreements: Agreements = {
   thirdParty: false,
 };
 
-const fallbackPlaceCandidates: PlaceCandidate[] = [
-  {
-    id: "cheongdo-station",
-    name: "청도역",
-    address: "경북 청도군 청도읍 청화로",
-    latitude: 35.6474,
-    longitude: 128.7338,
-    source: "fallback",
-  },
-  {
-    id: "daejeon-station",
-    name: "대전역",
-    address: "대전 동구 중앙로 215",
-    latitude: 36.3324,
-    longitude: 127.4346,
-    source: "fallback",
-  },
-  {
-    id: "dairuri-cafe",
-    name: "다로리 카페",
-    address: "다로리로 12",
-    latitude: 37.5572,
-    longitude: 126.9246,
-    source: "fallback",
-  },
-  {
-    id: "central-stop",
-    name: "중앙 정류장",
-    address: "중앙대로 버스정류장",
-    latitude: 37.5591,
-    longitude: 126.9272,
-    source: "fallback",
-  },
-];
-
 export function CreateRecruitmentScreen({
   onCancel,
   onComplete,
@@ -436,7 +401,7 @@ export function CreateRecruitmentScreen({
     submitting
       ? "등록 중..."
       : selectedType === "work" && screenIndex === 4
-      ? "인적 자원 등록하기"
+      ? "인재 풀 등록"
       : selectedType === "ride" && screenIndex === 5
         ? "라이드 모집 시작하기"
         : "다음";
@@ -559,7 +524,7 @@ function TypeSelectionStep({ selectedType, onSelect }: TypeSelectionStepProps) {
         />
         <TypeCard
           type="work"
-          title="인적 자원"
+          title="인재 풀 등록"
           description="가능한 업무와 시간을 알려요"
           selected={selectedType === "work"}
           accent={colors.yellow}
@@ -1094,38 +1059,53 @@ function PlacePickerScreen({
   onSelectPlace,
 }: PlacePickerScreenProps) {
   const [query, setQuery] = useState(currentValue);
-  const [places, setPlaces] = useState<PlaceCandidate[]>(() =>
-    getFallbackPlaceCandidates(currentValue),
-  );
+  const [places, setPlaces] = useState<PlaceCandidate[]>([]);
+  const [isSearchingPlace, setIsSearchingPlace] = useState(false);
   const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
   const title =
     target === "departure" ? "지도에서 출발지 선택" : "지도에서 목적지 선택";
 
   useEffect(() => {
     let active = true;
-    const fallback = getFallbackPlaceCandidates(query);
+    const trimmedQuery = query.trim();
 
-    setPlaces(fallback);
+    if (trimmedQuery.length < 2) {
+      setPlaces([]);
+      setPlaceSearchError(null);
+      setIsSearchingPlace(false);
+      return () => {
+        active = false;
+      };
+    }
 
-    searchApiPlaceCandidates(query)
+    setIsSearchingPlace(true);
+    setPlaceSearchError(null);
+
+    searchApiPlaceCandidates(trimmedQuery)
       .then((apiPlaces) => {
         if (!active) {
           return;
         }
 
         setPlaceSearchError(null);
-        if (apiPlaces.length > 0) {
-          setPlaces(mergePlaceCandidates(apiPlaces, fallback));
-        }
+        setPlaces(apiPlaces);
       })
       .catch((error) => {
         if (!active) {
           return;
         }
 
+        setPlaces([]);
         setPlaceSearchError(
-          error instanceof Error ? error.message : "장소 검색을 불러오지 못했어요.",
+          error instanceof Error
+            ? "지도 API 검색에 실패했어요. 잠시 후 다시 검색해주세요."
+            : "지도 API 검색에 실패했어요. 잠시 후 다시 검색해주세요.",
         );
+      })
+      .finally(() => {
+        if (active) {
+          setIsSearchingPlace(false);
+        }
       });
 
     return () => {
@@ -1133,7 +1113,16 @@ function PlacePickerScreen({
     };
   }, [query]);
 
-  const firstPlace = places[0] ?? fallbackPlaceCandidates[0];
+  const firstPlace = places[0];
+  const canSelectMapCenter = Boolean(firstPlace);
+  const helperText =
+    query.trim().length < 2
+      ? "장소명을 2글자 이상 입력하면 지도 API 결과가 표시돼요."
+      : isSearchingPlace
+        ? "지도 API에서 장소를 찾는 중이에요."
+        : places.length === 0 && !placeSearchError
+          ? "검색 결과가 없어요."
+          : null;
 
   return (
     <View style={styles.safeArea}>
@@ -1175,12 +1164,19 @@ function PlacePickerScreen({
 
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ disabled: !canSelectMapCenter }}
           accessibilityLabel="지도 중심 선택"
-          onPress={() => onSelectPlace(firstPlace)}
+          disabled={!canSelectMapCenter}
+          onPress={() => {
+            if (firstPlace) {
+              onSelectPlace(firstPlace);
+            }
+          }}
           testID="place-select-map-center"
           style={({ pressed }) => [
             styles.mapCenterButton,
             { backgroundColor: accent },
+            !canSelectMapCenter && styles.mapCenterButtonDisabled,
             pressed && styles.pressed,
           ]}
         >
@@ -1192,15 +1188,14 @@ function PlacePickerScreen({
           contentContainerStyle={styles.placeList}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.label}>
-            {places.some((place) => place.source === "api")
-              ? "지도 API 결과"
-              : "추천 장소"}
-          </Text>
+          <Text style={styles.label}>지도 API 결과</Text>
           {placeSearchError ? (
             <Text style={styles.placeSearchError}>
-              지도 API 검색이 실패해 추천 장소를 표시하고 있어요.
+              {placeSearchError}
             </Text>
+          ) : null}
+          {helperText ? (
+            <Text style={styles.placeSearchHelper}>{helperText}</Text>
           ) : null}
           {places.map((place) => (
             <Pressable
@@ -1222,9 +1217,6 @@ function PlacePickerScreen({
                 <Text style={styles.placeResultAddress} numberOfLines={1}>
                   {place.address}
                 </Text>
-                {place.source === "fallback" ? (
-                  <Text style={styles.placeSourceBadge}>추천 장소</Text>
-                ) : null}
               </View>
             </Pressable>
           ))}
@@ -1415,37 +1407,6 @@ function formatCategories(categories: string[]) {
   return categories.length > 0 ? categories.join(" · ") : "가능 업무";
 }
 
-function getFallbackPlaceCandidates(query: string) {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return fallbackPlaceCandidates;
-  }
-
-  const filtered = fallbackPlaceCandidates.filter((place) => {
-    const searchable = `${place.name} ${place.address}`.toLowerCase();
-    return searchable.includes(normalizedQuery);
-  });
-
-  return filtered.length > 0 ? filtered : fallbackPlaceCandidates;
-}
-
-function mergePlaceCandidates(
-  apiPlaces: PlaceCandidate[],
-  fallbackPlaces: PlaceCandidate[],
-) {
-  const seen = new Set<string>();
-
-  return [...apiPlaces, ...fallbackPlaces].filter((place) => {
-    const key = `${place.name}-${place.address}`;
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
-}
-
 function formatCurrency(value: string) {
   const numeric = value.replace(/[^0-9]/g, "");
   if (!numeric) {
@@ -1615,6 +1576,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  mapCenterButtonDisabled: {
+    backgroundColor: colors.gray300,
+    opacity: 0.72,
+  },
   mapCenterButtonText: {
     color: colors.surface,
     fontFamily: typography.family.medium,
@@ -1759,13 +1724,12 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.xs,
     fontWeight: typography.weight.regular,
   },
-  placeSourceBadge: {
-    alignSelf: "flex-start",
-    color: colors.mintDark,
+  placeSearchHelper: {
+    color: colors.gray400,
     fontFamily: typography.family.body,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
+    fontWeight: typography.weight.regular,
   },
   prefixText: {
     color: colors.gray300,

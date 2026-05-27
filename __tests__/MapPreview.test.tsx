@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 
 import { MapPreview } from "../components/MapPreview";
-import { shouldUseNativeNaverMap } from "../components/NaverMapSurface";
 
 function createPanEvent(previousPageX: number, previousPageY: number, currentPageX: number, currentPageY: number) {
   return {
@@ -30,16 +29,6 @@ function createPanEvent(previousPageX: number, previousPageY: number, currentPag
 }
 
 describe("MapPreview", () => {
-  it("can force the fallback map for Expo Go testing", () => {
-    expect(
-      shouldUseNativeNaverMap({
-        platform: "android",
-        nodeEnv: "development",
-        forceFallbackMap: "true",
-      }),
-    ).toBe(false);
-  });
-
   it("lets the fallback map surface move with a touch drag", () => {
     render(<MapPreview />);
 
@@ -58,5 +47,13 @@ describe("MapPreview", () => {
       { translateX: 36 },
       { translateY: -28 },
     ]);
+  });
+
+  it("does not render app-level map pins over the map surface", () => {
+    render(<MapPreview />);
+
+    expect(screen.queryByTestId("map-preview-marker-cafe")).toBeNull();
+    expect(screen.queryByTestId("map-preview-marker-bus")).toBeNull();
+    expect(screen.queryByTestId("map-preview-marker-library")).toBeNull();
   });
 });

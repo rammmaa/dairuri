@@ -85,13 +85,17 @@ npm run api:start
 | `EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID` | Expo build에서 사용하는 public Dynamic Map key fallback |
 | `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID` | 웹 지도 표면에서 사용하는 public Web Dynamic Map key |
 | `NAVER_MAP_API_KEY` | Directions, Geocoding 같은 서버 사이드 REST API key |
+| `SOLAPI_API_KEY` | 전화번호 인증 SMS 발송용 SOLAPI API key |
+| `SOLAPI_API_SECRET` | SOLAPI HMAC-SHA256 서명용 API secret |
+| `SOLAPI_FROM` | SOLAPI에 등록된 발신번호 |
+| `PHONE_VERIFICATION_HASH_SECRET` | 전화번호 인증 코드/토큰 해시 salt |
 | `EXPO_PUBLIC_DARORI_API_BASE_URL` | 앱 API 서버 base URL. 로컬은 `http://localhost:8787`, 프로덕션 웹/APK는 `https://api.dairuri.harammm.me` |
 | `EXPO_PUBLIC_DARORI_USER_ID` | 개발용 write user header |
 | `EXPO_PUBLIC_DARORI_USE_MOCK_API` | 테스트/로컬 전용 mock opt-in. 프로덕션에서는 unset |
 | `DATABASE_URL` | 서버 사이드 PostgreSQL connection string |
 | `REDIS_URL` | 서버 사이드 Redis connection string |
 
-`DATABASE_URL`, `REDIS_URL`, `NAVER_MAP_API_KEY`는 모바일 앱 번들에 포함되면 안 되는 서버 전용 값입니다.
+`DATABASE_URL`, `REDIS_URL`, `NAVER_MAP_API_KEY`, `SOLAPI_*`, `PHONE_VERIFICATION_HASH_SECRET`는 모바일 앱 번들에 포함되면 안 되는 서버 전용 값입니다.
 
 🌐 Deployment
 

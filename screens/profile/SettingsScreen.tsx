@@ -1,4 +1,4 @@
-import { ChevronRight, LockKeyhole, Trash2 } from "lucide-react-native";
+import { ChevronRight, EyeOff, LockKeyhole, Scissors } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   Image,
@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import type { ReactNode } from "react";
 
@@ -40,6 +42,7 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const vehicleImages = profile?.vehicle?.images ?? [];
+  const email = splitEmail(profile?.email);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -134,12 +137,21 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
           </Section>
 
           <Section title="이메일">
-            <ReadonlyField value={profile?.email ?? "이메일 없음"} />
+            <View style={styles.emailRow}>
+              <ReadonlyField value={email.local} style={styles.emailLocalField} />
+              <ReadonlyField value={email.domain} style={styles.emailDomainField} />
+            </View>
           </Section>
 
           <Section title="차량 정보">
-            <ReadonlyField value={profile?.vehicle?.plateNumber ?? "등록된 차량 없음"} />
+            <Text style={styles.subsectionLabel}>차량 번호</Text>
+            <ReadonlyField
+              value={maskPlateNumber(profile?.vehicle?.plateNumber)}
+              accessory={<EyeOff size={18} color={colors.gray300} strokeWidth={2.1} />}
+            />
             {vehicleImages.length > 0 ? (
+              <>
+                <Text style={styles.subsectionLabel}>차량 사진</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -154,6 +166,7 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
                   />
                 ))}
               </ScrollView>
+              </>
             ) : (
               <Text style={styles.emptyText}>등록된 차량 사진이 없어요</Text>
             )}
@@ -281,12 +294,15 @@ function Section({ title, children }: SectionProps) {
 
 type ReadonlyFieldProps = {
   value: string;
+  accessory?: ReactNode;
+  style?: StyleProp<ViewStyle>;
 };
 
-function ReadonlyField({ value }: ReadonlyFieldProps) {
+function ReadonlyField({ value, accessory, style }: ReadonlyFieldProps) {
   return (
-    <View style={styles.readonlyField}>
+    <View style={[styles.readonlyField, style]}>
       <Text style={styles.readonlyText}>{value}</Text>
+      {accessory}
     </View>
   );
 }
@@ -299,7 +315,7 @@ type SettingsMenuRowProps = {
 };
 
 function SettingsMenuRow({ label, icon, danger = false, onPress }: SettingsMenuRowProps) {
-  const Icon = icon === "password" ? LockKeyhole : Trash2;
+  const Icon = icon === "password" ? LockKeyhole : Scissors;
 
   return (
     <Pressable
@@ -321,6 +337,23 @@ function SettingsMenuRow({ label, icon, danger = false, onPress }: SettingsMenuR
   );
 }
 
+function splitEmail(email?: string) {
+  if (!email || !email.includes("@")) {
+    return { local: "현재 이메일", domain: "@gmail.com" };
+  }
+
+  const [local, domain] = email.split("@");
+  return { local, domain: `@${domain}` };
+}
+
+function maskPlateNumber(plateNumber?: string) {
+  if (!plateNumber) {
+    return "등록된 차량 없음";
+  }
+
+  return plateNumber.replace(/\s*\S{4}$/, " ****");
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -337,7 +370,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenX,
     paddingTop: 20,
     paddingBottom: 124,
-    gap: 22,
+    gap: 20,
   },
   section: {
     gap: 10,
@@ -354,22 +387,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 12,
     backgroundColor: colors.gray50,
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
   readonlyText: {
-    color: colors.grayIcon,
+    flex: 1,
+    color: colors.gray300,
     fontFamily: typography.family.body,
-    fontSize: typography.size.base,
-    lineHeight: typography.lineHeight.base,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.medium,
+  },
+  emailRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  emailLocalField: {
+    flex: 1,
+  },
+  emailDomainField: {
+    width: 98,
+  },
+  subsectionLabel: {
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
   },
   vehicleImages: {
     gap: 8,
   },
   vehicleImage: {
-    width: 112,
-    height: 76,
-    borderRadius: 16,
+    width: 92,
+    height: 56,
+    borderRadius: 10,
     backgroundColor: colors.gray100,
   },
   emptyText: {
@@ -389,7 +443,7 @@ const styles = StyleSheet.create({
   menuRow: {
     minHeight: 58,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: colors.gray50,
     flexDirection: "row",
     alignItems: "center",
@@ -399,7 +453,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: colors.mintLight,
     alignItems: "center",
     justifyContent: "center",
   },

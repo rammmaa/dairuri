@@ -22,6 +22,7 @@ import { ApplyFlowModal } from "./ApplyFlowModal";
 export type PostDetailScreenProps = {
   postId: string;
   onBack?: () => void;
+  onOpenChat?: () => void;
 };
 
 type MetaItem = {
@@ -35,6 +36,7 @@ const fallbackImage =
 export function PostDetailScreen({
   postId,
   onBack,
+  onOpenChat,
 }: PostDetailScreenProps) {
   const initialPost = useMemo(
     () =>
@@ -78,7 +80,7 @@ export function PostDetailScreen({
   }
 
   const isResourceProfile = post.type === "job" && post.profileMode === "resource";
-  const title = post.type === "job" ? "인적 자원" : "정기 라이딩";
+  const title = post.type === "job" ? "인재 풀 등록" : "정기 라이딩";
   const themeColor = post.type === "job" ? colors.yellowText : colors.mintDark;
   const heroImage = post.imageUrls[0] ?? fallbackImage;
 
@@ -151,6 +153,7 @@ export function PostDetailScreen({
         visible={applyVisible}
         post={post}
         onClose={() => setApplyVisible(false)}
+        onOpenChat={onOpenChat}
       />
     </View>
   );

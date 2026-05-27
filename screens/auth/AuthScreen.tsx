@@ -20,6 +20,7 @@ import {
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
+import { formatKoreanPhoneNumberInput } from "../../data/phoneNumberFormat";
 import {
   confirmPhoneVerification,
   login,
@@ -393,7 +394,10 @@ function SignupFormScreen({
   onDenyCamera,
 }: SignupFormScreenProps) {
   const updateDraft = (key: keyof SignupDraft, value: string) => {
-    onDraftChange({ ...draft, [key]: value });
+    onDraftChange({
+      ...draft,
+      [key]: key === "phone" ? formatKoreanPhoneNumberInput(value) : value,
+    });
   };
 
   return (

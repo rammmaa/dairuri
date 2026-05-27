@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import {
   PanResponder,
-  Pressable,
   StyleProp,
   StyleSheet,
   Text,
@@ -29,11 +28,6 @@ type MapLabel = {
   key: string;
   label: string;
   style: ViewStyle;
-};
-
-type FallbackMarkerStyle = {
-  dotStyle: ViewStyle;
-  labelStyle: ViewStyle;
 };
 
 const PAN_LIMIT = 140;
@@ -155,53 +149,12 @@ const labels: MapLabel[] = [
   },
 ];
 
-const fallbackMarkerStyles: Record<string, FallbackMarkerStyle> = {
-  cafe: {
-    dotStyle: {
-      top: 258,
-      left: 106,
-      backgroundColor: colors.mint,
-      borderColor: colors.mintDark,
-    },
-    labelStyle: {
-      top: 232,
-      left: 88,
-    },
-  },
-  bus: {
-    dotStyle: {
-      top: 342,
-      right: 92,
-      backgroundColor: colors.yellow,
-      borderColor: colors.yellowText,
-    },
-    labelStyle: {
-      top: 316,
-      right: 62,
-    },
-  },
-  library: {
-    dotStyle: {
-      top: 158,
-      right: 132,
-      backgroundColor: colors.blue,
-      borderColor: colors.surface,
-    },
-    labelStyle: {
-      top: 132,
-      right: 100,
-    },
-  },
-};
-
 function clampPan(value: number) {
   return Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, value));
 }
 
 export function FallbackMapSurface({
   style,
-  markers,
-  onMarkerPress,
 }: FallbackMapSurfaceProps) {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const startOffsetRef = useRef({ x: 0, y: 0 });
@@ -286,29 +239,6 @@ export function FallbackMapSurface({
             {item.label}
           </Text>
         ))}
-
-        {markers.map((marker) => {
-          const markerStyle = fallbackMarkerStyles[marker.id] ?? fallbackMarkerStyles.cafe;
-
-          return (
-            <View key={marker.id}>
-              <Text style={[styles.poiLabel, markerStyle.labelStyle]}>
-                {marker.label}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${marker.label} 마커`}
-                onPress={() => onMarkerPress?.(marker.id)}
-                testID={`map-preview-marker-${marker.id}`}
-                style={({ pressed }) => [
-                  styles.poiDot,
-                  markerStyle.dotStyle,
-                  pressed && styles.poiDotPressed,
-                ]}
-              />
-            </View>
-          );
-        })}
 
         <View style={styles.currentLocation}>
           <View style={styles.locationPulse} />
@@ -416,28 +346,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     opacity: 0.58,
-  },
-  poiLabel: {
-    position: "absolute",
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 10,
-    overflow: "hidden",
-    color: colors.slate,
-    backgroundColor: colors.surface,
-    fontSize: 11,
-    lineHeight: 14,
-    opacity: 0.86,
-  },
-  poiDot: {
-    position: "absolute",
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-  },
-  poiDotPressed: {
-    opacity: 0.7,
   },
   currentLocation: {
     position: "absolute",

@@ -24,6 +24,7 @@ export type ApplyFlowModalProps = {
   visible: boolean;
   post: Post;
   onClose: () => void;
+  onOpenChat?: () => void;
 };
 
 const initialTerms: TermsState = {
@@ -37,20 +38,17 @@ export function ApplyFlowModal({
   visible,
   post,
   onClose,
+  onOpenChat,
 }: ApplyFlowModalProps) {
   const [step, setStep] = useState<ApplyStep>(1);
   const [intro, setIntro] = useState("");
   const [terms, setTerms] = useState<TermsState>(initialTerms);
-  const [submitting, setSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
       setStep(1);
       setIntro("");
       setTerms(initialTerms);
-      setSubmitting(false);
-      setErrorMessage(null);
     }
   }, [visible]);
 
@@ -96,27 +94,14 @@ export function ApplyFlowModal({
     });
   };
 
-  const submitApplication = async () => {
-    if (submitting || !requiredTermsChecked) {
-      return;
-    }
-
-    setSubmitting(true);
-    setErrorMessage(null);
-    try {
-      await applyToPost(post.id, intro.trim());
-      setStep(3);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "지원 요청을 보내지 못했어요.",
-      );
-    } finally {
-      setSubmitting(false);
-    }
+  const submitApplication = () => {
+    void applyToPost(post.id, intro.trim());
+    setStep(3);
   };
 
   const complete = () => {
     onClose();
+    onOpenChat?.();
   };
 
   return (
@@ -191,12 +176,11 @@ export function ApplyFlowModal({
               />
             </View>
             <AppButton
-              label={submitting ? "제출 중" : "확인"}
-              disabled={!requiredTermsChecked || submitting}
+              label="확인"
+              disabled={!requiredTermsChecked}
               onPress={submitApplication}
               testID="apply-terms-confirm-button"
             />
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           </View>
         ) : null}
 
@@ -210,7 +194,7 @@ export function ApplyFlowModal({
             </Text>
             <Text style={styles.description}>
               {isResourceProfile
-                ? "작성하신 연락 내용이 등록자에게 전달되었습니다.\n수락되면 채팅방이 열립니다."
+                ? "작성하신 연락 내용이 등록자에게 전달되었습니다.\n채팅에서 이어서 이야기해보세요."
                 : "작성하신 지원서가 작성자에게 전달되었습니다.\n검토 후 연락 드릴게요!"}
             </Text>
             <AppButton label="확인" onPress={complete} testID="apply-complete-button" />
@@ -273,13 +257,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
     fontWeight: typography.weight.regular,
-  },
-  errorText: {
-    color: colors.red,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   termsList: {
     paddingVertical: 4,

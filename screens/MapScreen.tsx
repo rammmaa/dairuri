@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as Location from "expo-location";
 import {
   PanResponder,
   ScrollView,
@@ -36,7 +37,6 @@ import {
 import { getPosts } from "../services/api";
 
 export type MapScreenProps = {
-  initialPosts?: MapHomePost[];
   onSelectTab?: (item: BottomNavItem) => void;
   onOpenPost?: (postId: string) => void;
   onSearchPress?: () => void;
@@ -72,7 +72,6 @@ function formatBusArchiveClock(date: Date) {
 }
 
 export function MapScreen({
-  initialPosts,
   onSelectTab,
   onOpenPost,
   onSearchPress,
@@ -91,7 +90,7 @@ export function MapScreen({
   const [busClockDate, setBusClockDate] = useState(() => new Date());
   const [busSightings, setBusSightings] = useState<BusSighting[]>([]);
   const [recruitmentPosts, setRecruitmentPosts] = useState<MapHomePost[]>(() =>
-    initialPosts ?? (process.env.NODE_ENV === "test" ? mapHomePosts : []),
+    process.env.NODE_ENV === "test" ? mapHomePosts : [],
   );
   const sheetTopRef = useRef(SHEET_DEFAULT_TOP);
   const dragStartTopRef = useRef(SHEET_DEFAULT_TOP);
@@ -124,16 +123,6 @@ export function MapScreen({
   });
   const visiblePosts = pagedPosts.visibleItems;
   const hasMorePosts = pagedPosts.hasMore;
-  const emptyStateCopy =
-    recruitmentPosts.length === 0
-      ? {
-          title: "아직 등록된 모집글이 없어요",
-          description: "새 모집글이 올라오면 여기에서 바로 확인할 수 있어요.",
-        }
-      : {
-          title: "조건에 맞는 모집글이 없어요",
-          description: "필터를 바꾸거나 전체 모집글을 확인해보세요.",
-        };
 
   useEffect(() => {
     setVisibleCount(POST_PAGE_SIZE);
@@ -202,30 +191,49 @@ export function MapScreen({
     },
     [selectedCategory, updateSheetTop],
   );
-  const handleCurrentLocationPress = useCallback(() => {
+  const handleCurrentLocationPress = useCallback(async () => {
     onCurrentLocationPress?.();
 
     const geolocation = globalThis.navigator?.geolocation;
 
-    if (!geolocation) {
+    if (geolocation) {
+      geolocation.getCurrentPosition(
+        (position) => {
+          setFocusedCamera({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            zoom: 16,
+          });
+        },
+        () => undefined,
+        {
+          enableHighAccuracy: true,
+          timeout: 8000,
+          maximumAge: 30000,
+        },
+      );
       return;
     }
 
-    geolocation.getCurrentPosition(
-      (position) => {
-        setFocusedCamera({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          zoom: 16,
-        });
-      },
-      () => undefined,
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 30000,
-      },
-    );
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+
+      if (!permission.granted) {
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      setFocusedCamera({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        zoom: 16,
+      });
+    } catch {
+      return;
+    }
   }, [onCurrentLocationPress]);
   const handleBusSightingSave = useCallback(() => {
     const now = new Date();
@@ -472,20 +480,15 @@ export function MapScreen({
                 </View>
 
                 <View style={styles.cardList}>
-                  {visiblePosts.length > 0 ? (
-                    visiblePosts.map((post) => (
-                      <RecruitmentCard
-                        key={post.id}
-                        post={post}
-                        onPress={() => onOpenPost?.(post.detailPostId)}
-                      />
-                    ))
-                  ) : (
+                  {visiblePosts.length > 0 ? visiblePosts.map((post) => (
+                    <RecruitmentCard
+                      key={post.id}
+                      post={post}
+                      onPress={() => onOpenPost?.(post.detailPostId)}
+                    />
+                  )) : (
                     <View style={styles.emptyState}>
-                      <Text style={styles.emptyTitle}>{emptyStateCopy.title}</Text>
-                      <Text style={styles.emptyDescription}>
-                        {emptyStateCopy.description}
-                      </Text>
+                      <Text style={styles.emptyTitle}>조건에 맞는 모집글이 없어요</Text>
                     </View>
                   )}
                   {hasMorePosts ? (
@@ -773,7 +776,6 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     minHeight: 120,
-    paddingHorizontal: 20,
     borderRadius: spacing.cardRadius,
     backgroundColor: colors.surface,
     alignItems: "center",
@@ -785,16 +787,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.medium,
-    textAlign: "center",
-  },
-  emptyDescription: {
-    marginTop: 6,
-    color: colors.mutedText,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
-    textAlign: "center",
   },
   loadMoreButton: {
     minHeight: 42,

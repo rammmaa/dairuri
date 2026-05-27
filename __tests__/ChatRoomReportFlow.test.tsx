@@ -29,6 +29,13 @@ describe("Chat room and report flow", () => {
     expect(screen.getByPlaceholderText("메시지 보내기")).toBeTruthy();
   });
 
+  it("keeps the composer inside a keyboard avoiding container", () => {
+    render(<ChatRoomScreen roomId="room-1" />);
+
+    expect(screen.getByTestId("chat-room-keyboard-avoiding-view")).toBeTruthy();
+    expect(screen.getByPlaceholderText("메시지 보내기")).toBeTruthy();
+  });
+
   it("sends a non-empty message and clears the composer", async () => {
     render(<ChatRoomScreen roomId="room-1" />);
 
@@ -65,11 +72,54 @@ describe("Chat room and report flow", () => {
 
     fireEvent.press(screen.getByTestId("chat-room-more-button"));
     expect(screen.getByTestId("chat-more-bottom-sheet")).toBeTruthy();
+    expect(screen.getByText("매너 평가하기")).toBeTruthy();
+    expect(screen.getByText("면허증, 자동차 보험 조회하기")).toBeTruthy();
+    expect(screen.getByText("아는 사용자 초대하기")).toBeTruthy();
+    expect(screen.getByText("검색하기")).toBeTruthy();
+    expect(screen.getByText("알람끄기")).toBeTruthy();
+    expect(screen.getByText("닫기")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("chat-more-report"));
 
     expect(onReport).toHaveBeenCalledWith("room-1");
     expect(screen.queryByTestId("chat-more-bottom-sheet")).toBeNull();
+  });
+
+  it("handles the non-report more-sheet actions in the chat room", () => {
+    render(<ChatRoomScreen roomId="room-1" />);
+
+    fireEvent.press(screen.getByTestId("chat-room-more-button"));
+    fireEvent.press(screen.getByText("매너 평가하기"));
+    expect(screen.getByText("매너 평가하기")).toBeTruthy();
+    expect(screen.getByText("함께한 대화는 어땠나요?")).toBeTruthy();
+    fireEvent.press(screen.getByText("좋아요"));
+    expect(screen.getByText("매너 평가가 저장되었습니다.")).toBeTruthy();
+    fireEvent.press(screen.getByText("확인"));
+
+    fireEvent.press(screen.getByTestId("chat-room-more-button"));
+    fireEvent.press(screen.getByText("면허증, 자동차 보험 조회하기"));
+    expect(screen.getByText("면허증, 자동차 보험 조회")).toBeTruthy();
+    expect(screen.getByText("보험 확인 완료")).toBeTruthy();
+    fireEvent.press(screen.getByText("확인"));
+
+    fireEvent.press(screen.getByTestId("chat-room-more-button"));
+    fireEvent.press(screen.getByText("아는 사용자 초대하기"));
+    expect(screen.getByText("초대 링크가 준비되었습니다.")).toBeTruthy();
+    expect(screen.getByText("darori.chat/room-1")).toBeTruthy();
+    fireEvent.press(screen.getByText("확인"));
+
+    fireEvent.press(screen.getByTestId("chat-room-more-button"));
+    fireEvent.press(screen.getByText("검색하기"));
+    fireEvent.changeText(screen.getByTestId("chat-room-search-input"), "정문");
+    expect(screen.getByText("1개 메시지")).toBeTruthy();
+    expect(screen.queryByText("안녕하세요. 오늘도 같은 장소에서 만나면 될까요?")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("chat-room-more-button"));
+    fireEvent.press(screen.getByText("알람끄기"));
+    expect(screen.getByText("이 채팅방 알림을 껐어요.")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("chat-room-more-button"));
+    expect(screen.getByText("알람켜기")).toBeTruthy();
   });
 
   it("opens the leave-room confirmation from the more sheet", () => {

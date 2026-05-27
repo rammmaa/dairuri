@@ -12,6 +12,11 @@ describe("Auth flow", () => {
     expect(screen.getByText("성함")).toBeTruthy();
     expect(screen.getByText("운전자")).toBeTruthy();
 
+    fireEvent.changeText(screen.getByTestId("signup-phone-input"), "01012345678");
+    expect(screen.getByTestId("signup-phone-input").props.value).toBe(
+      "010-1234-5678",
+    );
+
     fireEvent.press(screen.getByTestId("signup-next"));
     expect(screen.getByText("전화번호 인증을 완료해주세요.")).toBeTruthy();
 

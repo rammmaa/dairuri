@@ -112,6 +112,8 @@ Server entrypoints:
 | --- | --- | --- | --- |
 | `GET /health` | no | no | none |
 | `POST /auth/signup` | no | yes | `registerUser(body)` |
+| `POST /auth/phone-verifications` | no | yes | create verification code and send via SOLAPI SMS |
+| `POST /auth/phone-verifications/:id/confirm` | no | yes | confirm verification code and issue signup proof |
 | `POST /auth/login` | no | yes | `authenticateUser(body)` |
 | `GET /me` | required | no | `getUserById(userId)` |
 | `PATCH /me` | required | no | `updateUserProfile(userId, body)` |
@@ -231,6 +233,11 @@ Redis usage:
 | `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID` | web map surface | Naver Web Dynamic Map script auth |
 | `NAVER_MAP_NCP_KEY_ID` | Expo config | native Naver map client id |
 | `NAVER_MAP_API_KEY` | server API | Naver REST APIs such as geocoding/directions |
+| `SOLAPI_API_KEY` | server API | SOLAPI API key for phone verification SMS |
+| `SOLAPI_API_SECRET` | server API | SOLAPI API secret for HMAC-SHA256 signing |
+| `SOLAPI_FROM` | server API | registered SOLAPI sender number |
+| `PHONE_VERIFICATION_HASH_SECRET` | server API | secret salt for stored phone-code and proof-token hashes |
+| `PHONE_VERIFICATION_DEBUG_CODE_ENABLED` | server API | temporary production debug escape hatch that exposes verification codes |
 | `DATABASE_URL` | server DB | PostgreSQL access |
 | `REDIS_URL` | server API | rate limiting / Redis access |
 | `DATABASE_SSL` / `PGSSLMODE` / `POSTGRES_SSL` | server DB | production SSL config |

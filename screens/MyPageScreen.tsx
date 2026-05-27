@@ -1,13 +1,15 @@
 import {
   ChevronRight,
-  FileText,
-  Heart,
+  CircleHelp,
+  FileBadge,
+  Info,
+  Megaphone,
+  Pencil,
   Settings,
-  ShieldCheck,
   UserRound,
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   Pressable,
@@ -22,14 +24,9 @@ import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
-import { mockMe, mockPosts } from "../data/mockDomain";
-import {
-  getMe,
-  getMyPosts,
-  getReceivedApplications,
-  getSavedPosts,
-} from "../services/api";
-import type { ApplicationDetail, Post, UserProfile } from "../types/domain";
+import { mockMe } from "../data/mockDomain";
+import { getMe } from "../services/api";
+import type { UserProfile } from "../types/domain";
 
 export type MyPageScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
@@ -37,44 +34,27 @@ export type MyPageScreenProps = {
   onOpenApplicationReview?: (applicationId: string) => void;
 };
 
-type ProfileStat = {
-  id: "saved" | "recruitments" | "applications";
-  label: string;
-  value: string;
-};
-
 type ProfileMenuItem = {
   id: string;
   label: string;
-  detail: string;
   icon: LucideIcon;
 };
+
+const profileMenuItems: ProfileMenuItem[] = [
+  { id: "notice", label: "공지사항", icon: Megaphone },
+  { id: "settings", label: "설정", icon: Settings },
+  { id: "faq", label: "FAQ", icon: CircleHelp },
+  { id: "appInfo", label: "어플 정보", icon: Info },
+  { id: "terms", label: "약관 및 정책", icon: FileBadge },
+];
 
 export function MyPageScreen({
   onSelectTab,
   onOpenProfileScreen,
-  onOpenApplicationReview,
 }: MyPageScreenProps) {
-  const initialMyPosts = useMemo(
-    () => mockPosts.filter((post) => post.author.id === mockMe.id),
-    [],
-  );
-  const initialSavedPosts = useMemo(
-    () => mockPosts.filter((post) => post.liked),
-    [],
-  );
   const [profile, setProfile] = useState<UserProfile | undefined>(() =>
     process.env.NODE_ENV === "test" ? mockMe : undefined,
   );
-  const [myPosts, setMyPosts] = useState<Post[]>(() =>
-    process.env.NODE_ENV === "test" ? initialMyPosts : [],
-  );
-  const [savedPosts, setSavedPosts] = useState<Post[]>(() =>
-    process.env.NODE_ENV === "test" ? initialSavedPosts : [],
-  );
-  const [receivedApplications, setReceivedApplications] = useState<
-    ApplicationDetail[]
-  >([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,20 +64,12 @@ export function MyPageScreen({
 
     let active = true;
 
-    Promise.all([
-      getMe(),
-      getMyPosts(),
-      getSavedPosts(),
-      getReceivedApplications(),
-    ])
-      .then(([nextProfile, nextMyPosts, nextSavedPosts, nextApplications]) => {
+    getMe()
+      .then((nextProfile) => {
         if (!active) {
           return;
         }
         setProfile(nextProfile);
-        setMyPosts(nextMyPosts);
-        setSavedPosts(nextSavedPosts);
-        setReceivedApplications(nextApplications);
       })
       .catch((error) => {
         if (active) {
@@ -112,31 +84,8 @@ export function MyPageScreen({
     };
   }, []);
 
-  const stats: ProfileStat[] = [
-    { id: "saved", label: "찜한 글", value: String(savedPosts.length) },
-    { id: "recruitments", label: "모집글", value: String(myPosts.length) },
-    {
-      id: "applications",
-      label: "지원서",
-      value: String(receivedApplications.length),
-    },
-  ];
-  const profileMenuItems: ProfileMenuItem[] = [
-    {
-      id: "liked",
-      label: "내 찜",
-      detail: `${savedPosts.length}개 저장됨`,
-      icon: Heart,
-    },
-    {
-      id: "recruitments",
-      label: "내가 쓴 모집글",
-      detail: `${myPosts.length}개 작성됨`,
-      icon: FileText,
-    },
-    { id: "settings", label: "설정", detail: "알림 및 계정", icon: Settings },
-  ];
-  const reviewTarget = receivedApplications[0]?.application.id;
+  const temperature = profile?.temperature ?? 0;
+  const progress = `${Math.min(100, Math.max(0, temperature))}%` as `${number}%`;
 
   return (
     <View style={styles.safeArea}>
@@ -146,68 +95,51 @@ export function MyPageScreen({
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>프로필</Text>
-          </View>
+          <Text style={styles.headerTitle}>프로필</Text>
 
           <View style={styles.profileCard}>
-            <View style={styles.profileTopRow}>
-              <View style={styles.avatar}>
-                {profile?.avatarUrl ? (
-                  <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
-                ) : (
-                  <UserRound size={34} color={colors.mintDark} strokeWidth={2.2} />
-                )}
-              </View>
-
-              <View style={styles.profileCopy}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.profileName}>
-                    {profile?.nickname ?? "프로필 불러오는 중"}
-                  </Text>
-                  <View style={styles.badge}>
-                    <ShieldCheck
-                      size={13}
-                      color={colors.mintDark}
-                      strokeWidth={2.4}
-                    />
-                    <Text style={styles.badgeText}>인증 완료</Text>
-                  </View>
-                </View>
-                <Text style={styles.profileMeta}>
-                  {profile?.area ?? "지역 미등록"} ·{" "}
-                  {profile?.driverType === "driver" ? "운전자" : "비운전자"}
-                </Text>
-                <Text style={styles.profileStatus}>인증된 다로리 계정</Text>
-              </View>
+            <View style={styles.avatar}>
+              {profile?.avatarUrl ? (
+                <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <UserRound size={42} color={colors.mintDark} strokeWidth={2.1} />
+              )}
             </View>
 
-            <View style={styles.statsRow}>
-              {stats.map((stat) => (
-                <Pressable
-                  key={stat.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={stat.label}
-                  onPress={() => {
-                    if (stat.id === "saved") {
-                      onOpenProfileScreen?.("saved");
-                    } else if (stat.id === "recruitments") {
-                      onOpenProfileScreen?.("mine");
-                    } else if (reviewTarget) {
-                      onOpenApplicationReview?.(reviewTarget);
-                    }
-                  }}
-                  testID={`profile-stat-${stat.id}`}
-                  style={({ pressed }) => [
-                    styles.statItem,
-                    pressed && styles.statItemPressed,
-                  ]}
-                >
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </Pressable>
-              ))}
+            <View style={styles.profileCopy}>
+              <Text style={styles.profileName}>
+                {profile?.nickname ?? "닉네임"}
+              </Text>
+              <Text style={styles.profileMeta}>
+                {profile?.realName ?? "김XX"}
+              </Text>
+              <Text style={styles.profileStatus}>
+                {profile?.driverType === "driver" ? "N년차 운전자" : "비운전자"}
+              </Text>
             </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="프로필 수정"
+              onPress={() => onOpenProfileScreen?.("edit")}
+              testID="profile-edit-button"
+              style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}
+            >
+              <Pencil size={17} color={colors.mintDark} strokeWidth={2.2} />
+            </Pressable>
+          </View>
+
+          <View style={styles.temperatureCard}>
+            <View style={styles.temperatureHeader}>
+              <Text style={styles.temperatureTitle}>매너온도</Text>
+              <Text style={styles.temperatureValue}>{temperature.toFixed(1)}도</Text>
+            </View>
+            <View style={styles.temperatureTrack}>
+              <View style={[styles.temperatureFill, { width: progress }]} />
+              <View style={styles.temperatureMarker} />
+            </View>
+            <Text style={styles.temperatureHint}>완료한 세이라이드 N%의</Text>
+            <Text style={styles.temperatureHint}>추천률 00%</Text>
           </View>
 
           <View style={styles.menuList}>
@@ -216,11 +148,7 @@ export function MyPageScreen({
                 key={item.id}
                 item={item}
                 onPress={() => {
-                  if (item.id === "liked") {
-                    onOpenProfileScreen?.("saved");
-                  } else if (item.id === "recruitments") {
-                    onOpenProfileScreen?.("mine");
-                  } else if (item.id === "settings") {
+                  if (item.id === "settings") {
                     onOpenProfileScreen?.("settings");
                   }
                 }}
@@ -261,13 +189,10 @@ function ProfileMenuRow({ item, onPress }: ProfileMenuRowProps) {
       ]}
     >
       <View style={styles.menuIconFrame}>
-        <Icon size={20} color={colors.mintDark} strokeWidth={2.3} />
+        <Icon size={20} color={colors.gray400} strokeWidth={2.1} />
       </View>
 
-      <View style={styles.menuCopy}>
-        <Text style={styles.menuLabel}>{item.label}</Text>
-        <Text style={styles.menuDetail}>{item.detail}</Text>
-      </View>
+      <Text style={styles.menuLabel}>{item.label}</Text>
 
       <ChevronRight size={19} color={colors.mutedText} strokeWidth={2.2} />
     </Pressable>
@@ -289,37 +214,27 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 52,
+    paddingTop: 22,
     paddingBottom: spacing.navHeight + 30,
-    gap: 16,
-  },
-  header: {
-    minHeight: 34,
-    justifyContent: "center",
+    gap: 10,
   },
   headerTitle: {
     color: colors.black,
     fontFamily: typography.family.body,
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: typography.weight.bold,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.medium,
   },
   profileCard: {
     width: "100%",
-    padding: 18,
-    borderRadius: spacing.cardRadius,
+    minHeight: 88,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
     backgroundColor: colors.surface,
-    gap: 18,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  profileTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 12,
   },
   avatar: {
     width: 68,
@@ -337,13 +252,7 @@ const styles = StyleSheet.create({
   profileCopy: {
     flex: 1,
     minWidth: 0,
-    gap: 5,
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 8,
+    gap: 3,
   },
   profileName: {
     color: colors.black,
@@ -352,75 +261,87 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.lg,
     fontWeight: typography.weight.bold,
   },
-  badge: {
-    minHeight: 24,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    backgroundColor: colors.mintLight,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  badgeText: {
-    color: colors.mintDark,
+  profileMeta: {
+    color: colors.grayText,
     fontFamily: typography.family.body,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
-  },
-  profileMeta: {
-    color: colors.grayIcon,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.regular,
   },
   profileStatus: {
-    color: colors.mutedText,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
-  },
-  statsRow: {
-    minHeight: 72,
-    borderRadius: 10,
-    backgroundColor: colors.mintLight,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statItem: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 72,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 3,
-  },
-  statItemPressed: {
-    backgroundColor: "rgba(0, 166, 100, 0.08)",
-  },
-  statValue: {
-    color: colors.mintDark,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.lg,
-    lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
-  },
-  statLabel: {
-    width: "100%",
-    color: colors.grayIcon,
+    color: colors.grayText,
     fontFamily: typography.family.body,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
     fontWeight: typography.weight.regular,
-    textAlign: "center",
+  },
+  editButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.mintLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pressed: {
+    opacity: 0.76,
+  },
+  temperatureCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    gap: 13,
+  },
+  temperatureHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  temperatureTitle: {
+    flex: 1,
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.bold,
+  },
+  temperatureValue: {
+    color: colors.yellowText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
+  },
+  temperatureTrack: {
+    height: 14,
+    borderRadius: 999,
+    backgroundColor: colors.gray300,
+    overflow: "hidden",
+  },
+  temperatureFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.mint,
+  },
+  temperatureMarker: {
+    position: "absolute",
+    left: "54%",
+    width: "24%",
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.yellow,
+  },
+  temperatureHint: {
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
+    textAlign: "right",
   },
   menuList: {
     width: "100%",
-    borderRadius: spacing.cardRadius,
-    backgroundColor: colors.surface,
-    overflow: "hidden",
+    gap: 10,
   },
   errorText: {
     color: colors.red,
@@ -430,11 +351,10 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.medium,
   },
   menuRow: {
-    minHeight: 72,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    minHeight: 56,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
@@ -443,30 +363,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mintLight,
   },
   menuIconFrame: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.mintLight,
-  },
-  menuCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
   },
   menuLabel: {
+    flex: 1,
     color: colors.black,
     fontFamily: typography.family.body,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
-  },
-  menuDetail: {
-    color: colors.mutedText,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
+    fontWeight: typography.weight.medium,
   },
 });

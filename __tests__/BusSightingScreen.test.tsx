@@ -7,7 +7,6 @@ import {
   within,
 } from "@testing-library/react-native";
 import * as Location from "expo-location";
-import type { ComponentProps } from "react";
 
 import { BusSightingScreen } from "../screens/BusSightingScreen";
 import { resetMockDatabase } from "../services/mockDb";
@@ -33,19 +32,6 @@ const mockedWatchPosition = Location.watchPositionAsync as jest.MockedFunction<
 // Coordinates of the Cheongdo Koaru-bluepin mock stop (id: stop-koaru-bluepin).
 // Inference picks the lowest-code route that visits this stop, which is H1.
 const NEAREST_STOP_COORDS = { latitude: 35.6474, longitude: 128.7338 };
-
-async function renderBusSightingScreen(
-  props: ComponentProps<typeof BusSightingScreen> = {},
-) {
-  const result = render(<BusSightingScreen {...props} />);
-
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-  });
-
-  return result;
-}
 
 function grantPermissionWithLocation(coords = NEAREST_STOP_COORDS) {
   mockedRequestPermissions.mockResolvedValue({
@@ -88,7 +74,7 @@ describe("BusSightingScreen", () => {
       expires: "never",
     } as Awaited<ReturnType<typeof Location.requestForegroundPermissionsAsync>>);
 
-    await renderBusSightingScreen();
+    render(<BusSightingScreen />);
 
     await waitFor(() => {
       expect(
@@ -104,7 +90,7 @@ describe("BusSightingScreen", () => {
   it("surfaces the inferred stop name on the recorder current-location chip", async () => {
     grantPermissionWithLocation();
 
-    await renderBusSightingScreen();
+    render(<BusSightingScreen />);
 
     await waitFor(() => {
       expect(screen.getByText(/현위치: 청도 코아루블루핀/)).toBeTruthy();
@@ -114,7 +100,7 @@ describe("BusSightingScreen", () => {
   it("happy path: bus button -> confirmation -> 맞아요 -> confirmed", async () => {
     grantPermissionWithLocation();
 
-    await renderBusSightingScreen();
+    render(<BusSightingScreen />);
 
     // Wait until inference is ready; the bus button becomes enabled when
     // routes, stops, route-stops, and location have all loaded.
@@ -150,7 +136,7 @@ describe("BusSightingScreen", () => {
   it("rejection path: 틀려요 -> route grid -> tile -> stop selection -> 확정 -> confirmed", async () => {
     grantPermissionWithLocation();
 
-    await renderBusSightingScreen();
+    render(<BusSightingScreen />);
 
     await waitFor(() => {
       expect(
@@ -206,7 +192,7 @@ describe("BusSightingScreen", () => {
   it("renders the arrival-times entry only when onOpenArrivalTimes is provided and forwards taps", async () => {
     grantPermissionWithLocation();
 
-    const { rerender } = await renderBusSightingScreen();
+    const { rerender } = render(<BusSightingScreen />);
     expect(screen.queryByTestId("bus-sighting-arrival-times-entry")).toBeNull();
 
     const onOpenArrivalTimes = jest.fn();
@@ -219,7 +205,7 @@ describe("BusSightingScreen", () => {
   it("renders the (i) header button only when onOpenRouteInfo is provided and forwards taps", async () => {
     grantPermissionWithLocation();
 
-    const { rerender } = await renderBusSightingScreen();
+    const { rerender } = render(<BusSightingScreen />);
     expect(screen.queryByTestId("bus-sighting-info-button")).toBeNull();
 
     const onOpenRouteInfo = jest.fn();
@@ -276,7 +262,7 @@ describe("BusSightingScreen", () => {
       >;
     });
 
-    await renderBusSightingScreen();
+    render(<BusSightingScreen />);
 
     await waitFor(() => {
       expect(
@@ -326,7 +312,7 @@ describe("BusSightingScreen", () => {
     grantPermissionWithLocation();
     const onBack = jest.fn();
 
-    await renderBusSightingScreen({ onBack });
+    render(<BusSightingScreen onBack={onBack} />);
 
     await waitFor(() => {
       expect(

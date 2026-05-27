@@ -19,6 +19,7 @@ import {
   Send,
   ShieldAlert,
   SlidersHorizontal,
+  ThumbsUp,
   UserPlus,
   Users,
 } from "lucide-react-native";
@@ -98,11 +99,36 @@ const chatRooms: ChatListRoom[] = [
 ];
 
 type ChatFilter = "all" | "ride" | "work";
+type InlineChatActionMode = "manner" | "credentials" | "invite";
+
+const inlineRoomMessages = [
+  {
+    id: "received-1",
+    text: "안녕하세요! 저희 월요일, 수요일 7시에 어디서 만나서 출발할까요?",
+    mine: false,
+  },
+  {
+    id: "sent-1",
+    text: "안녕하세요",
+    mine: true,
+  },
+  {
+    id: "sent-2",
+    text: "다로리 카페 앞에서 6시 40분에 뵐까요?",
+    mine: true,
+  },
+];
 
 export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [inlineAction, setInlineAction] = useState<InlineChatActionMode | null>(null);
+  const [inlineMannerSaved, setInlineMannerSaved] = useState(false);
+  const [inlineSearchOpen, setInlineSearchOpen] = useState(false);
+  const [inlineSearchQuery, setInlineSearchQuery] = useState("");
+  const [inlineMuted, setInlineMuted] = useState(false);
+  const [inlineStatusMessage, setInlineStatusMessage] = useState<string | null>(null);
   const [rooms, setRooms] = useState<ChatListRoom[]>(() =>
     process.env.NODE_ENV === "test" ? chatRooms : [],
   );
@@ -133,11 +159,40 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
 
   const handleBack = () => {
     setSelectedRoomId(null);
+    setMenuOpen(false);
+    setLeaveModalOpen(false);
+    setInlineAction(null);
+    setInlineSearchOpen(false);
+    setInlineSearchQuery("");
+    setInlineStatusMessage(null);
   };
 
   const openLeaveModal = () => {
     setMenuOpen(false);
     setLeaveModalOpen(true);
+  };
+
+  const openInlineAction = (mode: InlineChatActionMode) => {
+    setMenuOpen(false);
+    setInlineMannerSaved(false);
+    setInlineAction(mode);
+  };
+
+  const openInlineSearch = () => {
+    setMenuOpen(false);
+    setInlineSearchOpen(true);
+    setInlineSearchQuery("");
+  };
+
+  const toggleInlineMute = () => {
+    setMenuOpen(false);
+    setInlineMuted((current) => {
+      const nextMuted = !current;
+      setInlineStatusMessage(
+        nextMuted ? "이 채팅방 알림을 껐어요." : "이 채팅방 알림을 켰어요.",
+      );
+      return nextMuted;
+    });
   };
 
   if (selectedRoomId === null) {
@@ -156,6 +211,14 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
       />
     );
   }
+
+  const normalizedInlineSearchQuery = inlineSearchQuery.trim().toLowerCase();
+  const visibleInlineMessages = normalizedInlineSearchQuery
+    ? inlineRoomMessages.filter((message) =>
+        message.text.toLowerCase().includes(normalizedInlineSearchQuery),
+      )
+    : inlineRoomMessages;
+  const inlineInviteLink = `darori.chat/${selectedRoomId}`;
 
   return (
     <View style={styles.safeArea}>
@@ -214,6 +277,28 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
           </View>
         </View>
 
+        {inlineSearchOpen ? (
+          <View style={styles.inlineSearchPanel}>
+            <View style={styles.inlineSearchInputRow}>
+              <Search size={18} color={colors.grayIcon} strokeWidth={2.2} />
+              <TextInput
+                accessibilityLabel="채팅 메시지 검색"
+                placeholder="메시지 검색"
+                placeholderTextColor={colors.gray400}
+                value={inlineSearchQuery}
+                onChangeText={setInlineSearchQuery}
+                testID="chat-inline-search-input"
+                style={styles.inlineSearchInput}
+              />
+            </View>
+            {normalizedInlineSearchQuery ? (
+              <Text style={styles.inlineSearchResult}>
+                {visibleInlineMessages.length}개 메시지
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         <ScrollView
           style={styles.messagesScroll}
           contentContainerStyle={styles.messagesContent}
@@ -248,30 +333,34 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             </View>
           </View>
 
-          <View style={styles.receivedRow}>
-            <Avatar />
-            <View style={styles.receivedBubbleLarge}>
-              <Text style={styles.messageText}>
-                안녕하세요! 저희 월요일, 수요일 7시에 어디서 만나서 출발할까요?
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.sentRow}>
-            <View style={styles.sentBubbleSmall}>
-              <Text style={styles.messageText}>안녕하세요</Text>
-            </View>
-            <Avatar />
-          </View>
-
-          <View style={styles.sentRow}>
-            <View style={styles.sentBubbleLarge}>
-              <Text style={styles.messageText}>
-                다로리 카페 앞에서 6시 40분에 뵐까요?
-              </Text>
-            </View>
-          </View>
+          {visibleInlineMessages.map((message) =>
+            message.mine ? (
+              <View key={message.id} style={styles.sentRow}>
+                <View
+                  style={
+                    message.text.length < 8
+                      ? styles.sentBubbleSmall
+                      : styles.sentBubbleLarge
+                  }
+                >
+                  <Text style={styles.messageText}>{message.text}</Text>
+                </View>
+                {message.id === "sent-1" ? <Avatar /> : null}
+              </View>
+            ) : (
+              <View key={message.id} style={styles.receivedRow}>
+                <Avatar />
+                <View style={styles.receivedBubbleLarge}>
+                  <Text style={styles.messageText}>{message.text}</Text>
+                </View>
+              </View>
+            ),
+          )}
         </ScrollView>
+
+        {inlineStatusMessage ? (
+          <Text style={styles.inlineStatusText}>{inlineStatusMessage}</Text>
+        ) : null}
 
         <View style={styles.inputBar}>
           <Pressable
@@ -312,14 +401,30 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             />
             <View style={styles.menuPanel}>
               <View style={styles.menuSectionLarge}>
-                <MenuAction icon={Users} label="매너 평가하기" />
+                <MenuAction
+                  icon={ThumbsUp}
+                  label="매너 평가하기"
+                  onPress={() => openInlineAction("manner")}
+                />
                 <MenuAction icon={ShieldAlert} label="신고하기" />
-                <MenuAction icon={IdCard} label="면허증, 자동차 보험 조회하기" />
-                <MenuAction icon={UserPlus} label="아는 사용자 초대하기" />
+                <MenuAction
+                  icon={IdCard}
+                  label="면허증, 자동차 보험 조회하기"
+                  onPress={() => openInlineAction("credentials")}
+                />
+                <MenuAction
+                  icon={UserPlus}
+                  label="아는 사용자 초대하기"
+                  onPress={() => openInlineAction("invite")}
+                />
               </View>
               <View style={styles.menuSection}>
-                <MenuAction icon={Search} label="검색하기" />
-                <MenuAction icon={BellOff} label="알람끄기" />
+                <MenuAction icon={Search} label="검색하기" onPress={openInlineSearch} />
+                <MenuAction
+                  icon={BellOff}
+                  label={inlineMuted ? "알람켜기" : "알람끄기"}
+                  onPress={toggleInlineMute}
+                />
                 <MenuAction icon={LogOut} label="방 나가기" onPress={openLeaveModal} />
               </View>
               <Pressable
@@ -344,6 +449,15 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             </View>
           </View>
         ) : null}
+
+        <InlineChatActionModal
+          visible={inlineAction !== null}
+          mode={inlineAction}
+          inviteLink={inlineInviteLink}
+          mannerSaved={inlineMannerSaved}
+          onRate={() => setInlineMannerSaved(true)}
+          onClose={() => setInlineAction(null)}
+        />
 
         {leaveModalOpen ? (
           <View style={styles.modalOverlay}>
@@ -683,6 +797,111 @@ function MenuAction({ icon: Icon, label, onPress }: MenuActionProps) {
       <Icon size={24} color="#374151" strokeWidth={2.2} />
       <Text style={styles.menuActionText}>{label}</Text>
     </Pressable>
+  );
+}
+
+function InlineChatActionModal({
+  visible,
+  mode,
+  inviteLink,
+  mannerSaved,
+  onRate,
+  onClose,
+}: {
+  visible: boolean;
+  mode: InlineChatActionMode | null;
+  inviteLink: string;
+  mannerSaved: boolean;
+  onRate: () => void;
+  onClose: () => void;
+}) {
+  if (!visible || mode === null) {
+    return null;
+  }
+
+  return (
+    <View style={styles.actionOverlay}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="액션 닫기"
+        onPress={onClose}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.actionCard}>
+        {mode === "manner" ? (
+          <>
+            <Text style={styles.actionTitle}>매너 평가하기</Text>
+            <Text style={styles.actionDescription}>함께한 대화는 어땠나요?</Text>
+            {mannerSaved ? (
+              <Text style={styles.actionSuccessText}>매너 평가가 저장되었습니다.</Text>
+            ) : (
+              <View style={styles.ratingRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onRate}
+                  style={({ pressed }) => [
+                    styles.ratingButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.ratingButtonText}>좋아요</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onRate}
+                  style={({ pressed }) => [
+                    styles.ratingButton,
+                    styles.ratingButtonSecondary,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.ratingButtonText}>아쉬워요</Text>
+                </Pressable>
+              </View>
+            )}
+          </>
+        ) : null}
+
+        {mode === "credentials" ? (
+          <>
+            <Text style={styles.actionTitle}>면허증, 자동차 보험 조회</Text>
+            <Text style={styles.actionSuccessText}>보험 확인 완료</Text>
+            <View style={styles.actionInfoList}>
+              <View style={styles.actionInfoRow}>
+                <Text style={styles.actionInfoLabel}>운전자</Text>
+                <Text style={styles.actionInfoValue}>김예린</Text>
+              </View>
+              <View style={styles.actionInfoRow}>
+                <Text style={styles.actionInfoLabel}>차량번호</Text>
+                <Text style={styles.actionInfoValue}>12가 3456</Text>
+              </View>
+              <View style={styles.actionInfoRow}>
+                <Text style={styles.actionInfoLabel}>확인 상태</Text>
+                <Text style={styles.actionInfoValue}>면허 및 보험 유효</Text>
+              </View>
+            </View>
+          </>
+        ) : null}
+
+        {mode === "invite" ? (
+          <>
+            <Text style={styles.actionTitle}>아는 사용자 초대하기</Text>
+            <Text style={styles.actionDescription}>초대 링크가 준비되었습니다.</Text>
+            <Text style={styles.inviteLink}>{inviteLink}</Text>
+          </>
+        ) : null}
+
+        {(mode !== "manner" || mannerSaved) ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={({ pressed }) => [styles.actionConfirmButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.actionConfirmText}>확인</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -1041,6 +1260,42 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: typography.weight.regular,
   },
+  inlineSearchPanel: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+    backgroundColor: colors.surface,
+    gap: 8,
+    zIndex: 1,
+  },
+  inlineSearchInputRow: {
+    minHeight: 42,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: colors.gray300,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  inlineSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    padding: 0,
+    color: colors.black,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.regular,
+  },
+  inlineSearchResult: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
+  },
   messagesScroll: {
     flex: 1,
   },
@@ -1191,6 +1446,15 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: typography.weight.regular,
   },
+  inlineStatusText: {
+    paddingHorizontal: 30,
+    paddingBottom: 80,
+    color: colors.mintDark,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
+  },
   inputBar: {
     position: "absolute",
     left: 30,
@@ -1339,6 +1603,126 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: typography.weight.regular,
     textAlign: "center",
+  },
+  actionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(82, 82, 91, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    zIndex: 7,
+  },
+  actionCard: {
+    width: "100%",
+    maxWidth: 360,
+    padding: 22,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    gap: 14,
+  },
+  actionTitle: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
+    fontWeight: typography.weight.bold,
+    textAlign: "center",
+  },
+  actionDescription: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.regular,
+    textAlign: "center",
+  },
+  actionSuccessText: {
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.bold,
+    textAlign: "center",
+  },
+  ratingRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  ratingButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ratingButtonSecondary: {
+    backgroundColor: colors.mintLight,
+    borderWidth: 1,
+    borderColor: colors.mint,
+  },
+  ratingButtonText: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
+  },
+  actionInfoList: {
+    borderRadius: 14,
+    backgroundColor: colors.gray100,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  actionInfoRow: {
+    minHeight: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  actionInfoLabel: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.regular,
+  },
+  actionInfoValue: {
+    flex: 1,
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
+    textAlign: "right",
+  },
+  inviteLink: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.mintLight,
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.bold,
+    textAlign: "center",
+  },
+  actionConfirmButton: {
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionConfirmText: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
   },
   pressed: {
     opacity: 0.78,

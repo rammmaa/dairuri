@@ -15,6 +15,7 @@ export const mockMe: UserProfile = {
   realName: "하람",
   phone: "010-0000-0000",
   email: "test@example.com",
+  avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=420",
   area: "남성현역",
   temperature: 40.6,
   driverType: "driver",
@@ -32,13 +33,14 @@ export const mockMe: UserProfile = {
 export const mockAuthor: UserProfile = {
   id: "author-1",
   nickname: "우리마이사랑해",
-  phone: "010-1234-5678",
+  realName: "김진도",
+  phone: "010-1234-4567",
   area: "프로필 보기",
   temperature: 80,
   driverType: "driver",
   vehicle: {
     plateNumber: "357나2703",
-    modelName: "토요타 SUV",
+    modelName: "벤츠",
     images: ["https://images.unsplash.com/photo-1543465077-db45d34b88a5?w=420"],
   },
 };
@@ -63,7 +65,7 @@ export const mockPosts: Post[] = [
     endTime: "15:00",
     wageType: "hourly",
     wageAmount: 12000,
-    jobCategory: "인적 자원",
+    jobCategory: "인재 풀 등록",
     availableTasks: ["카페 보조", "농번기 일손", "아이 등하원 동행"],
     employmentTypes: ["partTime", "shortTerm"],
     preferredPay: "시급 12,000원부터",
@@ -76,7 +78,7 @@ export const mockPosts: Post[] = [
     title: "‘청도감 학원’ 함께 다니실 사람 구해요",
     body:
       "평일 저녁에 청도감 학원 방향으로 이동합니다. 조용히 이동하는 편이고 시간은 정확히 맞춰요.",
-    author: mockAuthor,
+    author: mockMe,
     imageUrls: ["https://images.unsplash.com/photo-1549924231-f129b911e442?w=720"],
     liked: false,
     status: "open",
@@ -95,7 +97,7 @@ export const mockApplications: Application[] = [
   {
     id: "application-1",
     postId: "carpool-1",
-    applicant: mockMe,
+    applicant: mockAuthor,
     intro:
       "시간 약속을 잘 지키고 같은 방향으로 자주 이동합니다. 조용히 이동하는 편이라 부담 없으실 거예요.",
     status: "pending",
@@ -116,7 +118,7 @@ export const mockChatRooms: ChatRoom[] = [
   {
     id: "room-2",
     title: "농촌 일손 연락방",
-    subtitle: "다로리 카페 인근 / 인적 자원",
+    subtitle: "다로리 카페 인근 / 인재 풀 등록",
     participants: [mockMe, mockAuthor],
     postId: "job-1",
     lastMessage: "목요일 오전 카페 보조 가능하신가요?",

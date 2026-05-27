@@ -1,15 +1,22 @@
 import {
+  BellOff,
+  IdCard,
   LogOut,
   MoreVertical,
   Phone,
   Plus,
+  Search,
   Send,
   ShieldAlert,
+  ThumbsUp,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -32,6 +39,8 @@ export type ChatRoomScreenProps = {
   onReport?: (roomId: string) => void;
 };
 
+type ChatActionModalMode = "manner" | "credentials" | "invite";
+
 export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps) {
   const initialRoom = useMemo(
     () =>
@@ -49,6 +58,12 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
   const [sendError, setSendError] = useState<string | null>(null);
   const [moreVisible, setMoreVisible] = useState(false);
   const [leaveVisible, setLeaveVisible] = useState(false);
+  const [actionModal, setActionModal] = useState<ChatActionModalMode | null>(null);
+  const [mannerSaved, setMannerSaved] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [muted, setMuted] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -135,21 +150,76 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
     setLeaveVisible(true);
   };
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const visibleMessages = normalizedSearchQuery
+    ? messages.filter((message) =>
+        (message.text ?? "").toLowerCase().includes(normalizedSearchQuery),
+      )
+    : messages;
+
+  const openActionModal = (mode: ChatActionModalMode) => {
+    setMoreVisible(false);
+    setMannerSaved(false);
+    setActionModal(mode);
+  };
+
+  const openSearch = () => {
+    setMoreVisible(false);
+    setSearchOpen(true);
+    setSearchQuery("");
+  };
+
+  const toggleMute = () => {
+    setMoreVisible(false);
+    setMuted((current) => {
+      const nextMuted = !current;
+      setStatusMessage(
+        nextMuted ? "이 채팅방 알림을 껐어요." : "이 채팅방 알림을 켰어요.",
+      );
+      return nextMuted;
+    });
+  };
+
   return (
-    <View style={styles.safeArea}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
+      style={styles.safeArea}
+      testID="chat-room-keyboard-avoiding-view"
+    >
       <ChatHeader
         room={room}
         onBack={onBack}
         onMore={() => setMoreVisible(true)}
       />
+      {searchOpen ? (
+        <View style={styles.roomSearchPanel}>
+          <View style={styles.roomSearchInputRow}>
+            <Search size={18} color={colors.grayIcon} strokeWidth={2.2} />
+            <TextInput
+              accessibilityLabel="채팅 메시지 검색"
+              placeholder="메시지 검색"
+              placeholderTextColor={colors.gray400}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              testID="chat-room-search-input"
+              style={styles.roomSearchInput}
+            />
+          </View>
+          {normalizedSearchQuery ? (
+            <Text style={styles.roomSearchResult}>{visibleMessages.length}개 메시지</Text>
+          ) : null}
+        </View>
+      ) : null}
       <FlatList
-        data={messages}
+        data={visibleMessages}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messagesContent}
         renderItem={({ item }) => (
           <ChatMessageItem message={item} mine={item.senderId === "me"} />
         )}
       />
+      {statusMessage ? <Text style={styles.roomStatusText}>{statusMessage}</Text> : null}
       {sendError ? <Text style={styles.sendErrorText}>{sendError}</Text> : null}
       <MessageComposer
         value={text}
@@ -165,8 +235,23 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
       <ChatMoreActionsSheet
         visible={moreVisible}
         onClose={() => setMoreVisible(false)}
+        onOpenManner={() => openActionModal("manner")}
+        onOpenCredentials={() => openActionModal("credentials")}
+        onInvite={() => openActionModal("invite")}
+        onSearch={openSearch}
+        onToggleMute={toggleMute}
         onReport={handleReport}
         onLeave={handleLeave}
+        muted={muted}
+      />
+      <ChatActionModal
+        visible={actionModal !== null}
+        mode={actionModal}
+        room={room}
+        inviteLink={`darori.chat/${room.id}`}
+        mannerSaved={mannerSaved}
+        onRate={() => setMannerSaved(true)}
+        onClose={() => setActionModal(null)}
       />
       <ConfirmModal
         visible={leaveVisible}
@@ -182,7 +267,7 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
         }}
         testID="chat-leave-confirm"
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -311,22 +396,34 @@ function MessageComposer({
 function ChatMoreActionsSheet({
   visible,
   onClose,
+  onOpenManner,
+  onOpenCredentials,
+  onInvite,
+  onSearch,
+  onToggleMute,
   onReport,
   onLeave,
+  muted,
 }: {
   visible: boolean;
   onClose: () => void;
+  onOpenManner: () => void;
+  onOpenCredentials: () => void;
+  onInvite: () => void;
+  onSearch: () => void;
+  onToggleMute: () => void;
   onReport: () => void;
   onLeave: () => void;
+  muted: boolean;
 }) {
   return (
     <BottomSheet
       visible={visible}
-      title="채팅방 더보기"
       onClose={onClose}
       testID="chat-more-bottom-sheet"
     >
       <View style={styles.moreGroup}>
+        <ChatMoreMenuItem icon={ThumbsUp} label="매너 평가하기" onPress={onOpenManner} />
         <ChatMoreMenuItem
           icon={ShieldAlert}
           label="신고하기"
@@ -334,14 +431,153 @@ function ChatMoreActionsSheet({
           testID="chat-more-report"
         />
         <ChatMoreMenuItem
+          icon={IdCard}
+          label="면허증, 자동차 보험 조회하기"
+          onPress={onOpenCredentials}
+        />
+        <ChatMoreMenuItem
+          icon={UserPlus}
+          label="아는 사용자 초대하기"
+          onPress={onInvite}
+        />
+      </View>
+
+      <View style={styles.moreGroup}>
+        <ChatMoreMenuItem icon={Search} label="검색하기" onPress={onSearch} />
+        <ChatMoreMenuItem
+          icon={BellOff}
+          label={muted ? "알람켜기" : "알람끄기"}
+          onPress={onToggleMute}
+        />
+        <ChatMoreMenuItem
           icon={LogOut}
           label="방 나가기"
           onPress={onLeave}
-          danger
           testID="chat-more-leave"
         />
       </View>
+
+      <View style={styles.moreSpacer} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="닫기"
+        onPress={onClose}
+        style={({ pressed }) => [styles.moreCloseButton, pressed && styles.pressed]}
+      >
+        <Text style={styles.moreCloseText}>닫기</Text>
+      </Pressable>
     </BottomSheet>
+  );
+}
+
+function ChatActionModal({
+  visible,
+  mode,
+  room,
+  inviteLink,
+  mannerSaved,
+  onRate,
+  onClose,
+}: {
+  visible: boolean;
+  mode: ChatActionModalMode | null;
+  room: ChatRoom;
+  inviteLink: string;
+  mannerSaved: boolean;
+  onRate: () => void;
+  onClose: () => void;
+}) {
+  if (!visible || mode === null) {
+    return null;
+  }
+
+  const driver = room.participants.find((participant) => participant.vehicle);
+
+  return (
+    <View style={styles.actionOverlay}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="액션 닫기"
+        style={StyleSheet.absoluteFill}
+        onPress={onClose}
+      />
+      <View style={styles.actionCard}>
+        {mode === "manner" ? (
+          <>
+            <Text style={styles.actionTitle}>매너 평가하기</Text>
+            <Text style={styles.actionDescription}>함께한 대화는 어땠나요?</Text>
+            {mannerSaved ? (
+              <Text style={styles.actionSuccessText}>매너 평가가 저장되었습니다.</Text>
+            ) : (
+              <View style={styles.ratingRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onRate}
+                  style={({ pressed }) => [
+                    styles.ratingButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.ratingButtonText}>좋아요</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onRate}
+                  style={({ pressed }) => [
+                    styles.ratingButton,
+                    styles.ratingButtonSecondary,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.ratingButtonText}>아쉬워요</Text>
+                </Pressable>
+              </View>
+            )}
+          </>
+        ) : null}
+
+        {mode === "credentials" ? (
+          <>
+            <Text style={styles.actionTitle}>면허증, 자동차 보험 조회</Text>
+            <Text style={styles.actionSuccessText}>보험 확인 완료</Text>
+            <View style={styles.infoList}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>운전자</Text>
+                <Text style={styles.infoValue}>{driver?.realName ?? "확인된 운전자"}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>차량번호</Text>
+                <Text style={styles.infoValue}>
+                  {driver?.vehicle?.plateNumber ?? "등록된 차량"}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>확인 상태</Text>
+                <Text style={styles.infoValue}>면허 및 보험 유효</Text>
+              </View>
+            </View>
+          </>
+        ) : null}
+
+        {mode === "invite" ? (
+          <>
+            <Text style={styles.actionTitle}>아는 사용자 초대하기</Text>
+            <Text style={styles.actionDescription}>초대 링크가 준비되었습니다.</Text>
+            <Text style={styles.inviteLink}>{inviteLink}</Text>
+          </>
+        ) : null}
+
+        {(mode !== "manner" || mannerSaved) ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={({ pressed }) => [styles.actionConfirmButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.actionConfirmText}>확인</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -354,7 +590,7 @@ function ChatMoreMenuItem({
 }: {
   icon: LucideIcon;
   label: string;
-  onPress: () => void;
+  onPress?: () => void;
   danger?: boolean;
   testID?: string;
 }) {
@@ -462,6 +698,41 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
   },
+  roomSearchPanel: {
+    paddingHorizontal: spacing.screenX,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+    backgroundColor: colors.surface,
+    gap: 8,
+  },
+  roomSearchInputRow: {
+    minHeight: 42,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: colors.gray100,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  roomSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    padding: 0,
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.regular,
+  },
+  roomSearchResult: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.medium,
+  },
   messagesContent: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 18,
@@ -524,6 +795,15 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.medium,
   },
+  roomStatusText: {
+    paddingHorizontal: spacing.screenX,
+    paddingTop: 8,
+    color: colors.mintDark,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
+  },
   composer: {
     minHeight: 58,
     paddingHorizontal: 12,
@@ -558,16 +838,17 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.regular,
   },
   moreGroup: {
-    paddingVertical: 6,
+    paddingVertical: 15,
     borderRadius: 14,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.gray100,
+    gap: 8,
   },
   moreItem: {
-    minHeight: 48,
-    paddingHorizontal: 14,
+    minHeight: 32,
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 18,
   },
   moreItemText: {
     color: colors.black,
@@ -576,7 +857,145 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.base,
     fontWeight: typography.weight.medium,
   },
+  moreSpacer: {
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: colors.gray100,
+  },
+  moreCloseButton: {
+    alignSelf: "flex-start",
+    minHeight: 28,
+    paddingHorizontal: 0,
+    justifyContent: "center",
+  },
+  moreCloseText: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.regular,
+  },
   dangerText: {
     color: colors.red,
+  },
+  actionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 32,
+    paddingHorizontal: 24,
+    backgroundColor: colors.overlay,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionCard: {
+    width: "100%",
+    maxWidth: 360,
+    padding: spacing.screenX,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    gap: 14,
+  },
+  actionTitle: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
+    fontWeight: typography.weight.bold,
+    textAlign: "center",
+  },
+  actionDescription: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.regular,
+    textAlign: "center",
+  },
+  actionSuccessText: {
+    color: colors.mintDark,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.bold,
+    textAlign: "center",
+  },
+  ratingRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  ratingButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ratingButtonSecondary: {
+    backgroundColor: colors.mintLight,
+    borderWidth: 1,
+    borderColor: colors.mint,
+  },
+  ratingButtonText: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
+  },
+  infoList: {
+    borderRadius: 14,
+    backgroundColor: colors.gray100,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  infoRow: {
+    minHeight: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  infoLabel: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.regular,
+  },
+  infoValue: {
+    flex: 1,
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
+    textAlign: "right",
+  },
+  inviteLink: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.mintLight,
+    color: colors.mintDark,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.bold,
+    textAlign: "center",
+  },
+  actionConfirmButton: {
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionConfirmText: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
   },
 });

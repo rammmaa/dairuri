@@ -6,7 +6,6 @@ import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
-import { mockMe, mockPosts } from "../../data/mockDomain";
 import { getMyPosts } from "../../services/api";
 import type { Post } from "../../types/domain";
 import { ProfilePostCard } from "./SavedPostsScreen";
@@ -20,11 +19,7 @@ export function MyPostsScreen({
   onBack,
   posts,
 }: MyPostsScreenProps) {
-  const [loadedPosts, setLoadedPosts] = useState<Post[]>(() =>
-    process.env.NODE_ENV === "test"
-      ? mockPosts.filter((post) => post.author.id === mockMe.id)
-      : [],
-  );
+  const [loadedPosts, setLoadedPosts] = useState<Post[]>([]);
   const myPosts = posts ?? loadedPosts;
 
   useEffect(() => {

@@ -22,15 +22,11 @@ type NaverMapInstance = {
 
 type NaverMapsGlobal = {
   maps?: {
-    Event: {
-      addListener: (target: unknown, eventName: string, listener: () => void) => unknown;
-    };
     LatLng: new (latitude: number, longitude: number) => unknown;
     Map: new (
       element: HTMLElement,
       options: Record<string, unknown>,
     ) => NaverMapInstance;
-    Marker: new (options: Record<string, unknown>) => { setMap: (map: unknown | null) => void };
   };
   __dairuriNaverMapScriptPromise?: Promise<void>;
 };
@@ -86,11 +82,9 @@ export function NaverMapSurface({
   markers,
   initialCamera,
   camera,
-  onMarkerPress,
 }: NaverMapSurfaceProps) {
   const mapElementRef = useRef<HTMLElement | null>(null);
   const mapRef = useRef<NaverMapInstance | null>(null);
-  const markerRefs = useRef<Array<{ setMap: (map: unknown | null) => void }>>([]);
   const [isReady, setIsReady] = useState(false);
   const [hasFailed, setHasFailed] = useState(false);
   const naverMapKey = getNaverMapKey();
@@ -116,9 +110,6 @@ export function NaverMapSurface({
           return;
         }
 
-        markerRefs.current.forEach((marker) => marker.setMap(null));
-        markerRefs.current = [];
-
         const center = new naver.LatLng(
           initialCamera.latitude,
           initialCamera.longitude,
@@ -136,20 +127,6 @@ export function NaverMapSurface({
           zoomControl: false,
         });
         mapRef.current = map;
-
-        markerRefs.current = markers.map((marker) => {
-          const naverMarker = new naver.Marker({
-            position: new naver.LatLng(marker.latitude, marker.longitude),
-            map,
-            title: marker.label,
-          });
-
-          naver.Event.addListener(naverMarker, "click", () => {
-            onMarkerPress?.(marker.id);
-          });
-
-          return naverMarker;
-        });
 
         setHasFailed(false);
         setIsReady(true);
@@ -180,11 +157,9 @@ export function NaverMapSurface({
       if (authFailureTimer) {
         window.clearTimeout(authFailureTimer);
       }
-      markerRefs.current.forEach((marker) => marker.setMap(null));
-      markerRefs.current = [];
       mapRef.current = null;
     };
-  }, [initialCamera, markers, naverMapKey, onMarkerPress]);
+  }, [initialCamera, naverMapKey]);
 
   useEffect(() => {
     if (!isReady || !camera) {
@@ -216,7 +191,6 @@ export function NaverMapSurface({
         markers={markers}
         initialCamera={initialCamera}
         camera={camera}
-        onMarkerPress={onMarkerPress}
       />
     );
   }
@@ -234,7 +208,6 @@ export function NaverMapSurface({
           markers={markers}
           initialCamera={initialCamera}
           camera={camera}
-          onMarkerPress={onMarkerPress}
         />
       ) : null}
     </View>

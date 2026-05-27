@@ -17,7 +17,8 @@ import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockMe } from "../../data/mockDomain";
 import { getMe, updateMe } from "../../services/api";
-import type { DriverType } from "../../types/domain";
+import type { DriverType, UpdateUserProfileInput } from "../../types/domain";
+import { ProfileImageBottomSheet } from "./ProfileImageBottomSheet";
 
 export type ProfileEditScreenProps = {
   onBack?: () => void;
@@ -33,6 +34,8 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
     initialProfile?.avatarUrl,
   );
+  const [avatarChanged, setAvatarChanged] = useState(false);
+  const [imageSheetVisible, setImageSheetVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -51,6 +54,7 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
         setNickname(profile.nickname);
         setDriverType(profile.driverType);
         setAvatarUrl(profile.avatarUrl);
+        setAvatarChanged(false);
       })
       .catch((error) => {
         if (active) {
@@ -73,10 +77,15 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
     setSaving(true);
     setErrorMessage(null);
     try {
-      await updateMe({
+      const input: UpdateUserProfileInput = {
         nickname: nickname.trim(),
         driverType,
-      });
+      };
+      if (avatarChanged) {
+        input.avatarUrl = avatarUrl ?? null;
+      }
+
+      await updateMe(input);
       onSaved?.();
     } catch (error) {
       setErrorMessage(
@@ -108,17 +117,13 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="프로필 사진 변경"
-              accessibilityState={{ disabled: true }}
               testID="profile-avatar-edit"
-              disabled
-              style={styles.avatarEditButtonDisabled}
+              onPress={() => setImageSheetVisible(true)}
+              style={({ pressed }) => [styles.avatarEditButton, pressed && styles.pressed]}
             >
-              <Camera size={18} color={colors.gray400} strokeWidth={2.4} />
+              <Camera size={18} color={colors.mintDark} strokeWidth={2.4} />
             </Pressable>
           </View>
-          <Text style={styles.photoUnavailableText}>
-            사진 업로드는 아직 지원하지 않아요.
-          </Text>
 
           <TextInputField
             label="닉네임"
@@ -157,6 +162,18 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
             testID="profile-save"
           />
         </View>
+
+        <ProfileImageBottomSheet
+          visible={imageSheetVisible}
+          onClose={() => setImageSheetVisible(false)}
+          onRemove={() => {
+            setAvatarUrl(undefined);
+            setAvatarChanged(true);
+            setImageSheetVisible(false);
+          }}
+          onOpenCamera={() => setImageSheetVisible(false)}
+          onOpenLibrary={() => setImageSheetVisible(false)}
+        />
       </View>
     </View>
   );
@@ -208,22 +225,24 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 34,
+    paddingTop: 24,
     paddingBottom: 120,
-    gap: 26,
+    gap: 24,
   },
   avatarBlock: {
     alignSelf: "center",
-    width: 124,
-    height: 124,
+    width: 178,
+    height: 178,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarFrame: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
+    width: 168,
+    height: 168,
+    borderRadius: 84,
     backgroundColor: colors.mintLight,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -232,27 +251,18 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  avatarEditButtonDisabled: {
+  avatarEditButton: {
     position: "absolute",
-    right: 4,
-    bottom: 8,
+    right: 10,
+    bottom: 14,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.gray100,
-    borderWidth: 3,
-    borderColor: colors.surface,
+    backgroundColor: colors.mintLight,
+    borderWidth: 2,
+    borderColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
-  },
-  photoUnavailableText: {
-    marginTop: -18,
-    color: colors.grayIcon,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
-    textAlign: "center",
   },
   fieldGroup: {
     gap: 10,
@@ -270,15 +280,15 @@ const styles = StyleSheet.create({
   },
   driverOption: {
     flex: 1,
-    minHeight: 56,
-    borderRadius: 18,
+    minHeight: 82,
+    borderRadius: 14,
     backgroundColor: colors.gray50,
     borderWidth: 1,
     borderColor: colors.gray50,
-    flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "center",
-    gap: 8,
+    paddingHorizontal: 16,
+    gap: 7,
   },
   driverOptionSelected: {
     backgroundColor: colors.mintLight,

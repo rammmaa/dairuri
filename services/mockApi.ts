@@ -252,7 +252,7 @@ export async function acceptApplication(applicationId: string): Promise<ChatRoom
         post.type === "job" ? `${post.title} 연락방` : `${post.title} 매칭방`,
       subtitle:
         post.type === "job"
-          ? `${post.placeName} / ${post.jobCategory ?? "인적 자원"}`
+          ? `${post.placeName} / ${post.jobCategory ?? "인재 풀 등록"}`
           : `${post.departure} > ${post.destination} / ${post.days.join(", ")} ${post.startTime}`,
       participants,
       postId: post.id,
