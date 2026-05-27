@@ -6,6 +6,9 @@
     "apk": {
       "distribution": "internal",
       "env": {
+        "NAVER_MAP_NCP_KEY_ID": "3wdsz3pkah",
+        "EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID": "3wdsz3pkah",
+        "EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID": "3wdsz3pkah",
         "EXPO_PUBLIC_DARORI_API_BASE_URL": "https://api.dairuri.harammm.me"
       },
       "android": {
@@ -14,6 +17,9 @@
     },
     "production": {
       "env": {
+        "NAVER_MAP_NCP_KEY_ID": "3wdsz3pkah",
+        "EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID": "3wdsz3pkah",
+        "EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID": "3wdsz3pkah",
         "EXPO_PUBLIC_DARORI_API_BASE_URL": "https://api.dairuri.harammm.me"
       },
       "android": {
