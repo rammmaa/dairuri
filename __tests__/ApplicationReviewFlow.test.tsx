@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { ApplicationReviewScreen } from "../screens/post/ApplicationReviewScreen";
 
@@ -18,20 +18,22 @@ describe("ApplicationReviewScreen", () => {
     expect(screen.getByText("‘청도감 학원’ 함께 다니실 사람 구해요")).toBeTruthy();
   });
 
-  it("opens and closes the approval completion modal", () => {
+  it("opens and closes the approval completion modal", async () => {
     render(<ApplicationReviewScreen applicationId="application-1" />);
 
     fireEvent.press(screen.getByTestId("application-approve-button"));
 
-    expect(screen.getByText("승인 완료")).toBeTruthy();
+    expect(await screen.findByText("승인 완료")).toBeTruthy();
     expect(screen.getByText("지원자를 승인했습니다.")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("application-approval-confirm"));
 
-    expect(screen.queryByText("승인 완료")).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByText("승인 완료")).toBeNull();
+    });
   });
 
-  it("keeps rejection submit disabled until a valid reason and then shows completion", () => {
+  it("keeps rejection submit disabled until a valid reason and then shows completion", async () => {
     render(<ApplicationReviewScreen applicationId="application-1" />);
 
     fireEvent.press(screen.getByTestId("application-reject-button"));
@@ -55,7 +57,7 @@ describe("ApplicationReviewScreen", () => {
 
     fireEvent.press(screen.getByTestId("application-reject-submit"));
 
-    expect(screen.getByText("매칭 신청 반려")).toBeTruthy();
+    expect(await screen.findByText("매칭 신청 반려")).toBeTruthy();
     expect(screen.getByText("지원자에게 반려 알림을 보냈습니다.")).toBeTruthy();
   });
 });

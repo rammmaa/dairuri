@@ -1,30 +1,35 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import * as api from "../services/api";
 import { ProfileEditScreen } from "../screens/profile/ProfileEditScreen";
 import { SettingsScreen } from "../screens/profile/SettingsScreen";
 import { SavedPostsScreen } from "../screens/profile/SavedPostsScreen";
 import { MyPostsScreen } from "../screens/profile/MyPostsScreen";
 
 describe("Profile settings flow", () => {
-  it("opens the profile image sheet and saves profile edits", () => {
+  it("opens the profile image sheet and saves profile edits", async () => {
     const onSaved = jest.fn();
+    const updateSpy = jest.spyOn(api, "updateMe");
 
     render(<ProfileEditScreen onSaved={onSaved} />);
 
-    fireEvent.press(screen.getByTestId("profile-avatar-edit"));
-
-    expect(screen.getByText("현재 프로필 지우기")).toBeTruthy();
-    expect(screen.getByText("카메라 열기")).toBeTruthy();
-    expect(screen.getByText("사진첩 열기")).toBeTruthy();
-
-    fireEvent.press(screen.getByText("사진첩 열기"));
+    expect(screen.getByText("사진 업로드는 아직 지원하지 않아요.")).toBeTruthy();
+    expect(screen.getByTestId("profile-avatar-edit").props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
     expect(screen.queryByText("사진첩 열기")).toBeNull();
 
     fireEvent.changeText(screen.getByPlaceholderText("닉네임 입력"), "새 다로리");
     fireEvent.press(screen.getByText("비운전자"));
     fireEvent.press(screen.getByTestId("profile-save"));
 
-    expect(onSaved).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalledTimes(1);
+    });
+    expect(updateSpy).toHaveBeenCalledWith({
+      nickname: "새 다로리",
+      driverType: "nonDriver",
+    });
   });
 
   it("renders account and vehicle data and confirms logout", () => {

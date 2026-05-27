@@ -3,28 +3,24 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { RouteScreen } from "../screens/RouteScreen";
 
 describe("RouteScreen sorting", () => {
-  it("sorts route cards and filters route status chips", () => {
+  it("sorts route cards and filters route status chips", async () => {
     render(<RouteScreen />);
 
-    // Fastest route by default (durationMinutes ascending): H4 at 10 minutes.
-    expect(screen.getByText("행복버스 4호선 · 10분")).toBeTruthy();
+    expect(await screen.findByText("행복버스 1호선 · 3개 정류장")).toBeTruthy();
 
-    // Switching to departure-order surfaces H1 (06:10) as the first card.
+    // Switching to report-recency order surfaces H2, the latest mocked sighting.
     fireEvent.press(screen.getByTestId("route-sort-출발순"));
-    expect(screen.getByText("행복버스 1호선 · 12분")).toBeTruthy();
+    expect(screen.getByText("행복버스 2호선 · 6개 정류장")).toBeTruthy();
 
-    // The express filter only matches H2 in the seed.
-    fireEvent.press(screen.getByTestId("route-filter-급행"));
-    expect(screen.getByText("1개 노선")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("route-filter-배차대기"));
+    expect(screen.getByText("6개 노선")).toBeTruthy();
     expect(screen.getByText("행복버스 2호선")).toBeTruthy();
 
-    // The 운행중 filter keeps H1, H3, and H6 in the seed.
     fireEvent.press(screen.getByTestId("route-filter-운행중"));
     expect(screen.getByTestId("route-filter-운행중").props.accessibilityState).toMatchObject({
       selected: true,
     });
-    expect(screen.getByText("3개 노선")).toBeTruthy();
-    expect(screen.getByText("행복버스 1호선")).toBeTruthy();
+    expect(screen.getByText("0개 노선")).toBeTruthy();
   });
 });
 

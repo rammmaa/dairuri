@@ -1,5 +1,8 @@
 import type { IncomingHttpHeaders } from "node:http";
 
+import { getPostgresPool } from "../db/postgres";
+import { hashSessionToken } from "./sessionCrypto";
+
 export type RequestContext = {
   userId: string;
   rateLimitKey: string;
@@ -12,10 +15,10 @@ export class AuthenticationError extends Error {
   }
 }
 
-export function requireRequestContext(
+export async function requireRequestContext(
   headers: IncomingHttpHeaders | Record<string, string | string[] | undefined>,
-): RequestContext {
-  const userId = getOptionalRequestUserId(headers);
+): Promise<RequestContext> {
+  const userId = await getOptionalRequestUserId(headers);
 
   if (!userId) {
     throw new AuthenticationError("authentication required");
@@ -27,9 +30,18 @@ export function requireRequestContext(
   };
 }
 
-export function getOptionalRequestUserId(
+export async function getOptionalRequestUserId(
   headers: IncomingHttpHeaders | Record<string, string | string[] | undefined>,
-) {
+): Promise<string | undefined> {
+  const bearerToken = readBearerToken(headers);
+  if (bearerToken) {
+    return getSessionUserId(bearerToken);
+  }
+
+  if (!isDevelopmentUserHeaderAllowed()) {
+    return undefined;
+  }
+
   const userId = readHeader(headers, "x-darori-user-id")?.trim();
 
   if (!userId) {
@@ -41,6 +53,34 @@ export function getOptionalRequestUserId(
   }
 
   return userId;
+}
+
+async function getSessionUserId(token: string) {
+  const { rows } = await getPostgresPool().query<{ user_id: string }>(
+    `
+      select user_id
+      from auth_sessions
+      where token_hash = $1 and expires_at > now()
+    `,
+    [hashSessionToken(token)],
+  );
+
+  return rows[0]?.user_id;
+}
+
+function readBearerToken(
+  headers: IncomingHttpHeaders | Record<string, string | string[] | undefined>,
+) {
+  const authorization = readHeader(headers, "authorization")?.trim();
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim();
+}
+
+function isDevelopmentUserHeaderAllowed() {
+  return (
+    process.env.NODE_ENV === "test" ||
+    process.env.DARORI_ALLOW_DEV_USER_HEADER === "true"
+  );
 }
 
 function readHeader(

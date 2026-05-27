@@ -7,17 +7,19 @@ import {
 
 import App from "../App";
 import * as api from "../services/api";
+import { clearAuthSession } from "../services/authSession";
 
 describe("Recruitment creation flow", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    clearAuthSession();
   });
 
   it("opens the ride creation flow from the post tab and enters chat after publishing", async () => {
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
-    fireEvent.press(screen.getByTestId("map-home-bottom-nav-posts"));
+    fireEvent.press(await screen.findByTestId("map-home-bottom-nav-posts"));
 
     expect(screen.getByText("어떤 모집을 시작할까요?")).toBeTruthy();
     const nextButton = screen.getByTestId("recruitment-next");
@@ -80,7 +82,7 @@ describe("Recruitment creation flow", () => {
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
-    fireEvent.press(screen.getByTestId("map-home-bottom-nav-posts"));
+    fireEvent.press(await screen.findByTestId("map-home-bottom-nav-posts"));
     fireEvent.press(screen.getByTestId("recruitment-type-work"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
@@ -139,7 +141,7 @@ describe("Recruitment creation flow", () => {
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
-    fireEvent.press(screen.getByTestId("map-home-bottom-nav-posts"));
+    fireEvent.press(await screen.findByTestId("map-home-bottom-nav-posts"));
     fireEvent.press(screen.getByTestId("recruitment-type-work"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
     fireEvent.changeText(screen.getByPlaceholderText("나를 소개하는 제목"), "농촌 일손과 카페 보조 가능");
@@ -173,7 +175,7 @@ describe("Recruitment creation flow", () => {
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
-    fireEvent.press(screen.getByTestId("map-home-bottom-nav-posts"));
+    fireEvent.press(await screen.findByTestId("map-home-bottom-nav-posts"));
     fireEvent.press(screen.getByTestId("recruitment-type-ride"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
     fireEvent.press(screen.getByTestId("place-field-departure"));

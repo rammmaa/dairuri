@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import App from "../App";
 
@@ -13,6 +13,16 @@ describe("Auth flow", () => {
     expect(screen.getByText("운전자")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("signup-next"));
+    expect(screen.getByText("전화번호 인증을 완료해주세요.")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("signup-phone-request-code"));
+    expect(await screen.findByTestId("signup-phone-code-input")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("signup-phone-confirm-code"));
+    await waitFor(() => {
+      expect(screen.getByText("전화번호 인증 완료")).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId("signup-next"));
     expect(screen.getByText("카메라 액세스")).toBeTruthy();
     expect(screen.getByText(/운전 면허증 등록을 위해/)).toBeTruthy();
 
@@ -24,6 +34,8 @@ describe("Auth flow", () => {
     expect(screen.getByText("차량 정보")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("driver-details-next"));
-    expect(screen.getByText("여기서 검색")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("여기서 검색")).toBeTruthy();
+    });
   });
 });

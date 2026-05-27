@@ -1,7 +1,22 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+jest.mock("../services/api", () => {
+  const actual = jest.requireActual("../services/api");
+
+  return {
+    ...actual,
+    sendMessage: jest.fn((...args) => actual.sendMessage(...args)),
+    submitReport: jest.fn(),
+  };
+});
+
+import * as api from "../services/api";
 import { ChatRoomScreen } from "../screens/chat/ChatRoomScreen";
 import { ReportScreen } from "../screens/chat/ReportScreen";
+
+const mockedApi = api as typeof api & {
+  submitReport: jest.Mock;
+};
 
 describe("Chat room and report flow", () => {
   it("renders the chat room header, messages, and composer", async () => {
@@ -23,6 +38,24 @@ describe("Chat room and report flow", () => {
 
     expect(await screen.findByText("지금 출발할게요")).toBeTruthy();
     expect(screen.getByPlaceholderText("메시지 보내기").props.value).toBe("");
+  });
+
+  it("keeps message text when sending fails", async () => {
+    jest.mocked(api.sendMessage).mockRejectedValueOnce(new Error("send failed"));
+
+    render(<ChatRoomScreen roomId="room-1" />);
+
+    const input = screen.getByPlaceholderText("메시지 보내기");
+    fireEvent.changeText(input, "  지금 출발할게요  ");
+    fireEvent.press(screen.getByTestId("chat-send-button"));
+
+    await waitFor(() => {
+      expect(screen.getByText("send failed")).toBeTruthy();
+    });
+
+    expect(screen.getByPlaceholderText("메시지 보내기").props.value).toBe(
+      "  지금 출발할게요  ",
+    );
   });
 
   it("opens the more sheet and calls report with the current room id", () => {
@@ -50,8 +83,9 @@ describe("Chat room and report flow", () => {
     expect(screen.getByText("채팅목록 및 대화 내용이 삭제되고 복구할 수 없어요.")).toBeTruthy();
   });
 
-  it("selects a report reason and submits the report", () => {
+  it("selects a report reason and submits the report", async () => {
     const onSubmitted = jest.fn();
+    mockedApi.submitReport.mockResolvedValueOnce(undefined);
 
     render(<ReportScreen roomId="room-1" onSubmitted={onSubmitted} />);
 
@@ -67,7 +101,30 @@ describe("Chat room and report flow", () => {
 
     fireEvent.press(screen.getByTestId("report-submit-button"));
 
-    expect(screen.getByText("신고가 접수되었습니다")).toBeTruthy();
-    expect(onSubmitted).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByText("신고가 접수되었습니다")).toBeTruthy();
+    });
+    expect(mockedApi.submitReport).toHaveBeenCalledWith("room-1", "욕설 및 비매너 사용");
+    expect(onSubmitted).not.toHaveBeenCalled();
+  });
+
+  it("keeps the report form open when submission fails", async () => {
+    const onSubmitted = jest.fn();
+    mockedApi.submitReport.mockRejectedValueOnce(new Error("report failed"));
+
+    render(<ReportScreen roomId="room-1" onSubmitted={onSubmitted} />);
+
+    fireEvent.press(screen.getByText("욕설 및 비매너 사용"));
+    fireEvent.press(screen.getByTestId("report-submit-button"));
+
+    await waitFor(() => {
+      expect(screen.getByText("report failed")).toBeTruthy();
+    });
+
+    expect(screen.queryByText("신고가 접수되었습니다")).toBeNull();
+    expect(screen.getByTestId("report-submit-button").props.accessibilityState).toMatchObject({
+      disabled: false,
+    });
+    expect(onSubmitted).not.toHaveBeenCalled();
   });
 });

@@ -1,15 +1,66 @@
 import type {
   Application,
+  ApplicationDetail,
+  AuthSession,
   BusRoute,
   BusRouteStop,
   BusSighting,
   BusStop,
+  ChangePasswordInput,
   ChatMessage,
   ChatRoom,
+  LoginInput,
+  PhoneVerificationConfirmInput,
+  PhoneVerificationConfirmResult,
+  PhoneVerificationStartInput,
+  PhoneVerificationStartResult,
   Post,
+  SignupInput,
+  UpdateUserProfileInput,
+  UserProfile,
 } from "../types/domain";
 import { apiRequest } from "./apiClient";
+import { clearAuthSession, setAuthSession } from "./authSession";
 import type { RecordBusSightingInput } from "./busArchiveCore";
+
+export async function login(input: LoginInput): Promise<AuthSession> {
+  const session = await apiRequest<AuthSession>("/auth/login", {
+    method: "POST",
+    body: input,
+  });
+  setAuthSession(session.token, session.user);
+  return session;
+}
+
+export async function signup(input: SignupInput): Promise<AuthSession> {
+  const session = await apiRequest<AuthSession>("/auth/signup", {
+    method: "POST",
+    body: input,
+  });
+  setAuthSession(session.token, session.user);
+  return session;
+}
+
+export async function requestPhoneVerification(
+  input: PhoneVerificationStartInput,
+): Promise<PhoneVerificationStartResult> {
+  return apiRequest<PhoneVerificationStartResult>("/auth/phone-verifications", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function confirmPhoneVerification(
+  input: PhoneVerificationConfirmInput,
+): Promise<PhoneVerificationConfirmResult> {
+  return apiRequest<PhoneVerificationConfirmResult>(
+    `/auth/phone-verifications/${encodeURIComponent(input.verificationId)}/confirm`,
+    {
+      method: "POST",
+      body: { code: input.code },
+    },
+  );
+}
 
 export async function getPosts(): Promise<Post[]> {
   return apiRequest<Post[]>("/posts");
@@ -53,8 +104,24 @@ export async function applyToPost(
   );
 }
 
-export async function acceptApplication(applicationId: string): Promise<void> {
-  await apiRequest<void>(
+export async function getApplicationDetail(
+  applicationId: string,
+): Promise<ApplicationDetail> {
+  return apiRequest<ApplicationDetail>(
+    `/applications/${encodeURIComponent(applicationId)}`,
+  );
+}
+
+export async function getApplicationsForPost(
+  postId: string,
+): Promise<Application[]> {
+  return apiRequest<Application[]>(
+    `/posts/${encodeURIComponent(postId)}/applications`,
+  );
+}
+
+export async function acceptApplication(applicationId: string): Promise<ChatRoom> {
+  return apiRequest<ChatRoom>(
     `/applications/${encodeURIComponent(applicationId)}/accept`,
     {
       method: "POST",
@@ -73,6 +140,45 @@ export async function rejectApplication(
       body: { reason },
     },
   );
+}
+
+export async function getMe(): Promise<UserProfile> {
+  return apiRequest<UserProfile>("/me");
+}
+
+export async function updateMe(
+  input: UpdateUserProfileInput,
+): Promise<UserProfile> {
+  return apiRequest<UserProfile>("/me", {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function changePassword(input: ChangePasswordInput): Promise<void> {
+  await apiRequest<void>("/me/password", {
+    method: "PATCH",
+    body: input,
+  });
+}
+
+export async function deleteMe(): Promise<void> {
+  await apiRequest<void>("/me", {
+    method: "DELETE",
+  });
+  clearAuthSession();
+}
+
+export async function getMyPosts(): Promise<Post[]> {
+  return apiRequest<Post[]>("/me/posts");
+}
+
+export async function getSavedPosts(): Promise<Post[]> {
+  return apiRequest<Post[]>("/me/saved-posts");
+}
+
+export async function getReceivedApplications(): Promise<ApplicationDetail[]> {
+  return apiRequest<ApplicationDetail[]>("/me/received-applications");
 }
 
 export async function getChatRooms(): Promise<ChatRoom[]> {
@@ -96,6 +202,16 @@ export async function sendMessage(
       body: { text },
     },
   );
+}
+
+export async function submitReport(
+  roomId: string,
+  reason: string,
+): Promise<void> {
+  await apiRequest<void>("/reports", {
+    method: "POST",
+    body: { roomId, reason },
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -7,13 +7,29 @@ import {
   UserRound,
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { BottomNav } from "../components/BottomNav";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
+import { mockMe, mockPosts } from "../data/mockDomain";
+import {
+  getMe,
+  getMyPosts,
+  getReceivedApplications,
+  getSavedPosts,
+} from "../services/api";
+import type { ApplicationDetail, Post, UserProfile } from "../types/domain";
 
 export type MyPageScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
@@ -22,7 +38,7 @@ export type MyPageScreenProps = {
 };
 
 type ProfileStat = {
-  id: "saved" | "recruitments" | "completed";
+  id: "saved" | "recruitments" | "applications";
   label: string;
   value: string;
 };
@@ -34,28 +50,94 @@ type ProfileMenuItem = {
   icon: LucideIcon;
 };
 
-const profileStats: ProfileStat[] = [
-  { id: "saved", label: "찜한 글", value: "12" },
-  { id: "recruitments", label: "모집글", value: "3" },
-  { id: "completed", label: "참여 완료", value: "8" },
-];
-
-const profileMenuItems: ProfileMenuItem[] = [
-  { id: "liked", label: "내 찜", detail: "저장한 모집글", icon: Heart },
-  {
-    id: "recruitments",
-    label: "내가 쓴 모집글",
-    detail: "진행 중 2개",
-    icon: FileText,
-  },
-  { id: "settings", label: "설정", detail: "알림 및 계정", icon: Settings },
-];
-
 export function MyPageScreen({
   onSelectTab,
   onOpenProfileScreen,
   onOpenApplicationReview,
 }: MyPageScreenProps) {
+  const initialMyPosts = useMemo(
+    () => mockPosts.filter((post) => post.author.id === mockMe.id),
+    [],
+  );
+  const initialSavedPosts = useMemo(
+    () => mockPosts.filter((post) => post.liked),
+    [],
+  );
+  const [profile, setProfile] = useState<UserProfile | undefined>(() =>
+    process.env.NODE_ENV === "test" ? mockMe : undefined,
+  );
+  const [myPosts, setMyPosts] = useState<Post[]>(() =>
+    process.env.NODE_ENV === "test" ? initialMyPosts : [],
+  );
+  const [savedPosts, setSavedPosts] = useState<Post[]>(() =>
+    process.env.NODE_ENV === "test" ? initialSavedPosts : [],
+  );
+  const [receivedApplications, setReceivedApplications] = useState<
+    ApplicationDetail[]
+  >([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+
+    Promise.all([
+      getMe(),
+      getMyPosts(),
+      getSavedPosts(),
+      getReceivedApplications(),
+    ])
+      .then(([nextProfile, nextMyPosts, nextSavedPosts, nextApplications]) => {
+        if (!active) {
+          return;
+        }
+        setProfile(nextProfile);
+        setMyPosts(nextMyPosts);
+        setSavedPosts(nextSavedPosts);
+        setReceivedApplications(nextApplications);
+      })
+      .catch((error) => {
+        if (active) {
+          setErrorMessage(
+            error instanceof Error ? error.message : "프로필 정보를 불러오지 못했어요.",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const stats: ProfileStat[] = [
+    { id: "saved", label: "찜한 글", value: String(savedPosts.length) },
+    { id: "recruitments", label: "모집글", value: String(myPosts.length) },
+    {
+      id: "applications",
+      label: "지원서",
+      value: String(receivedApplications.length),
+    },
+  ];
+  const profileMenuItems: ProfileMenuItem[] = [
+    {
+      id: "liked",
+      label: "내 찜",
+      detail: `${savedPosts.length}개 저장됨`,
+      icon: Heart,
+    },
+    {
+      id: "recruitments",
+      label: "내가 쓴 모집글",
+      detail: `${myPosts.length}개 작성됨`,
+      icon: FileText,
+    },
+    { id: "settings", label: "설정", detail: "알림 및 계정", icon: Settings },
+  ];
+  const reviewTarget = receivedApplications[0]?.application.id;
+
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen}>
@@ -71,12 +153,18 @@ export function MyPageScreen({
           <View style={styles.profileCard}>
             <View style={styles.profileTopRow}>
               <View style={styles.avatar}>
-                <UserRound size={34} color={colors.mintDark} strokeWidth={2.2} />
+                {profile?.avatarUrl ? (
+                  <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <UserRound size={34} color={colors.mintDark} strokeWidth={2.2} />
+                )}
               </View>
 
               <View style={styles.profileCopy}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.profileName}>다로리인</Text>
+                  <Text style={styles.profileName}>
+                    {profile?.nickname ?? "프로필 불러오는 중"}
+                  </Text>
                   <View style={styles.badge}>
                     <ShieldCheck
                       size={13}
@@ -86,13 +174,16 @@ export function MyPageScreen({
                     <Text style={styles.badgeText}>인증 완료</Text>
                   </View>
                 </View>
-                <Text style={styles.profileMeta}>홍대입구 주변 · 평일 오후</Text>
-                <Text style={styles.profileStatus}>함께 이동할 친구를 찾는 중</Text>
+                <Text style={styles.profileMeta}>
+                  {profile?.area ?? "지역 미등록"} ·{" "}
+                  {profile?.driverType === "driver" ? "운전자" : "비운전자"}
+                </Text>
+                <Text style={styles.profileStatus}>인증된 다로리 계정</Text>
               </View>
             </View>
 
             <View style={styles.statsRow}>
-              {profileStats.map((stat) => (
+              {stats.map((stat) => (
                 <Pressable
                   key={stat.id}
                   accessibilityRole="button"
@@ -100,10 +191,10 @@ export function MyPageScreen({
                   onPress={() => {
                     if (stat.id === "saved") {
                       onOpenProfileScreen?.("saved");
-                    } else if (stat.id === "completed") {
-                      onOpenApplicationReview?.("application-1");
-                    } else {
+                    } else if (stat.id === "recruitments") {
                       onOpenProfileScreen?.("mine");
+                    } else if (reviewTarget) {
+                      onOpenApplicationReview?.(reviewTarget);
                     }
                   }}
                   testID={`profile-stat-${stat.id}`}
@@ -136,6 +227,8 @@ export function MyPageScreen({
               />
             ))}
           </View>
+
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         </ScrollView>
 
         <BottomNav
@@ -235,6 +328,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.mintLight,
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
   profileCopy: {
     flex: 1,
@@ -323,6 +421,13 @@ const styles = StyleSheet.create({
     borderRadius: spacing.cardRadius,
     backgroundColor: colors.surface,
     overflow: "hidden",
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
   },
   menuRow: {
     minHeight: 72,

@@ -1,4 +1,12 @@
-import { MoreVertical, Phone, Plus, Send } from "lucide-react-native";
+import {
+  LogOut,
+  MoreVertical,
+  Phone,
+  Plus,
+  Send,
+  ShieldAlert,
+  type LucideIcon,
+} from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
@@ -9,6 +17,7 @@ import {
   View,
 } from "react-native";
 
+import { BottomSheet } from "../../components/BottomSheet";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
@@ -16,7 +25,6 @@ import { typography } from "../../constants/typography";
 import { mockChatRooms, mockMessages } from "../../data/mockDomain";
 import { getChatMessages, getChatRooms, sendMessage } from "../../services/api";
 import type { ChatMessage, ChatRoom } from "../../types/domain";
-import { ChatMoreBottomSheet } from "./ChatMoreBottomSheet";
 
 export type ChatRoomScreenProps = {
   roomId: string;
@@ -37,6 +45,8 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
     initialRoom ? mockMessages.filter((message) => message.roomId === initialRoom.id) : [],
   );
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [moreVisible, setMoreVisible] = useState(false);
   const [leaveVisible, setLeaveVisible] = useState(false);
 
@@ -95,17 +105,24 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
     );
   }
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = text.trim();
 
-    if (!trimmed) {
+    if (!trimmed || sending) {
       return;
     }
 
-    setText("");
-    sendMessage(room.id, trimmed).then((message) => {
+    setSending(true);
+    setSendError(null);
+    try {
+      const message = await sendMessage(room.id, trimmed);
       setMessages((currentMessages) => mergeMessages(currentMessages, [message]));
-    });
+      setText("");
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : "메시지를 보내지 못했어요.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleReport = () => {
@@ -133,8 +150,19 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
           <ChatMessageItem message={item} mine={item.senderId === "me"} />
         )}
       />
-      <MessageComposer value={text} onChangeText={setText} onSend={handleSend} />
-      <ChatMoreBottomSheet
+      {sendError ? <Text style={styles.sendErrorText}>{sendError}</Text> : null}
+      <MessageComposer
+        value={text}
+        onChangeText={(nextText) => {
+          setText(nextText);
+          if (sendError) {
+            setSendError(null);
+          }
+        }}
+        onSend={handleSend}
+        sending={sending}
+      />
+      <ChatMoreActionsSheet
         visible={moreVisible}
         onClose={() => setMoreVisible(false)}
         onReport={handleReport}
@@ -232,10 +260,12 @@ function MessageComposer({
   value,
   onChangeText,
   onSend,
+  sending,
 }: {
   value: string;
   onChangeText: (value: string) => void;
   onSend: () => void;
+  sending: boolean;
 }) {
   return (
     <View style={styles.composer}>
@@ -252,18 +282,93 @@ function MessageComposer({
         onChangeText={onChangeText}
         placeholder="메시지 보내기"
         placeholderTextColor={colors.gray400}
+        editable={!sending}
         style={styles.input}
       />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="메시지 전송"
+        accessibilityState={{ disabled: sending }}
+        disabled={sending}
         onPress={onSend}
         testID="chat-send-button"
-        style={({ pressed }) => [styles.composerIconButton, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.composerIconButton,
+          sending && styles.disabledIconButton,
+          pressed && styles.pressed,
+        ]}
       >
-        <Send size={21} color={colors.mintDark} strokeWidth={2.2} />
+        <Send
+          size={21}
+          color={sending ? colors.gray400 : colors.mintDark}
+          strokeWidth={2.2}
+        />
       </Pressable>
     </View>
+  );
+}
+
+function ChatMoreActionsSheet({
+  visible,
+  onClose,
+  onReport,
+  onLeave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onReport: () => void;
+  onLeave: () => void;
+}) {
+  return (
+    <BottomSheet
+      visible={visible}
+      title="채팅방 더보기"
+      onClose={onClose}
+      testID="chat-more-bottom-sheet"
+    >
+      <View style={styles.moreGroup}>
+        <ChatMoreMenuItem
+          icon={ShieldAlert}
+          label="신고하기"
+          onPress={onReport}
+          testID="chat-more-report"
+        />
+        <ChatMoreMenuItem
+          icon={LogOut}
+          label="방 나가기"
+          onPress={onLeave}
+          danger
+          testID="chat-more-leave"
+        />
+      </View>
+    </BottomSheet>
+  );
+}
+
+function ChatMoreMenuItem({
+  icon: Icon,
+  label,
+  onPress,
+  danger = false,
+  testID,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+  testID?: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      testID={testID}
+      style={({ pressed }) => [styles.moreItem, pressed && styles.pressed]}
+    >
+      <Icon size={20} color={danger ? colors.red : colors.grayIcon} strokeWidth={2.2} />
+      <Text style={[styles.moreItemText, danger && styles.dangerText]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -410,6 +515,15 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.regular,
   },
+  sendErrorText: {
+    paddingHorizontal: spacing.screenX,
+    paddingTop: 8,
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
+  },
   composer: {
     minHeight: 58,
     paddingHorizontal: 12,
@@ -428,6 +542,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  disabledIconButton: {
+    opacity: 0.55,
+  },
   input: {
     flex: 1,
     minHeight: 38,
@@ -439,5 +556,27 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.regular,
+  },
+  moreGroup: {
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: colors.gray50,
+  },
+  moreItem: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  moreItemText: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.medium,
+  },
+  dangerText: {
+    color: colors.red,
   },
 });

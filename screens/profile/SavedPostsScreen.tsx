@@ -14,7 +14,7 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockPosts } from "../../data/mockDomain";
-import { getPosts } from "../../services/api";
+import { getSavedPosts } from "../../services/api";
 import type { Post } from "../../types/domain";
 
 export type SavedPostsScreenProps = {
@@ -24,10 +24,9 @@ export type SavedPostsScreenProps = {
 
 export function SavedPostsScreen({ onBack, posts }: SavedPostsScreenProps) {
   const [loadedPosts, setLoadedPosts] = useState<Post[]>(() =>
-    process.env.NODE_ENV === "test" ? mockPosts : [],
+    process.env.NODE_ENV === "test" ? mockPosts.filter((post) => post.liked) : [],
   );
-  const sourcePosts = posts ?? loadedPosts;
-  const savedPosts = sourcePosts.filter((post) => post.liked);
+  const savedPosts = posts ?? loadedPosts;
 
   useEffect(() => {
     if (posts || process.env.NODE_ENV === "test") {
@@ -36,7 +35,7 @@ export function SavedPostsScreen({ onBack, posts }: SavedPostsScreenProps) {
 
     let active = true;
 
-    getPosts()
+    getSavedPosts()
       .then((nextPosts) => {
         if (active) {
           setLoadedPosts(nextPosts);

@@ -11,13 +11,22 @@ describe("api mode resolution", () => {
     ).toBe("live");
   });
 
-  it("keeps mock API available only for tests or explicit local opt-in", () => {
+  it("keeps mock API available for tests or explicit local opt-in", () => {
     expect(resolveApiMode({ NODE_ENV: "test" })).toBe("mock");
     expect(
+      resolveApiMode({
+        NODE_ENV: "development",
+        EXPO_PUBLIC_DARORI_USE_MOCK_API: "true",
+      }),
+    ).toBe("mock");
+  });
+
+  it("rejects mock API mode in production", () => {
+    expect(() =>
       resolveApiMode({
         NODE_ENV: "production",
         EXPO_PUBLIC_DARORI_USE_MOCK_API: "true",
       }),
-    ).toBe("mock");
+    ).toThrow("mock API mode is not allowed in production builds");
   });
 });

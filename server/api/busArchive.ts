@@ -321,7 +321,7 @@ async function resolveLastSightingsAt(
     const cachedValues = await client.mGet(keys);
     for (let index = 0; index < cachedValues.length; index += 1) {
       const cached = cachedValues[index];
-      if (cached) {
+      if (typeof cached === "string" && cached) {
         lastSightingsByStop.set(rows[index].id, cached);
       }
     }

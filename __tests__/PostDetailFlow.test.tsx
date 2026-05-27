@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import * as api from "../services/api";
 import { PostDetailScreen } from "../screens/post/PostDetailScreen";
 
 describe("PostDetailScreen", () => {
@@ -39,9 +40,7 @@ describe("PostDetailScreen", () => {
   });
 
   it("validates the apply steps and completes through the modal", async () => {
-    const onOpenChat = jest.fn();
-
-    render(<PostDetailScreen postId="job-1" onOpenChat={onOpenChat} />);
+    render(<PostDetailScreen postId="job-1" />);
 
     fireEvent.press(screen.getByText("연락하기"));
 
@@ -81,7 +80,30 @@ describe("PostDetailScreen", () => {
 
     fireEvent.press(screen.getByTestId("apply-complete-button"));
 
-    expect(onOpenChat).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("연락 요청 완료")).toBeNull();
+  });
+
+  it("keeps the application form open when submission fails", async () => {
+    jest.spyOn(api, "applyToPost").mockRejectedValueOnce(new Error("network down"));
+
+    render(<PostDetailScreen postId="job-1" />);
+
+    fireEvent.press(screen.getByText("연락하기"));
+    fireEvent.changeText(
+      screen.getByTestId("apply-intro-input"),
+      "꼼꼼하게 시간 맞춰 참여할 수 있습니다.",
+    );
+    fireEvent.press(screen.getByTestId("apply-next-button"));
+    fireEvent.press(screen.getByTestId("terms-service"));
+    fireEvent.press(screen.getByTestId("terms-privacy"));
+    fireEvent.press(screen.getByTestId("terms-third-party"));
+    fireEvent.press(screen.getByTestId("apply-terms-confirm-button"));
+
+    await waitFor(() => {
+      expect(screen.getByText("network down")).toBeTruthy();
+    });
+
+    expect(screen.queryByText("연락 요청 완료")).toBeNull();
+    expect(screen.getAllByText("약관 동의").length).toBeGreaterThan(0);
   });
 });

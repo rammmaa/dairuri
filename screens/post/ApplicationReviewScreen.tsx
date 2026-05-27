@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppButton } from "../../components/AppButton";
@@ -7,8 +7,12 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockApplications, mockPosts } from "../../data/mockDomain";
-import { acceptApplication, rejectApplication } from "../../services/api";
-import type { Application, Post } from "../../types/domain";
+import {
+  acceptApplication,
+  getApplicationDetail,
+  rejectApplication,
+} from "../../services/api";
+import type { ApplicationDetail } from "../../types/domain";
 import {
   ApplicationDecisionModal,
   type ApplicationDecisionModalMode,
@@ -17,20 +21,22 @@ import {
 export type ApplicationReviewScreenProps = {
   applicationId: string;
   onBack?: () => void;
-  onOpenChat?: () => void;
+  onOpenChat?: (roomId: string) => void;
 };
 
 const formatTemperature = (temperature: number) => `${temperature.toFixed(1)}°C`;
 
-function findApplication(applicationId: string): Application {
-  return (
-    mockApplications.find((application) => application.id === applicationId) ??
-    mockApplications[0]
-  );
-}
+function getInitialApplicationDetail(
+  applicationId: string,
+): ApplicationDetail | undefined {
+  if (process.env.NODE_ENV !== "test") {
+    return undefined;
+  }
 
-function findLinkedPost(application: Application): Post | undefined {
-  return mockPosts.find((post) => post.id === application.postId);
+  const application =
+    mockApplications.find((item) => item.id === applicationId) ?? mockApplications[0];
+  const post = mockPosts.find((item) => item.id === application.postId);
+  return post ? { application, post } : undefined;
 }
 
 export function ApplicationReviewScreen({
@@ -38,27 +44,122 @@ export function ApplicationReviewScreen({
   onBack,
   onOpenChat,
 }: ApplicationReviewScreenProps) {
-  const application = useMemo(() => findApplication(applicationId), [applicationId]);
-  const linkedPost = useMemo(() => findLinkedPost(application), [application]);
+  const initialDetail = useMemo(
+    () => getInitialApplicationDetail(applicationId),
+    [applicationId],
+  );
+  const [detail, setDetail] = useState<ApplicationDetail | undefined>(initialDetail);
   const [modalMode, setModalMode] = useState<ApplicationDecisionModalMode | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [acceptedRoomId, setAcceptedRoomId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+    setErrorMessage(null);
+
+    getApplicationDetail(applicationId)
+      .then((nextDetail) => {
+        if (active) {
+          setDetail(nextDetail);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "지원서를 불러오지 못했어요.",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [applicationId]);
+
+  if (!detail) {
+    return (
+      <View style={styles.safeArea}>
+        <Header title="지원서" showBack onBack={onBack} />
+        <View style={styles.loadingState}>
+          <Text style={styles.loadingText}>
+            {errorMessage ?? "지원서를 불러오는 중이에요"}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const { application, post: linkedPost } = detail;
 
   const trimmedReason = rejectReason.trim();
   const isRejectSubmitDisabled = trimmedReason.length < 5;
 
-  const handleApprove = () => {
-    void acceptApplication(application.id);
-    setModalMode("approved");
-  };
-
-  const handleRejectSubmit = () => {
-    if (isRejectSubmitDisabled) {
+  const handleApprove = async () => {
+    if (submitting) {
       return;
     }
 
-    void rejectApplication(application.id, trimmedReason);
-    setRejectReason("");
-    setModalMode("rejected");
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const room = await acceptApplication(application.id);
+      setAcceptedRoomId(room.id);
+      setDetail((current) =>
+        current
+          ? {
+              ...current,
+              application: { ...current.application, status: "accepted" },
+            }
+          : current,
+      );
+      setModalMode("approved");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "승인 처리에 실패했어요.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRejectSubmit = async () => {
+    if (isRejectSubmitDisabled || submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await rejectApplication(application.id, trimmedReason);
+      setDetail((current) =>
+        current
+          ? {
+              ...current,
+              application: {
+                ...current.application,
+                status: "rejected",
+                rejectionReason: trimmedReason,
+              },
+            }
+          : current,
+      );
+      setRejectReason("");
+      setModalMode("rejected");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "거절 처리에 실패했어요.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const closeModal = () => {
@@ -67,7 +168,9 @@ export function ApplicationReviewScreen({
 
   const openChatFromModal = () => {
     closeModal();
-    onOpenChat?.();
+    if (acceptedRoomId) {
+      onOpenChat?.(acceptedRoomId);
+    }
   };
 
   return (
@@ -113,6 +216,8 @@ export function ApplicationReviewScreen({
             <Text style={styles.introText}>{application.intro}</Text>
           </View>
         </View>
+
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -120,12 +225,14 @@ export function ApplicationReviewScreen({
           label="거절"
           variant="danger"
           onPress={() => setModalMode("rejectReason")}
+          disabled={submitting}
           testID="application-reject-button"
           style={styles.footerButton}
         />
         <AppButton
-          label="승인"
+          label={submitting ? "처리 중" : "승인"}
           onPress={handleApprove}
+          disabled={submitting}
           testID="application-approve-button"
           style={styles.footerButton}
         />
@@ -139,7 +246,7 @@ export function ApplicationReviewScreen({
         onConfirm={modalMode === "rejectReason" ? handleRejectSubmit : closeModal}
         onCancel={closeModal}
         onOpenChat={modalMode === "approved" ? openChatFromModal : undefined}
-        confirmDisabled={isRejectSubmitDisabled}
+        confirmDisabled={submitting || isRejectSubmitDisabled}
       />
     </View>
   );
@@ -157,6 +264,20 @@ const styles = StyleSheet.create({
     padding: spacing.screenX,
     paddingBottom: 112,
     gap: 20,
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.screenX,
+  },
+  loadingText: {
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.regular,
+    textAlign: "center",
   },
   profileCard: {
     minHeight: 84,
@@ -257,6 +378,13 @@ const styles = StyleSheet.create({
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
     fontWeight: typography.weight.regular,
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
   },
   footer: {
     position: "absolute",

@@ -1097,6 +1097,7 @@ function PlacePickerScreen({
   const [places, setPlaces] = useState<PlaceCandidate[]>(() =>
     getFallbackPlaceCandidates(currentValue),
   );
+  const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
   const title =
     target === "departure" ? "지도에서 출발지 선택" : "지도에서 목적지 선택";
 
@@ -1106,13 +1107,26 @@ function PlacePickerScreen({
 
     setPlaces(fallback);
 
-    searchApiPlaceCandidates(query).then((apiPlaces) => {
-      if (!active || apiPlaces.length === 0) {
-        return;
-      }
+    searchApiPlaceCandidates(query)
+      .then((apiPlaces) => {
+        if (!active) {
+          return;
+        }
 
-      setPlaces(mergePlaceCandidates(apiPlaces, fallback));
-    });
+        setPlaceSearchError(null);
+        if (apiPlaces.length > 0) {
+          setPlaces(mergePlaceCandidates(apiPlaces, fallback));
+        }
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        setPlaceSearchError(
+          error instanceof Error ? error.message : "장소 검색을 불러오지 못했어요.",
+        );
+      });
 
     return () => {
       active = false;
@@ -1178,7 +1192,16 @@ function PlacePickerScreen({
           contentContainerStyle={styles.placeList}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.label}>지도 API 결과</Text>
+          <Text style={styles.label}>
+            {places.some((place) => place.source === "api")
+              ? "지도 API 결과"
+              : "추천 장소"}
+          </Text>
+          {placeSearchError ? (
+            <Text style={styles.placeSearchError}>
+              지도 API 검색이 실패해 추천 장소를 표시하고 있어요.
+            </Text>
+          ) : null}
           {places.map((place) => (
             <Pressable
               key={place.id}
@@ -1199,6 +1222,9 @@ function PlacePickerScreen({
                 <Text style={styles.placeResultAddress} numberOfLines={1}>
                   {place.address}
                 </Text>
+                {place.source === "fallback" ? (
+                  <Text style={styles.placeSourceBadge}>추천 장소</Text>
+                ) : null}
               </View>
             </Pressable>
           ))}
@@ -1725,6 +1751,21 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
     fontWeight: typography.weight.regular,
+  },
+  placeSearchError: {
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
+  },
+  placeSourceBadge: {
+    alignSelf: "flex-start",
+    color: colors.mintDark,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.bold,
   },
   prefixText: {
     color: colors.gray300,

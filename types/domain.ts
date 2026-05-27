@@ -77,6 +77,70 @@ export type Application = {
   rejectionReason?: string;
 };
 
+export type ApplicationDetail = {
+  application: Application;
+  post: Post;
+};
+
+export type UpdateUserProfileInput = {
+  nickname?: string;
+  driverType?: DriverType;
+  avatarUrl?: string | null;
+};
+
+export type LoginInput = {
+  identifier: string;
+  password: string;
+};
+
+export type SignupInput = {
+  nickname: string;
+  realName?: string;
+  phone: string;
+  email?: string;
+  password: string;
+  driverType: DriverType;
+  vehicle?: VehicleInfo;
+  phoneVerification: PhoneVerificationProof;
+};
+
+export type AuthSession = {
+  token: string;
+  user: UserProfile;
+};
+
+export type PhoneVerificationProof = {
+  id: string;
+  token: string;
+};
+
+export type PhoneVerificationStartInput = {
+  phone: string;
+};
+
+export type PhoneVerificationStartResult = {
+  verificationId: string;
+  expiresAt: string;
+  debugCode?: string;
+};
+
+export type PhoneVerificationConfirmInput = {
+  verificationId: string;
+  code: string;
+};
+
+export type PhoneVerificationConfirmResult = {
+  verificationId: string;
+  phone: string;
+  verifiedToken: string;
+  verifiedAt: string;
+};
+
+export type ChangePasswordInput = {
+  currentPassword: string;
+  newPassword: string;
+};
+
 export type ChatRoom = {
   id: string;
   title: string;

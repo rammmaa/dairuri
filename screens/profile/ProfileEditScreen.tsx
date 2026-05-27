@@ -1,5 +1,5 @@
 import { Camera, CarFront, UserRound, UserRoundCheck } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   Pressable,
@@ -16,8 +16,8 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockMe } from "../../data/mockDomain";
+import { getMe, updateMe } from "../../services/api";
 import type { DriverType } from "../../types/domain";
-import { ProfileImageBottomSheet } from "./ProfileImageBottomSheet";
 
 export type ProfileEditScreenProps = {
   onBack?: () => void;
@@ -25,18 +25,66 @@ export type ProfileEditScreenProps = {
 };
 
 export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
-  const [nickname, setNickname] = useState(mockMe.nickname);
-  const [driverType, setDriverType] = useState<DriverType>(mockMe.driverType);
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(mockMe.avatarUrl);
-  const [imageSheetVisible, setImageSheetVisible] = useState(false);
+  const initialProfile = process.env.NODE_ENV === "test" ? mockMe : undefined;
+  const [nickname, setNickname] = useState(initialProfile?.nickname ?? "");
+  const [driverType, setDriverType] = useState<DriverType>(
+    initialProfile?.driverType ?? "nonDriver",
+  );
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
+    initialProfile?.avatarUrl,
+  );
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const closeImageSheet = () => {
-    setImageSheetVisible(false);
-  };
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
 
-  const handleImageAction = (nextAvatarUrl?: string) => {
-    setAvatarUrl(nextAvatarUrl);
-    closeImageSheet();
+    let active = true;
+
+    getMe()
+      .then((profile) => {
+        if (!active) {
+          return;
+        }
+        setNickname(profile.nickname);
+        setDriverType(profile.driverType);
+        setAvatarUrl(profile.avatarUrl);
+      })
+      .catch((error) => {
+        if (active) {
+          setErrorMessage(
+            error instanceof Error ? error.message : "프로필을 불러오지 못했어요.",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSave = async () => {
+    if (saving || nickname.trim().length === 0) {
+      return;
+    }
+
+    setSaving(true);
+    setErrorMessage(null);
+    try {
+      await updateMe({
+        nickname: nickname.trim(),
+        driverType,
+      });
+      onSaved?.();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "프로필 수정에 실패했어요.",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -60,13 +108,17 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="프로필 사진 변경"
+              accessibilityState={{ disabled: true }}
               testID="profile-avatar-edit"
-              onPress={() => setImageSheetVisible(true)}
-              style={({ pressed }) => [styles.avatarEditButton, pressed && styles.pressed]}
+              disabled
+              style={styles.avatarEditButtonDisabled}
             >
-              <Camera size={18} color={colors.surface} strokeWidth={2.4} />
+              <Camera size={18} color={colors.gray400} strokeWidth={2.4} />
             </Pressable>
           </View>
+          <Text style={styles.photoUnavailableText}>
+            사진 업로드는 아직 지원하지 않아요.
+          </Text>
 
           <TextInputField
             label="닉네임"
@@ -93,25 +145,19 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
               />
             </View>
           </View>
+
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         </ScrollView>
 
         <View style={styles.footer}>
           <AppButton
-            label="수정"
-            onPress={onSaved}
-            disabled={nickname.trim().length === 0}
+            label={saving ? "저장 중" : "수정"}
+            onPress={handleSave}
+            disabled={saving || nickname.trim().length === 0}
             testID="profile-save"
           />
         </View>
       </View>
-
-      <ProfileImageBottomSheet
-        visible={imageSheetVisible}
-        onClose={closeImageSheet}
-        onRemove={() => handleImageAction(undefined)}
-        onOpenCamera={() => handleImageAction("camera://profile-preview")}
-        onOpenLibrary={() => handleImageAction("library://profile-preview")}
-      />
     </View>
   );
 }
@@ -186,18 +232,27 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  avatarEditButton: {
+  avatarEditButtonDisabled: {
     position: "absolute",
     right: 4,
     bottom: 8,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.gray100,
     borderWidth: 3,
     borderColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
+  },
+  photoUnavailableText: {
+    marginTop: -18,
+    color: colors.grayIcon,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.medium,
+    textAlign: "center",
   },
   fieldGroup: {
     gap: 10,
@@ -235,6 +290,13 @@ const styles = StyleSheet.create({
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
     fontWeight: typography.weight.bold,
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.medium,
   },
   pressed: {
     opacity: 0.78,

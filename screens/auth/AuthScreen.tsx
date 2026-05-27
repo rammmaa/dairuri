@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import {
@@ -19,6 +20,13 @@ import {
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
+import {
+  confirmPhoneVerification,
+  login,
+  requestPhoneVerification,
+  signup,
+} from "../../services/api";
+import type { SignupInput } from "../../types/domain";
 
 type AuthStep = "login" | "signup" | "license-camera" | "driver-details";
 type SignupRole = "driver" | "rider";
@@ -31,6 +39,125 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   const [step, setStep] = useState<AuthStep>("login");
   const [role, setRole] = useState<SignupRole>("driver");
   const [cameraModalVisible, setCameraModalVisible] = useState(false);
+  const [signupDraft, setSignupDraft] = useState<SignupDraft>(() => ({
+    name: process.env.NODE_ENV === "test" ? "이하람" : "",
+    phone: process.env.NODE_ENV === "test" ? "010-0000-0000" : "",
+    email: process.env.NODE_ENV === "test" ? "test@example.com" : "",
+    password: process.env.NODE_ENV === "test" ? "password123" : "",
+    passwordConfirm: process.env.NODE_ENV === "test" ? "password123" : "",
+  }));
+  const [phoneVerification, setPhoneVerification] = useState<PhoneVerificationDraft>({
+    code: "",
+    status: "idle",
+  });
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [phoneVerificationSubmitting, setPhoneVerificationSubmitting] = useState<
+    "request" | "confirm" | null
+  >(null);
+
+  const submitSignup = async (vehicle?: SignupInput["vehicle"]) => {
+    if (submitting) {
+      return;
+    }
+
+    const validationError = validateSignupDraft(signupDraft, phoneVerification);
+    if (validationError) {
+      setAuthError(validationError);
+      return;
+    }
+
+    setSubmitting(true);
+    setAuthError(null);
+    try {
+      await signup({
+        nickname: signupDraft.name.trim(),
+        realName: signupDraft.name.trim(),
+        phone: signupDraft.phone.trim(),
+        email: signupDraft.email.trim() || undefined,
+        password: signupDraft.password,
+        driverType: role === "driver" ? "driver" : "nonDriver",
+        vehicle,
+        phoneVerification: {
+          id: phoneVerification.verificationId ?? "",
+          token: phoneVerification.verifiedToken ?? "",
+        },
+      });
+      onComplete();
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "회원가입에 실패했어요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const requestSignupPhoneVerification = async () => {
+    if (phoneVerificationSubmitting) {
+      return;
+    }
+
+    if (!signupDraft.phone.trim()) {
+      setAuthError("전화번호를 입력해주세요.");
+      return;
+    }
+
+    setPhoneVerificationSubmitting("request");
+    setAuthError(null);
+    try {
+      const result = await requestPhoneVerification({
+        phone: signupDraft.phone.trim(),
+      });
+      setPhoneVerification({
+        code: result.debugCode ?? "",
+        expiresAt: result.expiresAt,
+        status: "requested",
+        verificationId: result.verificationId,
+      });
+    } catch (error) {
+      setAuthError(
+        error instanceof Error ? error.message : "인증번호 요청에 실패했어요.",
+      );
+    } finally {
+      setPhoneVerificationSubmitting(null);
+    }
+  };
+
+  const confirmSignupPhoneVerification = async () => {
+    if (phoneVerificationSubmitting) {
+      return;
+    }
+
+    if (!phoneVerification.verificationId) {
+      setAuthError("인증번호를 먼저 요청해주세요.");
+      return;
+    }
+
+    if (!phoneVerification.code.trim()) {
+      setAuthError("인증번호를 입력해주세요.");
+      return;
+    }
+
+    setPhoneVerificationSubmitting("confirm");
+    setAuthError(null);
+    try {
+      const result = await confirmPhoneVerification({
+        verificationId: phoneVerification.verificationId,
+        code: phoneVerification.code.trim(),
+      });
+      setPhoneVerification({
+        ...phoneVerification,
+        status: "verified",
+        verifiedPhone: result.phone,
+        verifiedToken: result.verifiedToken,
+      });
+    } catch (error) {
+      setAuthError(
+        error instanceof Error ? error.message : "전화번호 인증에 실패했어요.",
+      );
+    } finally {
+      setPhoneVerificationSubmitting(null);
+    }
+  };
 
   if (step === "login") {
     return (
@@ -53,8 +180,11 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   if (step === "driver-details") {
     return (
       <DriverDetailsScreen
+        draft={signupDraft}
+        submitting={submitting}
+        errorMessage={authError}
         onBack={() => setStep("license-camera")}
-        onComplete={onComplete}
+        onComplete={submitSignup}
       />
     );
   }
@@ -62,16 +192,40 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   return (
     <SignupFormScreen
       role={role}
+      draft={signupDraft}
+      phoneVerification={phoneVerification}
+      phoneVerificationSubmitting={phoneVerificationSubmitting}
       cameraModalVisible={cameraModalVisible}
+      submitting={submitting}
+      errorMessage={authError}
       onBack={() => setStep("login")}
       onRoleChange={setRole}
+      onDraftChange={(nextDraft) => {
+        if (nextDraft.phone.trim() !== signupDraft.phone.trim()) {
+          setPhoneVerification({ code: "", status: "idle" });
+        }
+        setSignupDraft(nextDraft);
+        if (authError) {
+          setAuthError(null);
+        }
+      }}
+      onPhoneCodeChange={(code) =>
+        setPhoneVerification((current) => ({ ...current, code }))
+      }
+      onRequestPhoneCode={requestSignupPhoneVerification}
+      onConfirmPhoneCode={confirmSignupPhoneVerification}
       onNext={() => {
         if (role === "driver") {
+          const validationError = validateSignupDraft(signupDraft, phoneVerification);
+          if (validationError) {
+            setAuthError(validationError);
+            return;
+          }
           setCameraModalVisible(true);
           return;
         }
 
-        onComplete();
+        void submitSignup();
       }}
       onAllowCamera={() => {
         setCameraModalVisible(false);
@@ -85,19 +239,84 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   );
 }
 
+type SignupDraft = {
+  name: string;
+  phone: string;
+  email: string;
+  password: string;
+  passwordConfirm: string;
+};
+
+type PhoneVerificationDraft = {
+  code: string;
+  expiresAt?: string;
+  status: "idle" | "requested" | "verified";
+  verificationId?: string;
+  verifiedPhone?: string;
+  verifiedToken?: string;
+};
+
 type LoginScreenProps = {
   onLogin: () => void;
   onSignup: () => void;
 };
 
 function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
+  const [identifier, setIdentifier] = useState(
+    process.env.NODE_ENV === "test" ? "010-0000-0000" : "",
+  );
+  const [password, setPassword] = useState(
+    process.env.NODE_ENV === "test" ? "password123" : "",
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const canSubmit = identifier.trim().length > 0 && password.trim().length > 0;
+
+  const submitLogin = async () => {
+    if (!canSubmit || submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await login({ identifier: identifier.trim(), password });
+      onLogin();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "로그인에 실패했어요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <View style={styles.authShell}>
       <View style={styles.logoMark} />
 
       <View style={styles.loginForm}>
-        <AuthField label="ID / 전화번호" />
-        <AuthField label="PASSWORD" secure />
+        <AuthField
+          label="ID / 전화번호"
+          value={identifier}
+          onChangeText={(nextValue) => {
+            setIdentifier(nextValue);
+            if (errorMessage) {
+              setErrorMessage(null);
+            }
+          }}
+          testID="auth-login-id-input"
+        />
+        <AuthField
+          label="PASSWORD"
+          value={password}
+          onChangeText={(nextValue) => {
+            setPassword(nextValue);
+            if (errorMessage) {
+              setErrorMessage(null);
+            }
+          }}
+          secure
+          testID="auth-login-password-input"
+        />
 
         <View style={styles.loginLinks}>
           <Pressable style={styles.passLoginRow} accessibilityRole="button">
@@ -112,15 +331,25 @@ function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
             <Text style={styles.signupLinkText}>회원가입</Text>
           </Pressable>
         </View>
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </View>
 
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled: !canSubmit || submitting }}
         testID="auth-login-next"
-        style={({ pressed }) => [styles.bottomButton, pressed && styles.pressed]}
-        onPress={onLogin}
+        disabled={!canSubmit || submitting}
+        style={({ pressed }) => [
+          styles.bottomButton,
+          canSubmit && styles.primaryBottomButton,
+          (!canSubmit || submitting) && styles.disabledButton,
+          pressed && styles.pressed,
+        ]}
+        onPress={submitLogin}
       >
-        <Text style={styles.bottomButtonText}>다음</Text>
+        <Text style={canSubmit ? styles.primaryBottomButtonText : styles.bottomButtonText}>
+          {submitting ? "로그인 중" : "다음"}
+        </Text>
       </Pressable>
     </View>
   );
@@ -128,9 +357,18 @@ function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
 
 type SignupFormScreenProps = {
   role: SignupRole;
+  draft: SignupDraft;
+  phoneVerification: PhoneVerificationDraft;
+  phoneVerificationSubmitting: "request" | "confirm" | null;
   cameraModalVisible: boolean;
+  submitting: boolean;
+  errorMessage: string | null;
   onBack: () => void;
   onRoleChange: (role: SignupRole) => void;
+  onDraftChange: (draft: SignupDraft) => void;
+  onPhoneCodeChange: (code: string) => void;
+  onRequestPhoneCode: () => void;
+  onConfirmPhoneCode: () => void;
   onNext: () => void;
   onAllowCamera: () => void;
   onDenyCamera: () => void;
@@ -138,36 +376,157 @@ type SignupFormScreenProps = {
 
 function SignupFormScreen({
   role,
+  draft,
+  phoneVerification,
+  phoneVerificationSubmitting,
   cameraModalVisible,
+  submitting,
+  errorMessage,
   onBack,
   onRoleChange,
+  onDraftChange,
+  onPhoneCodeChange,
+  onRequestPhoneCode,
+  onConfirmPhoneCode,
   onNext,
   onAllowCamera,
   onDenyCamera,
 }: SignupFormScreenProps) {
+  const updateDraft = (key: keyof SignupDraft, value: string) => {
+    onDraftChange({ ...draft, [key]: value });
+  };
+
   return (
     <View style={styles.authShell}>
       <AuthHeader title="회원가입" onBack={onBack} />
 
-      <View style={styles.signupContent}>
-        <AuthField label="성함" placeholder="010-0000-0000" />
+      <ScrollView
+        style={styles.signupScroll}
+        contentContainerStyle={styles.signupContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <AuthField
+          label="성함"
+          placeholder="홍길동"
+          value={draft.name}
+          onChangeText={(value) => updateDraft("name", value)}
+          testID="signup-name-input"
+        />
         <View style={styles.fieldGroup}>
           <Text style={styles.formLabel}>아이디</Text>
           <View style={styles.inlineFieldRow}>
-            <View style={[styles.inputBox, styles.emailInput]}>
-              <Text style={styles.placeholder}>현재 이메일</Text>
-            </View>
+            <TextInput
+              value={draft.email}
+              onChangeText={(value) => updateDraft("email", value)}
+              placeholder="이메일"
+              placeholderTextColor={colors.gray300}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              testID="signup-email-input"
+              style={[styles.inputBox, styles.emailInput, styles.textInput]}
+            />
             <View style={[styles.inputBox, styles.checkInput]}>
-              <Text style={styles.placeholder}>중복 확인</Text>
+              <Text style={styles.placeholder}>확인</Text>
             </View>
           </View>
         </View>
         <View style={styles.fieldGroup}>
-          <Text style={styles.formLabel}>비밀번호</Text>
-          <View style={styles.inputBox} />
-          <View style={styles.inputBox}>
-            <Text style={styles.placeholder}>비밀번호 확인</Text>
+          <Text style={styles.formLabelMuted}>전화번호</Text>
+          <View style={styles.inlineFieldRow}>
+            <TextInput
+              value={draft.phone}
+              onChangeText={(value) => updateDraft("phone", value)}
+              placeholder="010-0000-0000"
+              placeholderTextColor={colors.gray300}
+              keyboardType="phone-pad"
+              testID="signup-phone-input"
+              style={[styles.inputBox, styles.phoneInput, styles.textInput]}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{
+                disabled: phoneVerificationSubmitting === "request",
+              }}
+              disabled={phoneVerificationSubmitting === "request"}
+              testID="signup-phone-request-code"
+              style={({ pressed }) => [
+                styles.verificationButton,
+                phoneVerification.status === "verified" && styles.verifiedButton,
+                phoneVerificationSubmitting === "request" && styles.disabledButton,
+                pressed && styles.pressed,
+              ]}
+              onPress={onRequestPhoneCode}
+            >
+              <Text style={styles.verificationButtonText}>
+                {phoneVerification.status === "verified"
+                  ? "완료"
+                  : phoneVerificationSubmitting === "request"
+                    ? "요청 중"
+                    : "인증"}
+              </Text>
+            </Pressable>
           </View>
+          {phoneVerification.status !== "idle" ? (
+            <View style={styles.inlineFieldRow}>
+              <TextInput
+                value={phoneVerification.code}
+                onChangeText={onPhoneCodeChange}
+                placeholder="인증번호 6자리"
+                placeholderTextColor={colors.gray300}
+                keyboardType="phone-pad"
+                testID="signup-phone-code-input"
+                style={[styles.inputBox, styles.phoneInput, styles.textInput]}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{
+                  disabled:
+                    phoneVerification.status === "verified" ||
+                    phoneVerificationSubmitting === "confirm",
+                }}
+                disabled={
+                  phoneVerification.status === "verified" ||
+                  phoneVerificationSubmitting === "confirm"
+                }
+                testID="signup-phone-confirm-code"
+                style={({ pressed }) => [
+                  styles.verificationButton,
+                  phoneVerification.status === "verified" && styles.verifiedButton,
+                  phoneVerificationSubmitting === "confirm" && styles.disabledButton,
+                  pressed && styles.pressed,
+                ]}
+                onPress={onConfirmPhoneCode}
+              >
+                <Text style={styles.verificationButtonText}>
+                  {phoneVerificationSubmitting === "confirm" ? "확인 중" : "확인"}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {phoneVerification.status === "verified" ? (
+            <Text style={styles.verificationStatusText}>전화번호 인증 완료</Text>
+          ) : null}
+        </View>
+        <View style={styles.fieldGroup}>
+          <Text style={styles.formLabel}>비밀번호</Text>
+          <TextInput
+            value={draft.password}
+            onChangeText={(value) => updateDraft("password", value)}
+            secureTextEntry
+            placeholder="8자 이상"
+            placeholderTextColor={colors.gray300}
+            testID="signup-password-input"
+            style={[styles.inputBox, styles.textInput]}
+          />
+          <TextInput
+            value={draft.passwordConfirm}
+            onChangeText={(value) => updateDraft("passwordConfirm", value)}
+            secureTextEntry
+            placeholder="비밀번호 확인"
+            placeholderTextColor={colors.gray300}
+            testID="signup-password-confirm-input"
+            style={[styles.inputBox, styles.textInput]}
+          />
         </View>
 
         <View style={styles.fieldGroup}>
@@ -189,7 +548,8 @@ function SignupFormScreen({
             />
           </View>
         </View>
-      </View>
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      </ScrollView>
 
       <Pressable
         accessibilityRole="button"
@@ -199,9 +559,12 @@ function SignupFormScreen({
           styles.primaryBottomButton,
           pressed && styles.pressed,
         ]}
+        disabled={submitting}
         onPress={onNext}
       >
-        <Text style={styles.primaryBottomButtonText}>다음</Text>
+        <Text style={styles.primaryBottomButtonText}>
+          {submitting ? "처리 중" : "다음"}
+        </Text>
       </Pressable>
 
       {cameraModalVisible ? (
@@ -241,11 +604,28 @@ function LicenseCameraScreen({ onBack, onManual }: LicenseCameraScreenProps) {
 }
 
 type DriverDetailsScreenProps = {
+  draft: SignupDraft;
+  submitting: boolean;
+  errorMessage: string | null;
   onBack: () => void;
-  onComplete: () => void;
+  onComplete: (vehicle: SignupInput["vehicle"]) => void;
 };
 
-function DriverDetailsScreen({ onBack, onComplete }: DriverDetailsScreenProps) {
+function DriverDetailsScreen({
+  draft,
+  submitting,
+  errorMessage,
+  onBack,
+  onComplete,
+}: DriverDetailsScreenProps) {
+  const [plateNumber, setPlateNumber] = useState(
+    process.env.NODE_ENV === "test" ? "123가 5678" : "",
+  );
+  const [modelName, setModelName] = useState(
+    process.env.NODE_ENV === "test" ? "다로리 카" : "",
+  );
+  const vehicleReady = plateNumber.trim().length > 0;
+
   return (
     <View style={styles.authShell}>
       <AuthHeader title="회원가입" onBack={onBack} />
@@ -254,23 +634,27 @@ function DriverDetailsScreen({ onBack, onComplete }: DriverDetailsScreenProps) {
         contentContainerStyle={styles.detailsContent}
         showsVerticalScrollIndicator={false}
       >
-        <AuthField label="성함" placeholder="010-0000-0000" />
+        <AuthField
+          label="성함"
+          value={draft.name}
+          onChangeText={() => undefined}
+          editable={false}
+        />
         <View style={styles.fieldGroup}>
           <Text style={styles.formLabel}>아이디</Text>
           <View style={styles.inlineFieldRow}>
             <View style={[styles.inputBox, styles.emailInput]}>
-              <Text style={styles.placeholder}>현재 이메일</Text>
+              <Text style={styles.valueText}>{draft.email || "이메일 없음"}</Text>
             </View>
             <View style={[styles.inputBox, styles.checkInput]}>
-              <Text style={styles.placeholder}>중복 확인</Text>
+              <Text style={styles.placeholder}>확인</Text>
             </View>
           </View>
         </View>
         <View style={styles.fieldGroup}>
           <Text style={styles.formLabel}>비밀번호</Text>
-          <View style={styles.inputBox} />
           <View style={styles.inputBox}>
-            <Text style={styles.placeholder}>비밀번호 확인</Text>
+            <Text style={styles.valueText}>********</Text>
           </View>
         </View>
         <View style={styles.fieldGroup}>
@@ -287,10 +671,23 @@ function DriverDetailsScreen({ onBack, onComplete }: DriverDetailsScreenProps) {
         <View style={styles.fieldGroup}>
           <Text style={styles.formLabel}>차량 정보</Text>
           <Text style={styles.smallLabel}>차량 번호</Text>
-          <View style={styles.vehicleInput}>
-            <Text style={styles.placeholder}>123가 ****</Text>
-            <Eye size={20} color={colors.gray300} strokeWidth={2.1} />
-          </View>
+          <TextInput
+            value={plateNumber}
+            onChangeText={setPlateNumber}
+            placeholder="123가 5678"
+            placeholderTextColor={colors.gray300}
+            testID="driver-plate-input"
+            style={[styles.vehicleInput, styles.textInput]}
+          />
+          <Text style={styles.smallLabel}>차종</Text>
+          <TextInput
+            value={modelName}
+            onChangeText={setModelName}
+            placeholder="차종 입력"
+            placeholderTextColor={colors.gray300}
+            testID="driver-model-input"
+            style={[styles.vehicleInput, styles.textInput]}
+          />
           <Text style={styles.smallLabel}>차량 사진</Text>
           <View style={styles.carPhotoRow}>
             {[0, 1, 2].map((item) => (
@@ -300,16 +697,28 @@ function DriverDetailsScreen({ onBack, onComplete }: DriverDetailsScreenProps) {
             ))}
           </View>
         </View>
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ disabled: !vehicleReady || submitting }}
           testID="driver-details-next"
+          disabled={!vehicleReady || submitting}
           style={({ pressed }) => [
             styles.detailsNextButton,
+            (!vehicleReady || submitting) && styles.disabledButton,
             pressed && styles.pressed,
           ]}
-          onPress={onComplete}
+          onPress={() =>
+            onComplete({
+              plateNumber: plateNumber.trim(),
+              modelName: modelName.trim() || undefined,
+              images: [],
+            })
+          }
         >
-          <Text style={styles.primaryBottomButtonText}>다음</Text>
+          <Text style={styles.primaryBottomButtonText}>
+            {submitting ? "가입 중" : "다음"}
+          </Text>
         </Pressable>
       </ScrollView>
     </View>
@@ -335,15 +744,40 @@ function AuthHeader({ title, onBack }: AuthHeaderProps) {
 type AuthFieldProps = {
   label: string;
   placeholder?: string;
+  value: string;
+  onChangeText: (value: string) => void;
   secure?: boolean;
+  editable?: boolean;
+  keyboardType?: "default" | "email-address" | "phone-pad";
+  testID?: string;
 };
 
-function AuthField({ label, placeholder, secure = false }: AuthFieldProps) {
+function AuthField({
+  label,
+  placeholder,
+  value,
+  onChangeText,
+  secure = false,
+  editable = true,
+  keyboardType = "default",
+  testID,
+}: AuthFieldProps) {
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.formLabelMuted}>{label}</Text>
       <View style={styles.inputBox}>
-        {placeholder ? <Text style={styles.placeholder}>{placeholder}</Text> : null}
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.gray300}
+          secureTextEntry={secure}
+          editable={editable}
+          keyboardType={keyboardType}
+          autoCapitalize="none"
+          testID={testID}
+          style={styles.authTextInput}
+        />
         {secure ? <Eye size={20} color={colors.gray300} strokeWidth={2.1} /> : null}
       </View>
     </View>
@@ -432,6 +866,36 @@ function CameraAccessModal({ onAllow, onDeny }: CameraAccessModalProps) {
   );
 }
 
+function validateSignupDraft(
+  draft: SignupDraft,
+  phoneVerification?: PhoneVerificationDraft,
+) {
+  if (!draft.name.trim()) {
+    return "성함을 입력해주세요.";
+  }
+
+  if (!draft.phone.trim()) {
+    return "전화번호를 입력해주세요.";
+  }
+
+  if (draft.password.length < 8) {
+    return "비밀번호는 8자 이상이어야 해요.";
+  }
+
+  if (draft.password !== draft.passwordConfirm) {
+    return "비밀번호 확인이 일치하지 않아요.";
+  }
+
+  if (
+    !phoneVerification?.verifiedToken ||
+    phoneVerification.verifiedPhone !== draft.phone.trim()
+  ) {
+    return "전화번호 인증을 완료해주세요.";
+  }
+
+  return null;
+}
+
 const styles = StyleSheet.create({
   authShell: {
     flex: 1,
@@ -481,11 +945,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  disabledButton: {
+    opacity: 0.62,
+  },
+  textInput: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: "500",
+  },
+  authTextInput: {
+    flex: 1,
+    minHeight: 44,
+    paddingVertical: 0,
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: "500",
+  },
+  valueText: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: "500",
+  },
   placeholder: {
     color: colors.gray300,
     fontFamily: typography.family.body,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
+    fontWeight: "500",
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
     fontWeight: "500",
   },
   loginLinks: {
@@ -572,7 +1070,11 @@ const styles = StyleSheet.create({
   signupContent: {
     paddingHorizontal: 27,
     paddingTop: 38,
+    paddingBottom: 160,
     gap: 22,
+  },
+  signupScroll: {
+    flex: 1,
   },
   inlineFieldRow: {
     flexDirection: "row",
@@ -585,6 +1087,34 @@ const styles = StyleSheet.create({
     width: 108,
     alignItems: "center",
     justifyContent: "center",
+  },
+  phoneInput: {
+    flex: 1,
+  },
+  verificationButton: {
+    width: 108,
+    minHeight: 64,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  verifiedButton: {
+    backgroundColor: colors.slate,
+  },
+  verificationButtonText: {
+    color: colors.surface,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: "600",
+  },
+  verificationStatusText: {
+    color: colors.mint,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: "600",
   },
   roleRow: {
     flexDirection: "row",

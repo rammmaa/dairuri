@@ -15,13 +15,14 @@ async function main() {
       await client.query(
         `
           insert into users (
-            id, nickname, real_name, phone, email, area, temperature, driver_type
-          ) values ($1, $2, $3, $4, $5, $6, $7, $8)
+            id, nickname, real_name, phone, email, avatar_url, area, temperature, driver_type
+          ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           on conflict (id) do update set
             nickname = excluded.nickname,
             real_name = excluded.real_name,
             phone = excluded.phone,
             email = excluded.email,
+            avatar_url = excluded.avatar_url,
             area = excluded.area,
             temperature = excluded.temperature,
             driver_type = excluded.driver_type,
@@ -33,6 +34,7 @@ async function main() {
           user.realName,
           user.phone,
           user.email,
+          user.avatarUrl,
           user.area,
           user.temperature,
           user.driverType,

@@ -21,6 +21,7 @@ export function createSeedRecords() {
     realName: user.realName ?? null,
     phone: user.phone ?? `${user.id}@darori.local`,
     email: user.email ?? null,
+    avatarUrl: user.avatarUrl ?? null,
     area: user.area ?? null,
     temperature: user.temperature,
     driverType: toDatabaseDriverType(user.driverType),

@@ -7,26 +7,25 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockMe, mockPosts } from "../../data/mockDomain";
-import { getPosts } from "../../services/api";
+import { getMyPosts } from "../../services/api";
 import type { Post } from "../../types/domain";
 import { ProfilePostCard } from "./SavedPostsScreen";
 
 export type MyPostsScreenProps = {
   onBack?: () => void;
   posts?: Post[];
-  userId?: string;
 };
 
 export function MyPostsScreen({
   onBack,
   posts,
-  userId = mockMe.id,
 }: MyPostsScreenProps) {
   const [loadedPosts, setLoadedPosts] = useState<Post[]>(() =>
-    process.env.NODE_ENV === "test" ? mockPosts : [],
+    process.env.NODE_ENV === "test"
+      ? mockPosts.filter((post) => post.author.id === mockMe.id)
+      : [],
   );
-  const sourcePosts = posts ?? loadedPosts;
-  const myPosts = sourcePosts.filter((post) => post.author.id === userId);
+  const myPosts = posts ?? loadedPosts;
 
   useEffect(() => {
     if (posts || process.env.NODE_ENV === "test") {
@@ -35,7 +34,7 @@ export function MyPostsScreen({
 
     let active = true;
 
-    getPosts()
+    getMyPosts()
       .then((nextPosts) => {
         if (active) {
           setLoadedPosts(nextPosts);

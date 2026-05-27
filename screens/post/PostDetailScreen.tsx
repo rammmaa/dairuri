@@ -22,7 +22,6 @@ import { ApplyFlowModal } from "./ApplyFlowModal";
 export type PostDetailScreenProps = {
   postId: string;
   onBack?: () => void;
-  onOpenChat?: () => void;
 };
 
 type MetaItem = {
@@ -36,7 +35,6 @@ const fallbackImage =
 export function PostDetailScreen({
   postId,
   onBack,
-  onOpenChat,
 }: PostDetailScreenProps) {
   const initialPost = useMemo(
     () =>
@@ -153,7 +151,6 @@ export function PostDetailScreen({
         visible={applyVisible}
         post={post}
         onClose={() => setApplyVisible(false)}
-        onOpenChat={onOpenChat}
       />
     </View>
   );

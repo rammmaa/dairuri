@@ -28,12 +28,13 @@ import { ProfileEditScreen } from "./screens/profile/ProfileEditScreen";
 import { SavedPostsScreen } from "./screens/profile/SavedPostsScreen";
 import { SettingsScreen } from "./screens/profile/SettingsScreen";
 import type { BottomNavItem } from "./data/mapHome";
+import { clearAuthSession, hasAuthSession } from "./services/authSession";
 
 type DevStartScreen = "auth" | BottomNavItem["id"];
 type ProfileSubScreen = "edit" | "settings" | "saved" | "mine" | null;
 
 const DEV_START_SCREEN: DevStartScreen =
-  process.env.NODE_ENV === "test" ? "auth" : "map";
+  process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH === "true" ? "map" : "auth";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -42,7 +43,10 @@ export default function App() {
     NotoSans_600SemiBold,
     NotoSans_700Bold,
   });
-  const [authenticated, setAuthenticated] = useState(DEV_START_SCREEN !== "auth");
+  const [authenticated, setAuthenticated] = useState(
+    DEV_START_SCREEN !== "auth" ||
+      (process.env.NODE_ENV !== "test" && hasAuthSession()),
+  );
   const [activeTab, setActiveTab] = useState<BottomNavItem["id"]>(
     DEV_START_SCREEN === "auth" ? "map" : DEV_START_SCREEN,
   );
@@ -98,11 +102,6 @@ export default function App() {
         <PostDetailScreen
           postId={selectedPostId}
           onBack={() => setSelectedPostId(null)}
-          onOpenChat={() => {
-            setSelectedPostId(null);
-            setActiveTab("chat");
-            setSelectedChatRoomId("room-1");
-          }}
         />
         <StatusBar style="dark" />
       </>
@@ -115,10 +114,10 @@ export default function App() {
         <ApplicationReviewScreen
           applicationId={reviewApplicationId}
           onBack={() => setReviewApplicationId(null)}
-          onOpenChat={() => {
+          onOpenChat={(roomId) => {
             setReviewApplicationId(null);
             setActiveTab("chat");
-            setSelectedChatRoomId("room-1");
+            setSelectedChatRoomId(roomId);
           }}
         />
         <StatusBar style="dark" />
@@ -223,6 +222,7 @@ export default function App() {
         <SettingsScreen
           onBack={() => setProfileSubScreen(null)}
           onLogout={() => {
+            clearAuthSession();
             setProfileSubScreen(null);
             setActiveTab("map");
             setAuthenticated(false);
