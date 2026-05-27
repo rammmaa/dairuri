@@ -146,10 +146,12 @@ export async function getPost(id: string): Promise<Post | undefined> {
 export async function createPost(input: Partial<Post>): Promise<Post> {
   await delay();
   const database = connectMockDatabase();
+  const currentUser = database.users[0] ?? database.posts[0].author;
   const post = {
     ...database.posts[0],
     ...input,
     id: `post-${Date.now()}`,
+    author: currentUser,
     createdAt: new Date().toISOString(),
   } as Post;
 

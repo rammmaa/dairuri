@@ -53,4 +53,33 @@ describe("liveApi web test fallback", () => {
     );
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  it("keeps created posts visible in the web test-user my-posts list", async () => {
+    jest.resetModules();
+    process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH = "true";
+    process.env.EXPO_PUBLIC_DARORI_TEST_AUTH_TOKEN = "";
+    global.fetch = jest.fn();
+
+    const { createPost, getMyPosts } = require("../services/liveApi");
+
+    const createdPost = await createPost({
+      type: "job",
+      title: "내가 쓴 테스트 모집글",
+      body: "내가 쓴 모집글 목록에 보여야 합니다.",
+      days: ["수"],
+      startTime: "11:00",
+      endTime: "13:00",
+      wageType: "hourly",
+      wageAmount: 13000,
+      profileMode: "resource",
+      availableTasks: ["농번기 일손"],
+      employmentTypes: ["shortTerm"],
+      preferredPay: "시간당 13,000원",
+    });
+
+    await expect(getMyPosts()).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: createdPost.id })]),
+    );
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });
