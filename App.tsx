@@ -27,13 +27,12 @@ import { MyPostsScreen } from "./screens/profile/MyPostsScreen";
 import { ProfileEditScreen } from "./screens/profile/ProfileEditScreen";
 import { SavedPostsScreen } from "./screens/profile/SavedPostsScreen";
 import { SettingsScreen } from "./screens/profile/SettingsScreen";
+import { resolveInitialAuthenticated } from "./data/appAuthGate";
 import type { BottomNavItem } from "./data/mapHome";
+import { clearAuthSession, hasAuthSession } from "./services/authSession";
 
-type DevStartScreen = "auth" | BottomNavItem["id"];
 type ProfileSubScreen = "edit" | "settings" | "saved" | "mine" | null;
-
-const DEV_START_SCREEN: DevStartScreen =
-  process.env.NODE_ENV === "test" ? "auth" : "map";
+const INITIAL_TAB: BottomNavItem["id"] = "map";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -42,10 +41,13 @@ export default function App() {
     NotoSans_600SemiBold,
     NotoSans_700Bold,
   });
-  const [authenticated, setAuthenticated] = useState(DEV_START_SCREEN !== "auth");
-  const [activeTab, setActiveTab] = useState<BottomNavItem["id"]>(
-    DEV_START_SCREEN === "auth" ? "map" : DEV_START_SCREEN,
+  const [authenticated, setAuthenticated] = useState(() =>
+    resolveInitialAuthenticated({
+      hasAuthSession: hasAuthSession(),
+      skipAuth: process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH,
+    }),
   );
+  const [activeTab, setActiveTab] = useState<BottomNavItem["id"]>(INITIAL_TAB);
   const [returnTab, setReturnTab] = useState<BottomNavItem["id"]>("map");
   const [profileSubScreen, setProfileSubScreen] =
     useState<ProfileSubScreen>(null);
@@ -240,6 +242,7 @@ export default function App() {
         <SettingsScreen
           onBack={() => setProfileSubScreen(null)}
           onLogout={() => {
+            clearAuthSession();
             setProfileSubScreen(null);
             setActiveTab("map");
             setAuthenticated(false);
