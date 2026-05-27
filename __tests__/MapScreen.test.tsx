@@ -50,6 +50,30 @@ describe("MapScreen", () => {
     }
   });
 
+  it("renders an empty-state message when no recruitment posts exist", () => {
+    render(<MapScreen initialPosts={[]} />);
+
+    expect(screen.getByText("아직 등록된 모집글이 없어요")).toBeTruthy();
+    expect(
+      screen.getByText("새 모집글이 올라오면 여기에서 바로 확인할 수 있어요."),
+    ).toBeTruthy();
+  });
+
+  it("renders a filtered empty-state message when filters hide existing posts", () => {
+    render(<MapScreen />);
+
+    fireEvent.press(screen.getByTestId("map-home-category-ride"));
+    fireEvent.press(screen.getByTestId("map-home-filter-날짜"));
+    fireEvent.press(screen.getByTestId("map-home-filter-날짜"));
+    fireEvent.press(screen.getByTestId("map-home-filter-시간"));
+    fireEvent.press(screen.getByTestId("map-home-filter-시간"));
+
+    expect(screen.getByText("조건에 맞는 모집글이 없어요")).toBeTruthy();
+    expect(
+      screen.getByText("필터를 바꾸거나 전체 모집글을 확인해보세요."),
+    ).toBeTruthy();
+  });
+
   it("uses the current-location icon for the top category chips", () => {
     render(<MapScreen />);
 

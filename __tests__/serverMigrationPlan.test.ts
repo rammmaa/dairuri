@@ -58,6 +58,19 @@ describe("server database migration plan", () => {
       ]),
     );
   });
+
+  it("ships a cleanup migration for placeholder recruitment seed records", async () => {
+    const migrations = await readSchemaMigrations();
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "006_remove_placeholder_recruitments",
+          sql: expect.stringContaining("delete from posts"),
+        }),
+      ]),
+    );
+  });
 });
 
 describe("readSchemaMigrations", () => {

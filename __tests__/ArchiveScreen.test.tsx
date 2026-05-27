@@ -3,6 +3,15 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { ArchiveScreen } from "../screens/ArchiveScreen";
 
 describe("ArchiveScreen filtering, sorting, and paging", () => {
+  it("renders an empty-state message when no recruitment posts exist", () => {
+    render(<ArchiveScreen initialPosts={[]} />);
+
+    expect(screen.getByText("아직 등록된 모집글이 없어요")).toBeTruthy();
+    expect(
+      screen.getByText("새 모집글이 올라오면 여기에서 바로 확인할 수 있어요."),
+    ).toBeTruthy();
+  });
+
   it("filters recruitment cards, cycles sort order, and loads the next page", () => {
     render(<ArchiveScreen />);
 
@@ -48,5 +57,20 @@ describe("ArchiveScreen filtering, sorting, and paging", () => {
     expect(screen.getByText("35분 전")).toBeTruthy();
     expect(screen.getByText("1시간 전")).toBeTruthy();
     expect(screen.queryByText("2시간 전")).toBeNull();
+  });
+
+  it("renders a filtered empty-state message when filters hide existing posts", () => {
+    render(<ArchiveScreen />);
+
+    fireEvent.press(screen.getByTestId("archive-category-ride"));
+    fireEvent.press(screen.getByTestId("archive-filter-날짜"));
+    fireEvent.press(screen.getByTestId("archive-filter-날짜"));
+    fireEvent.press(screen.getByTestId("archive-filter-시간"));
+    fireEvent.press(screen.getByTestId("archive-filter-시간"));
+
+    expect(screen.getByText("조건에 맞는 모집글이 없어요")).toBeTruthy();
+    expect(
+      screen.getByText("필터를 바꾸거나 전체 모집글을 확인해보세요."),
+    ).toBeTruthy();
   });
 });

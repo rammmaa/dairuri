@@ -1,18 +1,82 @@
 import {
-  mockApplications,
   mockAuthor,
   mockBusRoutes,
   mockBusRouteStops,
   mockBusSightings,
   mockBusStops,
-  mockChatRooms,
   mockMe,
-  mockMessages,
-  mockPosts,
 } from "../../data/mockDomain";
-import type { DriverType, Post } from "../../types/domain";
+import type { Application, DriverType, Post } from "../../types/domain";
 
 export type SeedRecords = ReturnType<typeof createSeedRecords>;
+
+type SeedPostRecord = {
+  id: string;
+  type: Post["type"];
+  title: string;
+  body: string;
+  authorId: string;
+  imageUrls: string[];
+  status: "open" | "closed";
+  placeName: string | null;
+  placeAddress: string | null;
+  departure: string | null;
+  destination: string | null;
+  days: Post["days"];
+  startTime: string;
+  endTime: string | null;
+  wageType: "hourly" | "monthly" | null;
+  wageAmount: number | null;
+  jobCategory: string | null;
+  profileMode: "resource" | null;
+  availableTasks: string[];
+  employmentTypes: Array<"fullTime" | "partTime" | "shortTerm">;
+  preferredPay: string | null;
+  availabilityNote: string | null;
+  contactNote: string | null;
+  price: number | null;
+  seats: number | null;
+  createdAt: string;
+};
+
+type SeedApplicationRecord = {
+  id: string;
+  postId: string;
+  applicantId: string;
+  intro: string;
+  status: Application["status"];
+  rejectionReason: string | null;
+  createdAt: string;
+};
+
+type SeedChatRoomRecord = {
+  id: string;
+  postId: string | null;
+  title: string;
+  subtitle: string | null;
+};
+
+type SeedChatRoomParticipantRecord = {
+  roomId: string;
+  userId: string;
+};
+
+type SeedChatMessageRecord = {
+  id: string;
+  roomId: string;
+  senderId: string | null;
+  type: "system" | "text";
+  text: string;
+  createdAt: string;
+};
+
+type SeedPostLikeRecord = {
+  postId: string;
+  userId: string;
+};
+
+const TEST_USER_PASSWORD_HASH =
+  "scrypt:dairuri-seed-password-v1:88964ec5d4efb02f1031402ac773835e474f677a1b51da422d455fa944c1902a442da6bd84fdd90ebf34d8cd2793508c1109db6e2775146a3690ca2e8b1315b8";
 
 export function createSeedRecords() {
   const users = [mockMe, mockAuthor].map((user) => ({
@@ -25,6 +89,7 @@ export function createSeedRecords() {
     area: user.area ?? null,
     temperature: user.temperature,
     driverType: toDatabaseDriverType(user.driverType),
+    passwordHash: user.id === mockMe.id ? TEST_USER_PASSWORD_HASH : null,
   }));
 
   const vehicles = [mockMe, mockAuthor]
@@ -37,71 +102,12 @@ export function createSeedRecords() {
       imageUrls: user.vehicle?.images ?? [],
     }));
 
-  const posts = mockPosts.map((post) => ({
-    id: post.id,
-    type: post.type,
-    title: post.title,
-    body: post.body,
-    authorId: post.author.id,
-    imageUrls: post.imageUrls,
-    status: post.status === "matched" ? "closed" : post.status,
-    placeName: post.type === "job" ? post.placeName : null,
-    placeAddress: post.type === "job" ? post.placeAddress ?? null : null,
-    departure: post.type === "carpool" ? post.departure : null,
-    destination: post.type === "carpool" ? post.destination : null,
-    days: post.days,
-    startTime: post.startTime,
-    endTime: post.endTime ?? null,
-    wageType: post.type === "job" ? post.wageType : null,
-    wageAmount: post.type === "job" ? post.wageAmount : null,
-    jobCategory: post.type === "job" ? post.jobCategory ?? null : null,
-    profileMode: post.type === "job" ? post.profileMode ?? null : null,
-    availableTasks: post.type === "job" ? post.availableTasks ?? [] : [],
-    employmentTypes: post.type === "job" ? post.employmentTypes ?? [] : [],
-    preferredPay: post.type === "job" ? post.preferredPay ?? null : null,
-    availabilityNote: post.type === "job" ? post.availabilityNote ?? null : null,
-    contactNote: post.type === "job" ? post.contactNote ?? null : null,
-    price: post.type === "carpool" ? post.price ?? null : null,
-    seats: post.type === "carpool" ? post.seats ?? null : null,
-    createdAt: post.createdAt,
-  }));
-
-  const postLikes = mockPosts
-    .filter((post) => post.liked)
-    .map((post) => ({ postId: post.id, userId: mockMe.id }));
-
-  const applications = mockApplications.map((application) => ({
-    id: application.id,
-    postId: application.postId,
-    applicantId: application.applicant.id,
-    intro: application.intro,
-    status: application.status,
-    rejectionReason: application.rejectionReason ?? null,
-    createdAt: application.createdAt,
-  }));
-
-  const chatRooms = mockChatRooms.map((room) => ({
-    id: room.id,
-    postId: room.postId ?? null,
-    title: room.title,
-    subtitle: room.subtitle ?? null,
-  }));
-
-  const chatRoomParticipants = mockChatRooms.flatMap((room) =>
-    room.participants.map((participant) => ({
-      roomId: room.id,
-      userId: participant.id,
-    })),
-  );
-
-  const chatMessages = mockMessages.map((message) => ({
-    id: message.id,
-    roomId: message.roomId,
-    senderId: message.senderId ?? null,
-    type: message.type === "postCard" ? "text" : message.type,
-    text: message.text ?? formatPostCardMessage(message.post),
-    createdAt: message.createdAt,
-  }));
+  const posts: SeedPostRecord[] = [];
+  const postLikes: SeedPostLikeRecord[] = [];
+  const applications: SeedApplicationRecord[] = [];
+  const chatRooms: SeedChatRoomRecord[] = [];
+  const chatRoomParticipants: SeedChatRoomParticipantRecord[] = [];
+  const chatMessages: SeedChatMessageRecord[] = [];
 
   const busRoutes = mockBusRoutes.map((route) => ({
     id: route.id,
@@ -151,8 +157,4 @@ export function createSeedRecords() {
 
 function toDatabaseDriverType(driverType: DriverType) {
   return driverType === "driver" ? "driver" : "non_driver";
-}
-
-function formatPostCardMessage(post: Post | undefined) {
-  return post ? post.title : "";
 }

@@ -39,6 +39,7 @@ import {
 import { getPosts } from "../services/api";
 
 export type ArchiveScreenProps = {
+  initialPosts?: MapHomePost[];
   onSelectTab?: (item: BottomNavItem) => void;
   onOpenPost?: (postId: string) => void;
 };
@@ -49,7 +50,11 @@ type DateFilter = MapHomePost["dateFilter"] | null;
 type TimeFilter = MapHomePost["timeFilter"] | null;
 type DepartureFilter = MapHomePost["departurePlace"] | null;
 
-export function ArchiveScreen({ onSelectTab, onOpenPost }: ArchiveScreenProps) {
+export function ArchiveScreen({
+  initialPosts,
+  onSelectTab,
+  onOpenPost,
+}: ArchiveScreenProps) {
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryFilter["id"] | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter>(null);
@@ -58,7 +63,7 @@ export function ArchiveScreen({ onSelectTab, onOpenPost }: ArchiveScreenProps) {
   const [sortMode, setSortMode] = useState<MapPostSortMode>("latest");
   const [visibleCount, setVisibleCount] = useState(POST_PAGE_SIZE);
   const [recruitmentPosts, setRecruitmentPosts] = useState<MapHomePost[]>(() =>
-    process.env.NODE_ENV === "test" ? mapHomePosts : [],
+    initialPosts ?? (process.env.NODE_ENV === "test" ? mapHomePosts : []),
   );
   const filteredPosts = useMemo(() => {
     return filterAndSortMapPosts(recruitmentPosts, {
@@ -84,6 +89,16 @@ export function ArchiveScreen({ onSelectTab, onOpenPost }: ArchiveScreenProps) {
   });
   const visiblePosts = pagedPosts.visibleItems;
   const hasMorePosts = pagedPosts.hasMore;
+  const emptyStateCopy =
+    recruitmentPosts.length === 0
+      ? {
+          title: "아직 등록된 모집글이 없어요",
+          description: "새 모집글이 올라오면 여기에서 바로 확인할 수 있어요.",
+        }
+      : {
+          title: "조건에 맞는 모집글이 없어요",
+          description: "필터를 바꾸거나 전체 모집글을 확인해보세요.",
+        };
 
   useEffect(() => {
     setVisibleCount(POST_PAGE_SIZE);
@@ -236,15 +251,20 @@ export function ArchiveScreen({ onSelectTab, onOpenPost }: ArchiveScreenProps) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.cardList}>
-            {visiblePosts.length > 0 ? visiblePosts.map((post) => (
-              <RecruitmentCard
-                key={post.id}
-                post={post}
-                onPress={() => onOpenPost?.(post.detailPostId)}
-              />
-            )) : (
+            {visiblePosts.length > 0 ? (
+              visiblePosts.map((post) => (
+                <RecruitmentCard
+                  key={post.id}
+                  post={post}
+                  onPress={() => onOpenPost?.(post.detailPostId)}
+                />
+              ))
+            ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>조건에 맞는 모집글이 없어요</Text>
+                <Text style={styles.emptyTitle}>{emptyStateCopy.title}</Text>
+                <Text style={styles.emptyDescription}>
+                  {emptyStateCopy.description}
+                </Text>
               </View>
             )}
             {hasMorePosts ? (
@@ -406,17 +426,28 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     minHeight: 120,
+    paddingHorizontal: 20,
     borderRadius: spacing.cardRadius,
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
-  emptyText: {
+  emptyTitle: {
     color: colors.grayText,
     fontFamily: typography.family.body,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.medium,
+    textAlign: "center",
+  },
+  emptyDescription: {
+    marginTop: 6,
+    color: colors.mutedText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
+    textAlign: "center",
   },
   loadMoreButton: {
     minHeight: 42,

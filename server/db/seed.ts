@@ -15,8 +15,9 @@ async function main() {
       await client.query(
         `
           insert into users (
-            id, nickname, real_name, phone, email, avatar_url, area, temperature, driver_type
-          ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            id, nickname, real_name, phone, email, avatar_url, area, temperature,
+            driver_type, password_hash
+          ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           on conflict (id) do update set
             nickname = excluded.nickname,
             real_name = excluded.real_name,
@@ -26,6 +27,7 @@ async function main() {
             area = excluded.area,
             temperature = excluded.temperature,
             driver_type = excluded.driver_type,
+            password_hash = coalesce(users.password_hash, excluded.password_hash),
             updated_at = now()
         `,
         [
@@ -38,6 +40,7 @@ async function main() {
           user.area,
           user.temperature,
           user.driverType,
+          user.passwordHash,
         ],
       );
     }
