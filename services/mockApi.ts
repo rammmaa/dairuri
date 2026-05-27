@@ -19,7 +19,7 @@ import type {
   UpdateUserProfileInput,
   UserProfile,
 } from "../types/domain";
-import { clearAuthSession, setAuthSession } from "./authSession";
+import { clearPersistedAuthSession, persistAuthSession } from "./authSession";
 import {
   BusSightingInputError,
   mockReporterLabel,
@@ -44,7 +44,7 @@ export async function login(input: LoginInput): Promise<AuthSession> {
   const database = connectMockDatabase();
   const user = database.users[0];
   const session = { token: "mock-session-token", user };
-  setAuthSession(session.token, session.user);
+  await persistAuthSession(session.token, session.user);
   return session;
 }
 
@@ -85,7 +85,7 @@ export async function signup(input: SignupInput): Promise<AuthSession> {
   }
 
   const session = { token: "mock-session-token", user };
-  setAuthSession(session.token, session.user);
+  await persistAuthSession(session.token, session.user);
   return session;
 }
 
@@ -341,7 +341,7 @@ export async function changePassword(input: ChangePasswordInput): Promise<void> 
 
 export async function deleteMe(): Promise<void> {
   await delay(60);
-  clearAuthSession();
+  await clearPersistedAuthSession();
 }
 
 export async function getMyPosts(): Promise<Post[]> {

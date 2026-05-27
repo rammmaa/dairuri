@@ -45,6 +45,7 @@ module.exports = {
     plugins: [
       "expo-asset",
       "expo-font",
+      "expo-secure-store",
       [
         "@mj-studio/react-native-naver-map",
         {

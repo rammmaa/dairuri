@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   NotoSans_400Regular,
   NotoSans_500Medium,
@@ -29,7 +29,11 @@ import { SavedPostsScreen } from "./screens/profile/SavedPostsScreen";
 import { SettingsScreen } from "./screens/profile/SettingsScreen";
 import { resolveInitialAuthenticated } from "./data/appAuthGate";
 import type { BottomNavItem } from "./data/mapHome";
-import { clearAuthSession, hasAuthSession } from "./services/authSession";
+import {
+  clearPersistedAuthSession,
+  hasAuthSession,
+  restoreAuthSession,
+} from "./services/authSession";
 
 type ProfileSubScreen = "edit" | "settings" | "saved" | "mine" | null;
 const INITIAL_TAB: BottomNavItem["id"] = "map";
@@ -41,12 +45,12 @@ export default function App() {
     NotoSans_600SemiBold,
     NotoSans_700Bold,
   });
-  const [authenticated, setAuthenticated] = useState(() =>
-    resolveInitialAuthenticated({
-      hasAuthSession: hasAuthSession(),
-      skipAuth: process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH,
-    }),
-  );
+  const initialAuthenticated = resolveInitialAuthenticated({
+    hasAuthSession: hasAuthSession(),
+    skipAuth: process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH,
+  });
+  const [authenticated, setAuthenticated] = useState(initialAuthenticated);
+  const [authChecked, setAuthChecked] = useState(initialAuthenticated);
   const [activeTab, setActiveTab] = useState<BottomNavItem["id"]>(INITIAL_TAB);
   const [returnTab, setReturnTab] = useState<BottomNavItem["id"]>("map");
   const [profileSubScreen, setProfileSubScreen] =
@@ -59,6 +63,32 @@ export default function App() {
   const [busRouteInfoOpen, setBusRouteInfoOpen] = useState(false);
   const [busArchiveHistoryOpen, setBusArchiveHistoryOpen] = useState(false);
   const [busArrivalTimesOpen, setBusArrivalTimesOpen] = useState(false);
+
+  useEffect(() => {
+    if (!fontsLoaded || authChecked) {
+      return undefined;
+    }
+
+    let active = true;
+
+    restoreAuthSession()
+      .then((session) => {
+        if (!active) {
+          return;
+        }
+        setAuthenticated(Boolean(session));
+        setAuthChecked(true);
+      })
+      .catch(() => {
+        if (active) {
+          setAuthChecked(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authChecked, fontsLoaded]);
 
   const handleSelectTab = (item: BottomNavItem) => {
     if (item.id === "posts" && activeTab !== "posts") {
@@ -93,6 +123,23 @@ export default function App() {
       >
         <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
           다로리를 준비하고 있어요
+        </Text>
+      </View>
+    );
+  }
+
+  if (!authChecked) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#FFFFFF",
+        }}
+      >
+        <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
+          로그인 상태를 확인하고 있어요
         </Text>
       </View>
     );
@@ -242,7 +289,7 @@ export default function App() {
         <SettingsScreen
           onBack={() => setProfileSubScreen(null)}
           onLogout={() => {
-            clearAuthSession();
+            void clearPersistedAuthSession();
             setProfileSubScreen(null);
             setActiveTab("map");
             setAuthenticated(false);

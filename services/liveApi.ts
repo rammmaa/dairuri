@@ -20,7 +20,11 @@ import type {
   UserProfile,
 } from "../types/domain";
 import { apiRequest } from "./apiClient";
-import { clearAuthSession, getAuthToken, setAuthSession } from "./authSession";
+import {
+  clearPersistedAuthSession,
+  getAuthToken,
+  persistAuthSession,
+} from "./authSession";
 import type { RecordBusSightingInput } from "./busArchiveCore";
 import * as mockApi from "./mockApi";
 
@@ -43,7 +47,7 @@ export async function login(input: LoginInput): Promise<AuthSession> {
     method: "POST",
     body: input,
   });
-  setAuthSession(session.token, session.user);
+  await persistAuthSession(session.token, session.user);
   return session;
 }
 
@@ -52,7 +56,7 @@ export async function signup(input: SignupInput): Promise<AuthSession> {
     method: "POST",
     body: input,
   });
-  setAuthSession(session.token, session.user);
+  await persistAuthSession(session.token, session.user);
   return session;
 }
 
@@ -232,7 +236,7 @@ export async function deleteMe(): Promise<void> {
     () => mockApi.deleteMe(),
   );
   if (!shouldUseWebTestFallback()) {
-    clearAuthSession();
+    await clearPersistedAuthSession();
   }
 }
 
