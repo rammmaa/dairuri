@@ -7,6 +7,7 @@ describe("Auth flow", () => {
     render(<App />);
 
     expect(await screen.findByText("ID / 전화번호")).toBeTruthy();
+    expect(screen.queryByText("PASS 간편 로그인")).toBeNull();
 
     fireEvent.press(screen.getByTestId("auth-signup-link"));
     expect(screen.getByText("성함")).toBeTruthy();

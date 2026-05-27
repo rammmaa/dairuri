@@ -320,10 +320,6 @@ function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
         />
 
         <View style={styles.loginLinks}>
-          <Pressable style={styles.passLoginRow} accessibilityRole="button">
-            <View style={styles.passIcon} />
-            <Text style={styles.passLoginText}>PASS 간편 로그인</Text>
-          </Pressable>
           <Pressable
             accessibilityRole="button"
             testID="auth-signup-link"
@@ -994,27 +990,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-  passLoginRow: {
-    minHeight: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  passIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    backgroundColor: colors.red,
-  },
-  passLoginText: {
-    color: colors.red,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.base,
-    lineHeight: typography.lineHeight.base,
-    fontWeight: "500",
-    textDecorationLine: "underline",
+    justifyContent: "flex-end",
   },
   signupLinkText: {
     color: colors.gray300,
