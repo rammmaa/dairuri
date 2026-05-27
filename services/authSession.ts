@@ -1,6 +1,11 @@
 import type { UserProfile } from "../types/domain";
 
-let authToken: string | undefined;
+const initialTestAuthToken =
+  process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH === "true"
+    ? process.env.EXPO_PUBLIC_DARORI_TEST_AUTH_TOKEN?.trim()
+    : undefined;
+
+let authToken: string | undefined = initialTestAuthToken || undefined;
 let sessionUser: UserProfile | undefined;
 
 export function getAuthToken() {
