@@ -8,6 +8,17 @@ describe("Auth flow", () => {
 
     expect(await screen.findByText("ID / 전화번호")).toBeTruthy();
     expect(screen.queryByText("PASS 간편 로그인")).toBeNull();
+    fireEvent.changeText(screen.getByTestId("auth-login-id-input"), "010 0000 0000");
+    expect(screen.getByTestId("auth-login-id-input").props.value).toBe(
+      "010-0000-0000",
+    );
+    expect(screen.getByTestId("auth-login-password-input").props.secureTextEntry).toBe(
+      true,
+    );
+    fireEvent.press(screen.getByTestId("auth-login-password-input-visibility-toggle"));
+    expect(screen.getByTestId("auth-login-password-input").props.secureTextEntry).toBe(
+      false,
+    );
 
     fireEvent.press(screen.getByTestId("auth-signup-link"));
     expect(screen.getByText("성함")).toBeTruthy();
@@ -17,6 +28,22 @@ describe("Auth flow", () => {
     expect(screen.getByTestId("signup-phone-input").props.value).toBe(
       "010-1234-5678",
     );
+    expect(screen.getByTestId("signup-password-input").props.secureTextEntry).toBe(
+      true,
+    );
+    fireEvent.press(screen.getByTestId("signup-password-input-visibility-toggle"));
+    expect(screen.getByTestId("signup-password-input").props.secureTextEntry).toBe(
+      false,
+    );
+    expect(
+      screen.getByTestId("signup-password-confirm-input").props.secureTextEntry,
+    ).toBe(true);
+    fireEvent.press(
+      screen.getByTestId("signup-password-confirm-input-visibility-toggle"),
+    );
+    expect(
+      screen.getByTestId("signup-password-confirm-input").props.secureTextEntry,
+    ).toBe(false);
 
     fireEvent.press(screen.getByTestId("signup-next"));
     expect(screen.getByText("전화번호 인증을 완료해주세요.")).toBeTruthy();

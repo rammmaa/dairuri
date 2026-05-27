@@ -13,6 +13,7 @@ import {
   CarFront,
   ChevronLeft,
   Eye,
+  EyeOff,
   ShieldCheck,
   UserRound,
 } from "lucide-react-native";
@@ -299,7 +300,7 @@ function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
           label="ID / 전화번호"
           value={identifier}
           onChangeText={(nextValue) => {
-            setIdentifier(nextValue);
+            setIdentifier(formatPhoneLikeIdentifierInput(nextValue));
             if (errorMessage) {
               setErrorMessage(null);
             }
@@ -509,23 +510,17 @@ function SignupFormScreen({
         </View>
         <View style={styles.fieldGroup}>
           <Text style={styles.formLabel}>비밀번호</Text>
-          <TextInput
+          <SecureTextInputBox
             value={draft.password}
             onChangeText={(value) => updateDraft("password", value)}
-            secureTextEntry
             placeholder="8자 이상"
-            placeholderTextColor={colors.gray300}
             testID="signup-password-input"
-            style={[styles.inputBox, styles.textInput]}
           />
-          <TextInput
+          <SecureTextInputBox
             value={draft.passwordConfirm}
             onChangeText={(value) => updateDraft("passwordConfirm", value)}
-            secureTextEntry
             placeholder="비밀번호 확인"
-            placeholderTextColor={colors.gray300}
             testID="signup-password-confirm-input"
-            style={[styles.inputBox, styles.textInput]}
           />
         </View>
 
@@ -762,6 +757,9 @@ function AuthField({
   keyboardType = "default",
   testID,
 }: AuthFieldProps) {
+  const [visible, setVisible] = useState(false);
+  const secureTextEntry = secure && !visible;
+
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.formLabelMuted}>{label}</Text>
@@ -771,16 +769,84 @@ function AuthField({
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor={colors.gray300}
-          secureTextEntry={secure}
+          secureTextEntry={secureTextEntry}
           editable={editable}
           keyboardType={keyboardType}
           autoCapitalize="none"
           testID={testID}
           style={styles.authTextInput}
         />
-        {secure ? <Eye size={20} color={colors.gray300} strokeWidth={2.1} /> : null}
+        {secure ? (
+          <PasswordVisibilityButton
+            visible={visible}
+            onPress={() => setVisible((current) => !current)}
+            testID={testID ? `${testID}-visibility-toggle` : undefined}
+          />
+        ) : null}
       </View>
     </View>
+  );
+}
+
+type SecureTextInputBoxProps = {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  testID: string;
+};
+
+function SecureTextInputBox({
+  value,
+  onChangeText,
+  placeholder,
+  testID,
+}: SecureTextInputBoxProps) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <View style={styles.inputBox}>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={!visible}
+        placeholder={placeholder}
+        placeholderTextColor={colors.gray300}
+        autoCapitalize="none"
+        testID={testID}
+        style={styles.authTextInput}
+      />
+      <PasswordVisibilityButton
+        visible={visible}
+        onPress={() => setVisible((current) => !current)}
+        testID={`${testID}-visibility-toggle`}
+      />
+    </View>
+  );
+}
+
+type PasswordVisibilityButtonProps = {
+  visible: boolean;
+  onPress: () => void;
+  testID?: string;
+};
+
+function PasswordVisibilityButton({
+  visible,
+  onPress,
+  testID,
+}: PasswordVisibilityButtonProps) {
+  const Icon = visible ? EyeOff : Eye;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={visible ? "비밀번호 숨기기" : "비밀번호 보기"}
+      hitSlop={8}
+      testID={testID}
+      onPress={onPress}
+    >
+      <Icon size={20} color={colors.gray300} strokeWidth={2.1} />
+    </Pressable>
   );
 }
 
@@ -894,6 +960,14 @@ function validateSignupDraft(
   }
 
   return null;
+}
+
+function formatPhoneLikeIdentifierInput(value: string) {
+  if (!value || !/^[\d\s-]+$/.test(value)) {
+    return value;
+  }
+
+  return formatKoreanPhoneNumberInput(value);
 }
 
 const styles = StyleSheet.create({
