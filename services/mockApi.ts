@@ -42,7 +42,15 @@ export async function login(input: LoginInput): Promise<AuthSession> {
   }
 
   const database = connectMockDatabase();
-  const user = database.users[0];
+  const identifier = input.identifier.trim();
+  const user =
+    database.users.find(
+      (candidate) =>
+        candidate.phone === identifier ||
+        candidate.loginId === identifier ||
+        candidate.id === identifier ||
+        candidate.email === identifier,
+    ) ?? database.users[0];
   const session = { token: "mock-session-token", user };
   await persistAuthSession(session.token, session.user);
   return session;
@@ -50,7 +58,12 @@ export async function login(input: LoginInput): Promise<AuthSession> {
 
 export async function signup(input: SignupInput): Promise<AuthSession> {
   await delay(60);
-  if (!input.nickname.trim() || !input.phone.trim() || input.password.length < 8) {
+  if (
+    !input.loginId.trim() ||
+    !input.nickname.trim() ||
+    !input.phone.trim() ||
+    input.password.length < 8
+  ) {
     throw new Error("회원가입 정보를 확인해주세요.");
   }
 
@@ -64,11 +77,14 @@ export async function signup(input: SignupInput): Promise<AuthSession> {
   }
 
   const database = connectMockDatabase();
-  const existing = database.users.find((user) => user.phone === input.phone);
+  const existing = database.users.find(
+    (user) => user.phone === input.phone || user.loginId === input.loginId,
+  );
   const user: UserProfile =
     existing ??
     {
       id: `user-${Date.now()}`,
+      loginId: input.loginId,
       nickname: input.nickname,
       realName: input.realName,
       phone: input.phone,
@@ -78,6 +94,14 @@ export async function signup(input: SignupInput): Promise<AuthSession> {
       temperature: 36.5,
       driverType: input.driverType,
       vehicle: input.vehicle,
+      driverVerification:
+        input.driverType === "driver" && input.vehicle?.plateNumber?.trim()
+          ? {
+              licenseVerified: true,
+              insuranceVerified: true,
+              verifiedAt: new Date().toISOString(),
+            }
+          : undefined,
     };
 
   if (!existing) {
@@ -87,6 +111,23 @@ export async function signup(input: SignupInput): Promise<AuthSession> {
   const session = { token: "mock-session-token", user };
   await persistAuthSession(session.token, session.user);
   return session;
+}
+
+export async function checkLoginIdAvailability(input: {
+  loginId: string;
+}): Promise<{ available: boolean }> {
+  await delay(20);
+  const loginId = input.loginId.trim();
+  if (!loginId) {
+    throw new Error("아이디를 입력해주세요.");
+  }
+
+  const database = connectMockDatabase();
+  return {
+    available: !database.users.some(
+      (user) => user.loginId === loginId || user.id === loginId,
+    ),
+  };
 }
 
 export async function requestPhoneVerification(
@@ -254,8 +295,7 @@ export async function acceptApplication(applicationId: string): Promise<ChatRoom
     );
     room = {
       id: roomId,
-      title:
-        post.type === "job" ? `${post.title} 연락방` : `${post.title} 매칭방`,
+      title: post.title,
       subtitle:
         post.type === "job"
           ? `${post.placeName} / ${post.jobCategory ?? "인재 풀 등록"}`
@@ -321,6 +361,13 @@ export async function updateMe(
   }
 
   if (input.driverType !== undefined) {
+    if (
+      input.driverType === "driver" &&
+      (!user.driverVerification?.licenseVerified ||
+        !user.driverVerification.insuranceVerified)
+    ) {
+      throw new Error("운전자로 변경하려면 운전면허와 자동차 보험 인증이 필요해요.");
+    }
     user.driverType = input.driverType;
   }
 
@@ -363,7 +410,11 @@ export async function getReceivedApplications(): Promise<ApplicationDetail[]> {
   const currentUserId = database.users[0]?.id;
   return database.applications.flatMap((application) => {
     const post = database.posts.find((item) => item.id === application.postId);
-    return post && post.author.id === currentUserId ? [{ application, post }] : [];
+    if (!post || post.author.id !== currentUserId || application.status !== "pending") {
+      return [];
+    }
+
+    return [{ application, post }];
   });
 }
 
@@ -404,6 +455,66 @@ export async function sendMessage(
   database.messages.push(message);
   assertDatabaseConsistency(database);
   return message;
+}
+
+export async function sendImageMessage(
+  roomId: string,
+  imageUrl: string,
+  text?: string,
+): Promise<ChatMessage> {
+  await delay(80);
+  const database = connectMockDatabase();
+
+  if (!database.chatRooms.some((room) => room.id === roomId)) {
+    throw new Error(`Cannot send message to missing room: ${roomId}`);
+  }
+
+  const message: ChatMessage = {
+    id: `message-${Date.now()}`,
+    roomId,
+    senderId: "me",
+    type: "image",
+    text,
+    imageUrl,
+    createdAt: new Date().toISOString(),
+  };
+
+  database.messages.push(message);
+  assertDatabaseConsistency(database);
+  return message;
+}
+
+export async function submitMannerRating(roomId: string, tags: string[]) {
+  await delay(50);
+  const database = connectMockDatabase();
+  const room = database.chatRooms.find((item) => item.id === roomId);
+  if (!room) {
+    throw new Error(`Cannot rate missing room: ${roomId}`);
+  }
+
+  const target = room.participants.find((participant) => participant.id !== "me");
+  if (!target) {
+    throw new Error("평가할 상대를 찾지 못했어요.");
+  }
+
+  const normalizedTags = Array.from(
+    new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
+  );
+  if (normalizedTags.length === 0) {
+    throw new Error("매너 평가 항목을 선택해주세요.");
+  }
+
+  const delta = Math.min(1.2, Math.max(0.3, normalizedTags.length * 0.3));
+  target.temperature = Math.min(100, Math.max(0, Number((target.temperature + delta).toFixed(1))));
+  const storedUser = database.users.find((user) => user.id === target.id);
+  if (storedUser) {
+    storedUser.temperature = target.temperature;
+  }
+
+  return {
+    targetUserId: target.id,
+    temperature: target.temperature,
+  };
 }
 
 export async function submitReport(roomId: string, reason: string): Promise<void> {

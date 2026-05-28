@@ -14,6 +14,7 @@ import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
+import { formatMannerTemperature } from "../../data/mannerTemperature";
 import { mockMe, mockPosts } from "../../data/mockDomain";
 import { getMe, getPost, toggleLike as togglePostLike } from "../../services/api";
 import { getSessionUser } from "../../services/authSession";
@@ -24,6 +25,7 @@ export type PostDetailScreenProps = {
   postId: string;
   onBack?: () => void;
   onOpenChat?: () => void;
+  onSubmitted?: () => void;
 };
 
 type MetaItem = {
@@ -38,6 +40,7 @@ export function PostDetailScreen({
   postId,
   onBack,
   onOpenChat,
+  onSubmitted,
 }: PostDetailScreenProps) {
   const initialPost = useMemo(
     () =>
@@ -203,6 +206,7 @@ export function PostDetailScreen({
         post={post}
         onClose={() => setApplyVisible(false)}
         onOpenChat={onOpenChat}
+        onReturnHome={onSubmitted}
       />
     </View>
   );
@@ -244,6 +248,8 @@ function HeaderActions({
 }
 
 function AuthorRow({ post, themeColor }: { post: Post; themeColor: string }) {
+  const temperature = formatMannerTemperature(post.author.temperature);
+
   return (
     <View style={styles.authorRow}>
       <View style={[styles.avatar, { borderColor: themeColor }]}>
@@ -256,7 +262,7 @@ function AuthorRow({ post, themeColor }: { post: Post; themeColor: string }) {
         </Text>
       </View>
       <View style={styles.temperatureBadge}>
-        <Text style={styles.temperature}>{post.author.temperature}°C</Text>
+        <Text style={styles.temperature}>{temperature.value}</Text>
       </View>
     </View>
   );

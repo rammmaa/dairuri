@@ -14,7 +14,7 @@ const naverMapWebNcpKeyId =
 
 module.exports = {
   expo: {
-    name: "다로리",
+    name: "다로링크",
     slug: "dairuri",
     version: "1.0.0",
     orientation: "portrait",
@@ -36,7 +36,7 @@ module.exports = {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
-      edgeToEdgeEnabled: true,
+      edgeToEdgeEnabled: false,
       predictiveBackGestureEnabled: false,
     },
     web: {

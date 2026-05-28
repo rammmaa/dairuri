@@ -25,4 +25,16 @@ describe("Naver Maps Expo config", () => {
     expect(config.expo.extra.naverMapWebNcpKeyId).toBe("ncp-key-for-tests");
     expect(config.expo.extra.naverMapWebNcpKeyIdConfigured).toBe(true);
   });
+
+  it("keeps Android content below the system status bar in installed APKs", () => {
+    const config = require("../app.config.js");
+
+    expect(config.expo.android.edgeToEdgeEnabled).toBe(false);
+  });
+
+  it("uses the Darolink Korean display name for installed apps", () => {
+    const config = require("../app.config.js");
+
+    expect(config.expo.name).toBe("다로링크");
+  });
 });

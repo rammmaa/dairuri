@@ -1,6 +1,6 @@
 # Current Architecture
 
-기준: `feat/map-bus-sighting-archive` 브랜치의 현재 코드. 웹 배포는 Vercel의 Expo web export 흐름을 사용하며, Android APK/EAS 설정은 별도 PR `feat/android-apk-build-profile`에 있다.
+기준: 현재 저장소 코드. 웹 배포는 Vercel의 Expo web export 흐름을 사용하며, Android APK/EAS 설정은 `eas.json`의 `apk` profile에 있다.
 
 ## High-Level Architecture
 
@@ -123,6 +123,7 @@ Server entrypoints:
 | `GET /me/saved-posts` | required | no | `listSavedPosts(userId)` |
 | `GET /me/received-applications` | required | no | `listReceivedApplicationDetails(userId)` |
 | `GET /posts` | optional bearer token | no | `listPosts(viewerUserId)` |
+| `GET /maps/geocode` | no | no | `searchNaverPlaces(query)` |
 | `GET /posts/:id` | optional bearer token | no | `getPostById(id, viewerUserId)` |
 | `POST /posts` | required | yes | `createPost(body, userId)` |
 | `POST /posts/:id/like` | required | yes | `togglePostLike(postId, userId)` |
@@ -183,6 +184,7 @@ Main schema file: `server/db/schema.sql`
 Durable PostgreSQL tables:
 
 - `users`
+- `phone_verifications`
 - `vehicles`
 - `posts`
 - `post_likes`
@@ -191,6 +193,7 @@ Durable PostgreSQL tables:
 - `chat_room_participants`
 - `chat_messages`
 - `reports`
+- `auth_sessions`
 - `bus_routes`
 - `bus_stops`
 - `bus_route_stops`
@@ -214,6 +217,7 @@ Redis usage:
 
 | Target | Current path |
 | --- | --- |
+| Android APK | EAS profile `apk` in `eas.json`, `android.buildType=apk` |
 | Web production | Vercel uses `vercel.json` to run `npx expo export --platform web --output-dir dist` |
 | API production | Vercel serves `api/[...path].ts` under `/api/*`, or `npm run api:start` can run the same handler on a separate Node host |
 | Web local | `npm run web` |

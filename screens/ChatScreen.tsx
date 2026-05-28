@@ -57,7 +57,7 @@ const chatRooms: ChatListRoom[] = [
   {
     id: "brungpot",
     category: "ride",
-    title: "부릉팟",
+    title: "‘청도감 학원’ 함께 다니실 사람 구해요",
     initials: "부",
     participantLabel: "김예린님 외 3명",
     latestMessage: "다로리 카페 앞에서 6시 40분에 뵐까요?",
@@ -71,7 +71,7 @@ const chatRooms: ChatListRoom[] = [
   {
     id: "dairuri-cafe",
     category: "work",
-    title: "농촌 일손 연락방",
+    title: "농촌 일손과 카페 보조 도울 수 있어요",
     initials: "일",
     participantLabel: "4명",
     latestMessage: "목요일 오전 카페 보조 가능하신가요?",
@@ -219,6 +219,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
       )
     : inlineRoomMessages;
   const inlineInviteLink = `darori.chat/${selectedRoomId}`;
+  const selectedRoom = rooms.find((room) => room.id === selectedRoomId);
 
   return (
     <View style={styles.safeArea}>
@@ -239,8 +240,9 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             </Pressable>
 
             <View style={styles.headerTitleBlock}>
-              <Text style={styles.roomTitle}>부릉팟</Text>
-              <Text style={styles.roomMeta}>다산 1동 → 범어 1동{"\n"}월,수 7:00~8:00</Text>
+              <Text style={styles.roomTitle}>
+                {selectedRoom?.title ?? "채팅"}
+              </Text>
             </View>
 
             <View style={styles.headerActions}>
@@ -365,7 +367,9 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
         <View style={styles.inputBar}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="첨부 추가"
+            accessibilityLabel="사진 첨부"
+            testID="chat-inline-attach-photo-button"
+            onPress={() => setInlineStatusMessage("사진을 첨부했어요.")}
             style={({ pressed }) => [
               styles.inputIconButton,
               pressed && styles.pressed,
@@ -409,7 +413,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
                 <MenuAction icon={ShieldAlert} label="신고하기" />
                 <MenuAction
                   icon={IdCard}
-                  label="면허증, 자동차 보험 조회하기"
+                  label="운전자 인증 확인하기"
                   onPress={() => openInlineAction("credentials")}
                 />
                 <MenuAction
@@ -422,7 +426,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
                 <MenuAction icon={Search} label="검색하기" onPress={openInlineSearch} />
                 <MenuAction
                   icon={BellOff}
-                  label={inlineMuted ? "알람켜기" : "알람끄기"}
+                  label={inlineMuted ? "알림켜기" : "알림끄기"}
                   onPress={toggleInlineMute}
                 />
                 <MenuAction icon={LogOut} label="방 나가기" onPress={openLeaveModal} />
@@ -831,32 +835,29 @@ function InlineChatActionModal({
         {mode === "manner" ? (
           <>
             <Text style={styles.actionTitle}>매너 평가하기</Text>
-            <Text style={styles.actionDescription}>함께한 대화는 어땠나요?</Text>
+            <Text style={styles.actionDescription}>좋았던 항목을 선택해주세요.</Text>
             {mannerSaved ? (
               <Text style={styles.actionSuccessText}>매너 평가가 저장되었습니다.</Text>
             ) : (
-              <View style={styles.ratingRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onRate}
-                  style={({ pressed }) => [
-                    styles.ratingButton,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={styles.ratingButtonText}>좋아요</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onRate}
-                  style={({ pressed }) => [
-                    styles.ratingButton,
-                    styles.ratingButtonSecondary,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={styles.ratingButtonText}>아쉬워요</Text>
-                </Pressable>
+              <View style={styles.ratingList}>
+                {[
+                  "시간 약속을 잘 지켰어요",
+                  "친절하게 소통했어요",
+                  "안전하게 운행했어요",
+                  "응답이 빨랐어요",
+                ].map((label) => (
+                  <Pressable
+                    key={label}
+                    accessibilityRole="button"
+                    onPress={onRate}
+                    style={({ pressed }) => [
+                      styles.ratingButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.ratingButtonText}>{label}</Text>
+                  </Pressable>
+                ))}
               </View>
             )}
           </>
@@ -864,22 +865,8 @@ function InlineChatActionModal({
 
         {mode === "credentials" ? (
           <>
-            <Text style={styles.actionTitle}>면허증, 자동차 보험 조회</Text>
-            <Text style={styles.actionSuccessText}>보험 확인 완료</Text>
-            <View style={styles.actionInfoList}>
-              <View style={styles.actionInfoRow}>
-                <Text style={styles.actionInfoLabel}>운전자</Text>
-                <Text style={styles.actionInfoValue}>김예린</Text>
-              </View>
-              <View style={styles.actionInfoRow}>
-                <Text style={styles.actionInfoLabel}>차량번호</Text>
-                <Text style={styles.actionInfoValue}>12가 3456</Text>
-              </View>
-              <View style={styles.actionInfoRow}>
-                <Text style={styles.actionInfoLabel}>확인 상태</Text>
-                <Text style={styles.actionInfoValue}>면허 및 보험 유효</Text>
-              </View>
-            </View>
+            <Text style={styles.actionTitle}>운전자 인증</Text>
+            <Text style={styles.actionSuccessText}>인증됨</Text>
           </>
         ) : null}
 
@@ -1644,13 +1631,12 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.bold,
     textAlign: "center",
   },
-  ratingRow: {
-    flexDirection: "row",
+  ratingList: {
     gap: 8,
   },
   ratingButton: {
-    flex: 1,
     minHeight: 44,
+    paddingHorizontal: 14,
     borderRadius: 12,
     backgroundColor: colors.mint,
     alignItems: "center",

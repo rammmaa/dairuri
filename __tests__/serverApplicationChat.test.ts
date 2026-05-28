@@ -51,7 +51,7 @@ describe("application acceptance chat creation", () => {
           {
             id: "room-application-1",
             post_id: "carpool-1",
-            title: "청도감 학원 같이 가요 매칭방",
+            title: "청도감 학원 같이 가요",
             subtitle: "다로리 카페 > 청도명어학원 / 화, 목 16:00 - 17:00",
             last_message: "매칭이 시작되었습니다.",
           },
@@ -105,6 +105,16 @@ describe("application acceptance chat creation", () => {
       postId: "carpool-1",
       participants: [{ id: "author-1" }, { id: "me" }],
     });
+    expect(clientQuery).toHaveBeenNthCalledWith(
+      4,
+      expect.stringContaining("insert into chat_rooms"),
+      [
+        "room-application-1",
+        "carpool-1",
+        "청도감 학원 같이 가요",
+        "다로리 카페 > 청도명어학원 / 화, 목 16:00 - 17:00",
+      ],
+    );
     expect(clientQuery).toHaveBeenNthCalledWith(
       5,
       expect.stringContaining("insert into chat_room_participants"),

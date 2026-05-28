@@ -1,0 +1,222 @@
+{
+  "generatedAt": "2026-05-21T15:20:17.121Z",
+  "viewport": "375x812@3x",
+  "screenshots": [
+    {
+      "file": "01-map-home.png",
+      "title": "지도 홈",
+      "slug": "map-home"
+    },
+    {
+      "file": "02-archive-list.png",
+      "title": "모집글 아카이브",
+      "slug": "archive-list"
+    },
+    {
+      "file": "03-bus-routes.png",
+      "title": "버스 노선",
+      "slug": "bus-routes"
+    },
+    {
+      "file": "04-post-detail.png",
+      "title": "모집글 상세",
+      "slug": "post-detail"
+    },
+    {
+      "file": "05-profile-saved-posts.png",
+      "title": "프로필 - 내 찜",
+      "slug": "profile-saved-posts"
+    },
+    {
+      "file": "06-profile-my-posts.png",
+      "title": "프로필 - 내가 쓴 모집글",
+      "slug": "profile-my-posts"
+    },
+    {
+      "file": "07-application-review.png",
+      "title": "지원서 검토",
+      "slug": "application-review"
+    },
+    {
+      "file": "08-profile-edit.png",
+      "title": "프로필 수정",
+      "slug": "profile-edit"
+    },
+    {
+      "file": "09-settings.png",
+      "title": "설정",
+      "slug": "settings"
+    },
+    {
+      "file": "10-report-reasons.png",
+      "title": "신고 사유 선택",
+      "slug": "report-reasons"
+    },
+    {
+      "file": "11-chat-room.png",
+      "title": "채팅방",
+      "slug": "chat-room"
+    },
+    {
+      "file": "12-map-bus-archive-empty.png",
+      "title": "지도 홈 - 버스 목격 기록",
+      "slug": "map-bus-archive-empty"
+    },
+    {
+      "file": "13-map-bus-archive-saved.png",
+      "title": "지도 홈 - 버스 목격 저장 후",
+      "slug": "map-bus-archive-saved"
+    },
+    {
+      "file": "14-create-type-selection.png",
+      "title": "모집글 작성 - 유형 선택",
+      "slug": "create-type-selection"
+    },
+    {
+      "file": "15-create-ride-route.png",
+      "title": "모집글 작성 - 라이드 장소",
+      "slug": "create-ride-route"
+    },
+    {
+      "file": "16-create-place-picker-departure.png",
+      "title": "장소 선택 - 출발지",
+      "slug": "create-place-picker-departure"
+    },
+    {
+      "file": "17-create-ride-schedule.png",
+      "title": "모집글 작성 - 라이드 일정",
+      "slug": "create-ride-schedule"
+    },
+    {
+      "file": "18-create-ride-title.png",
+      "title": "모집글 작성 - 라이드 제목",
+      "slug": "create-ride-title"
+    },
+    {
+      "file": "19-create-ride-details.png",
+      "title": "모집글 작성 - 라이드 상세",
+      "slug": "create-ride-details"
+    },
+    {
+      "file": "20-create-ride-review.png",
+      "title": "모집글 작성 - 라이드 최종 확인",
+      "slug": "create-ride-review"
+    },
+    {
+      "file": "21-create-work-basics.png",
+      "title": "모집글 작성 - 일자리 기본 정보",
+      "slug": "create-work-basics"
+    },
+    {
+      "file": "22-create-work-schedule.png",
+      "title": "모집글 작성 - 일자리 일정",
+      "slug": "create-work-schedule"
+    },
+    {
+      "file": "23-create-work-details.png",
+      "title": "모집글 작성 - 일자리 상세",
+      "slug": "create-work-details"
+    },
+    {
+      "file": "24-create-work-review.png",
+      "title": "모집글 작성 - 일자리 최종 확인",
+      "slug": "create-work-review"
+    },
+    {
+      "file": "25-post-apply-intro.png",
+      "title": "지원 플로우 - 자기소개",
+      "slug": "post-apply-intro"
+    },
+    {
+      "file": "26-post-apply-terms.png",
+      "title": "지원 플로우 - 약관 동의",
+      "slug": "post-apply-terms"
+    },
+    {
+      "file": "27-post-apply-complete.png",
+      "title": "지원 플로우 - 완료",
+      "slug": "post-apply-complete"
+    },
+    {
+      "file": "28-chat-list.png",
+      "title": "채팅 목록",
+      "slug": "chat-list"
+    },
+    {
+      "file": "29-chat-more-actions.png",
+      "title": "채팅방 - 더보기",
+      "slug": "chat-more-actions"
+    },
+    {
+      "file": "30-chat-leave-confirm.png",
+      "title": "채팅방 - 나가기 확인",
+      "slug": "chat-leave-confirm"
+    },
+    {
+      "file": "31-report-selected.png",
+      "title": "신고 사유 선택 후",
+      "slug": "report-selected"
+    },
+    {
+      "file": "32-profile-home.png",
+      "title": "프로필 홈",
+      "slug": "profile-home"
+    },
+    {
+      "file": "33-profile-image-actions.png",
+      "title": "프로필 사진 액션",
+      "slug": "profile-image-actions"
+    },
+    {
+      "file": "34-application-approve-modal.png",
+      "title": "지원서 검토 - 승인 완료",
+      "slug": "application-approve-modal"
+    },
+    {
+      "file": "35-application-reject-modal.png",
+      "title": "지원서 검토 - 거절 사유",
+      "slug": "application-reject-modal"
+    },
+    {
+      "file": "36-application-rejected-modal.png",
+      "title": "지원서 검토 - 거절 완료",
+      "slug": "application-rejected-modal"
+    },
+    {
+      "file": "37-settings-logout-confirm.png",
+      "title": "설정 - 로그아웃 확인",
+      "slug": "settings-logout-confirm"
+    },
+    {
+      "file": "38-settings-delete-confirm.png",
+      "title": "설정 - 계정 탈퇴 확인",
+      "slug": "settings-delete-confirm"
+    },
+    {
+      "file": "39-auth-login.png",
+      "title": "인증 - 로그인",
+      "slug": "auth-login"
+    },
+    {
+      "file": "40-auth-signup-driver.png",
+      "title": "인증 - 회원가입 운전자",
+      "slug": "auth-signup-driver"
+    },
+    {
+      "file": "41-auth-camera-permission.png",
+      "title": "인증 - 카메라 권한",
+      "slug": "auth-camera-permission"
+    },
+    {
+      "file": "42-auth-license-camera.png",
+      "title": "인증 - 면허 촬영",
+      "slug": "auth-license-camera"
+    },
+    {
+      "file": "43-auth-driver-details.png",
+      "title": "인증 - 운전자 상세 정보",
+      "slug": "auth-driver-details"
+    }
+  ],
+  "errors": []
+}

@@ -5,10 +5,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   Pressable,
 } from "react-native";
-import { Bus, MapPin } from "lucide-react-native";
+import { Bus, MapPin, Search, X } from "lucide-react-native";
 
 import { BottomNav } from "../components/BottomNav";
 import { CurrentLocationIcon } from "../components/CurrentLocationIcon";
@@ -35,6 +36,8 @@ import {
   type MapPostSortMode,
 } from "../data/mapPostList";
 import { getPosts } from "../services/api";
+import { searchPlaceCandidates } from "../services/places";
+import type { PlaceCandidate } from "../types/place";
 
 export type MapScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
@@ -49,7 +52,8 @@ const SHEET_EXPANDED_TOP = 300;
 const BUS_ARCHIVE_SHEET_EXPANDED_TOP = 56;
 const SHEET_COLLAPSED_TOP = 560;
 const POST_PAGE_SIZE = 2;
-const BUS_ARCHIVE_LOCATION_LABEL = "다로리 카페";
+const BUS_ARCHIVE_UNKNOWN_LOCATION_LABEL = "확인 중";
+const BUS_ARCHIVE_CURRENT_LOCATION_LABEL = "현재 위치";
 type DateFilter = MapHomePost["dateFilter"] | null;
 type TimeFilter = MapHomePost["timeFilter"] | null;
 type DepartureFilter = MapHomePost["departurePlace"] | null;
@@ -87,8 +91,16 @@ export function MapScreen({
   const [visibleCount, setVisibleCount] = useState(POST_PAGE_SIZE);
   const [sheetTop, setSheetTop] = useState(SHEET_DEFAULT_TOP);
   const [focusedCamera, setFocusedCamera] = useState<MapPreviewCamera | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<PlaceCandidate[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [busClockDate, setBusClockDate] = useState(() => new Date());
   const [busSightings, setBusSightings] = useState<BusSighting[]>([]);
+  const [busArchiveLocationLabel, setBusArchiveLocationLabel] = useState(
+    BUS_ARCHIVE_UNKNOWN_LOCATION_LABEL,
+  );
   const [recruitmentPosts, setRecruitmentPosts] = useState<MapHomePost[]>(() =>
     process.env.NODE_ENV === "test" ? mapHomePosts : [],
   );
@@ -152,6 +164,51 @@ export function MapScreen({
     };
   }, []);
 
+  useEffect(() => {
+    if (!searchOpen) {
+      return undefined;
+    }
+
+    const trimmedQuery = searchQuery.trim();
+    let active = true;
+
+    if (trimmedQuery.length < 2) {
+      setSearchResults([]);
+      setSearchError(null);
+      setSearchLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setSearchLoading(true);
+    setSearchError(null);
+
+    searchPlaceCandidates(trimmedQuery)
+      .then((places) => {
+        if (!active) {
+          return;
+        }
+        setSearchResults(places);
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+        setSearchResults([]);
+        setSearchError("지도 검색에 실패했어요.");
+      })
+      .finally(() => {
+        if (active) {
+          setSearchLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [searchOpen, searchQuery]);
+
   const cycleDateFilter = () => {
     setDateFilter((current) =>
       current === null ? "오늘" : current === "오늘" ? "내일" : null,
@@ -191,63 +248,90 @@ export function MapScreen({
     },
     [selectedCategory, updateSheetTop],
   );
-  const handleCurrentLocationPress = useCallback(async () => {
-    onCurrentLocationPress?.();
-
+  const applyFocusedLocation = useCallback((coords: {
+    latitude: number;
+    longitude: number;
+  }) => {
+    setFocusedCamera({
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      zoom: 16,
+    });
+    setBusArchiveLocationLabel(BUS_ARCHIVE_CURRENT_LOCATION_LABEL);
+  }, []);
+  const readCurrentLocation = useCallback(async () => {
     const geolocation = globalThis.navigator?.geolocation;
 
     if (geolocation) {
-      geolocation.getCurrentPosition(
-        (position) => {
-          setFocusedCamera({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            zoom: 16,
-          });
-        },
-        () => undefined,
-        {
-          enableHighAccuracy: true,
-          timeout: 8000,
-          maximumAge: 30000,
-        },
-      );
-      return;
+      return new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+        geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+          },
+          () => resolve(null),
+          {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 30000,
+          },
+        );
+      });
     }
 
+    const permission = await Location.requestForegroundPermissionsAsync();
+
+    if (!permission.granted) {
+      return null;
+    }
+
+    const position = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+
+    return {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+    };
+  }, []);
+  const handleCurrentLocationPress = useCallback(async () => {
+    onCurrentLocationPress?.();
+
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-
-      if (!permission.granted) {
-        return;
+      const coords = await readCurrentLocation();
+      if (coords) {
+        applyFocusedLocation(coords);
       }
-
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      setFocusedCamera({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        zoom: 16,
-      });
     } catch {
       return;
     }
-  }, [onCurrentLocationPress]);
+  }, [applyFocusedLocation, onCurrentLocationPress, readCurrentLocation]);
   const handleBusSightingSave = useCallback(() => {
     const now = new Date();
     const timeLabel = formatBusArchiveClock(now);
+    const locationLabel = busArchiveLocationLabel;
 
     setBusClockDate(now);
     setBusSightings((current) => [
       {
         id: `${now.getTime()}-${current.length}`,
         timeLabel,
-        locationLabel: BUS_ARCHIVE_LOCATION_LABEL,
+        locationLabel,
       },
       ...current,
     ]);
+  }, [busArchiveLocationLabel]);
+
+  const selectSearchResult = useCallback((place: PlaceCandidate) => {
+    setFocusedCamera({
+      latitude: place.latitude,
+      longitude: place.longitude,
+      zoom: 16,
+    });
+    setSearchQuery(place.name);
+    setSearchOpen(false);
   }, []);
 
   useEffect(() => {
@@ -303,19 +387,89 @@ export function MapScreen({
         />
 
         <View style={styles.topOverlay}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="지도 검색"
-            onPress={onSearchPress}
-            testID="map-home-search-button"
-            style={({ pressed }) => [
-              styles.searchBar,
-              pressed && styles.searchBarPressed,
-            ]}
-          >
-            <MapPin size={26} color={colors.mint} fill={colors.mint} />
-            <Text style={styles.searchPlaceholder}>여기서 검색</Text>
-          </Pressable>
+          {searchOpen ? (
+            <View style={styles.searchPanel}>
+              <View style={styles.searchInputRow}>
+                <Search size={20} color={colors.grayIcon} strokeWidth={2.2} />
+                <TextInput
+                  autoFocus
+                  placeholder="장소 검색"
+                  placeholderTextColor={colors.mutedText}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  returnKeyType="search"
+                  testID="map-home-search-input"
+                  style={styles.searchInput}
+                  onSubmitEditing={() => {
+                    const firstPlace = searchResults[0];
+                    if (firstPlace) {
+                      selectSearchResult(firstPlace);
+                    }
+                  }}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="지도 검색 닫기"
+                  hitSlop={8}
+                  onPress={() => {
+                    setSearchOpen(false);
+                    setSearchQuery("");
+                    setSearchResults([]);
+                    setSearchError(null);
+                  }}
+                >
+                  <X size={19} color={colors.grayIcon} strokeWidth={2.3} />
+                </Pressable>
+              </View>
+              {searchLoading ? (
+                <Text style={styles.searchHelperText}>검색 중이에요.</Text>
+              ) : searchError ? (
+                <Text style={styles.searchErrorText}>{searchError}</Text>
+              ) : searchQuery.trim().length >= 2 && searchResults.length === 0 ? (
+                <Text style={styles.searchHelperText}>검색 결과가 없어요.</Text>
+              ) : null}
+              {searchResults.slice(0, 3).map((place) => (
+                <Pressable
+                  key={place.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${place.name} 지도 이동`}
+                  testID={`map-home-search-result-${place.id}`}
+                  onPress={() => selectSearchResult(place)}
+                  style={({ pressed }) => [
+                    styles.searchResultRow,
+                    pressed && styles.searchResultPressed,
+                  ]}
+                >
+                  <MapPin size={15} color={colors.mintDark} strokeWidth={2.3} />
+                  <View style={styles.searchResultCopy}>
+                    <Text style={styles.searchResultName} numberOfLines={1}>
+                      {place.name}
+                    </Text>
+                    <Text style={styles.searchResultAddress} numberOfLines={1}>
+                      {place.address}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="지도 검색"
+              onPress={() => {
+                onSearchPress?.();
+                setSearchOpen(true);
+              }}
+              testID="map-home-search-button"
+              style={({ pressed }) => [
+                styles.searchBar,
+                pressed && styles.searchBarPressed,
+              ]}
+            >
+              <MapPin size={26} color={colors.mint} fill={colors.mint} />
+              <Text style={styles.searchPlaceholder}>여기서 검색</Text>
+            </Pressable>
+          )}
 
           <View style={styles.categoryRow}>
             {categoryFilters.map((filter) => (
@@ -367,7 +521,7 @@ export function MapScreen({
                 <View style={styles.busLocationPill}>
                   <View style={styles.busLocationDot} />
                   <Text style={styles.busLocationText}>
-                    현위치: {BUS_ARCHIVE_LOCATION_LABEL}
+                    현위치: {busArchiveLocationLabel}
                   </Text>
                 </View>
 
@@ -567,6 +721,83 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.lg,
     fontWeight: typography.weight.regular,
   },
+  searchPanel: {
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    padding: 10,
+    gap: 8,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchInputRow: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 22,
+    backgroundColor: colors.gray100,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 0,
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.regular,
+    paddingVertical: 0,
+  },
+  searchHelperText: {
+    paddingHorizontal: 12,
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
+  },
+  searchErrorText: {
+    paddingHorizontal: 12,
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.medium,
+  },
+  searchResultRow: {
+    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    backgroundColor: colors.gray50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchResultPressed: {
+    backgroundColor: colors.mintLight,
+  },
+  searchResultCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  searchResultName: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
+  },
+  searchResultAddress: {
+    color: colors.grayText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
+  },
   categoryRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -652,23 +883,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingHorizontal: spacing.screenX,
-    paddingTop: 50,
+    paddingTop: 34,
     paddingBottom: 18,
   },
   busArchiveTitle: {
     color: colors.blue,
     fontFamily: typography.family.body,
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 24,
+    lineHeight: 31,
     fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   busArchiveTime: {
-    marginTop: 20,
+    marginTop: 12,
     color: "#000000",
     fontFamily: typography.family.body,
-    fontSize: 72,
-    lineHeight: 80,
+    fontSize: 48,
+    lineHeight: 58,
     fontWeight: typography.weight.bold,
     textAlign: "center",
   },
@@ -705,9 +936,9 @@ const styles = StyleSheet.create({
   busSaveButton: {
     width: "100%",
     maxWidth: 292,
-    height: 150,
-    marginTop: 42,
-    borderRadius: 36,
+    height: 112,
+    marginTop: 28,
+    borderRadius: 28,
     backgroundColor: "#9D9D9D",
     alignItems: "center",
     justifyContent: "center",
@@ -716,7 +947,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   busArchiveHint: {
-    marginTop: 32,
+    marginTop: 20,
     color: colors.gray400,
     fontFamily: typography.family.body,
     fontSize: typography.size.base,

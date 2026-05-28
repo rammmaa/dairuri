@@ -17,8 +17,11 @@ describe("server seed data", () => {
     const records = createSeedRecords();
 
     expect(records.users.find((user) => user.id === "me")).toMatchObject({
+      loginId: "rammma",
       phone: "010-0000-0000",
       email: "test@example.com",
+      licenseVerified: true,
+      insuranceVerified: true,
       passwordHash: expect.stringMatching(/^scrypt:[^:]+:[0-9a-f]+$/),
     });
     expect(records.users.find((user) => user.id === "author-1")?.passwordHash).toBeNull();

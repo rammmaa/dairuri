@@ -122,7 +122,7 @@ export default function App() {
         }}
       >
         <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
-          다로리를 준비하고 있어요
+          다로링크를 준비하고 있어요
         </Text>
       </View>
     );
@@ -164,6 +164,10 @@ export default function App() {
             setSelectedPostId(null);
             setActiveTab("chat");
             setSelectedChatRoomId("room-1");
+          }}
+          onSubmitted={() => {
+            setSelectedPostId(null);
+            setActiveTab("map");
           }}
         />
         <StatusBar style="dark" />

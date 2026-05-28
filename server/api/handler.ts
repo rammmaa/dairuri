@@ -31,9 +31,11 @@ import {
   acceptApplicationAndCreateChatRoom,
   authenticateUser,
   changeUserPassword,
+  checkLoginIdAvailability,
   createApplication,
   createPost,
   createChatMessage,
+  createMannerRating,
   createReport,
   CreatePostInputError,
   deleteUserAccount,
@@ -73,6 +75,7 @@ const writeRateLimits = {
   reviewApplication: { limit: 60, windowSeconds: 60 },
   sendChatMessage: { limit: 60, windowSeconds: 60 },
   submitReport: { limit: 10, windowSeconds: 60 },
+  submitMannerRating: { limit: 30, windowSeconds: 60 },
   recordBusSighting: { limit: 30, windowSeconds: 60 },
 } as const;
 
@@ -154,6 +157,15 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
     await enforceAnonymousWriteRateLimit(request, "auth");
     const body = await readJsonBody<SignupInput>(request);
     sendJson(response, 201, await registerUser(body));
+    return;
+  }
+
+  if (method === "GET" && pathname === "/auth/login-id-availability") {
+    sendJson(
+      response,
+      200,
+      await checkLoginIdAvailability(url.searchParams.get("loginId") ?? ""),
+    );
     return;
   }
 
@@ -427,15 +439,19 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
 
   if (messagesMatch && method === "POST") {
     const context = await requireWriteContext(request, "sendChatMessage");
-    const body = await readJsonBody<{ text?: string }>(request);
-    if (!body.text?.trim()) {
-      sendJson(response, 400, { error: "text is required" });
+    const body = await readJsonBody<{ text?: string; imageUrl?: string }>(request);
+    if (!body.text?.trim() && !body.imageUrl?.trim()) {
+      sendJson(response, 400, { error: "text or imageUrl is required" });
       return;
     }
     sendJson(
       response,
       201,
-      await createChatMessage(messagesMatch[1], body.text.trim(), context.userId),
+      await createChatMessage(
+        messagesMatch[1],
+        { text: body.text?.trim(), imageUrl: body.imageUrl?.trim() },
+        context.userId,
+      ),
     );
     return;
   }
@@ -452,6 +468,22 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
       response,
       201,
       await createReport(body.roomId.trim(), body.reason.trim(), context.userId),
+    );
+    return;
+  }
+
+  if (method === "POST" && pathname === "/manner-ratings") {
+    const context = await requireWriteContext(request, "submitMannerRating");
+    const body = await readJsonBody<{ roomId?: string; tags?: string[] }>(request);
+    if (!body.roomId?.trim() || !Array.isArray(body.tags) || body.tags.length === 0) {
+      sendJson(response, 400, { error: "roomId and tags are required" });
+      return;
+    }
+
+    sendJson(
+      response,
+      201,
+      await createMannerRating(body.roomId.trim(), body.tags, context.userId),
     );
     return;
   }

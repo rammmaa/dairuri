@@ -161,6 +161,10 @@ export function validateDatabaseConsistency(
     if (message.type === "text" && !message.text?.trim()) {
       errors.push(`message ${message.id} is missing text`);
     }
+
+    if (message.type === "image" && !message.imageUrl?.trim()) {
+      errors.push(`message ${message.id} is missing imageUrl`);
+    }
   }
 
   const busRouteIds = new Set(database.busRoutes.map((route) => route.id));

@@ -94,8 +94,10 @@ npm run api:start
 | `EXPO_PUBLIC_DARORI_USE_MOCK_API` | 테스트/로컬 전용 mock opt-in. 프로덕션에서는 unset |
 | `DATABASE_URL` | 서버 사이드 PostgreSQL connection string |
 | `REDIS_URL` | 서버 사이드 Redis connection string |
+| `NAVER_SEARCH_CLIENT_ID` | 서버 사이드 네이버 검색 API 지역 검색 Client ID. 장소명/상호 검색 정확도 개선용 |
+| `NAVER_SEARCH_CLIENT_SECRET` | 서버 사이드 네이버 검색 API 지역 검색 Client Secret |
 
-`DATABASE_URL`, `REDIS_URL`, `NAVER_MAP_API_KEY`, `SOLAPI_*`, `PHONE_VERIFICATION_HASH_SECRET`는 모바일 앱 번들에 포함되면 안 되는 서버 전용 값입니다.
+`DATABASE_URL`, `REDIS_URL`, `NAVER_MAP_API_KEY`, `NAVER_SEARCH_CLIENT_*`, `SOLAPI_*`, `PHONE_VERIFICATION_HASH_SECRET`는 모바일 앱 번들에 포함되면 안 되는 서버 전용 값입니다.
 
 🌐 Deployment
 
@@ -118,3 +120,4 @@ npx expo export --platform web --output-dir dist
 
 - Frontend screen spec: `docs/reference/darori_codex_spec/DARORI_FRONTEND_CODEX_SPEC.md`
 - Current architecture notes: `docs/current-architecture.md`
+- Backend/API reference: `docs/backend-api-reference.md`

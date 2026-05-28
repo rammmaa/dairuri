@@ -35,13 +35,14 @@ $$;
 do $$
 begin
   if not exists (select 1 from pg_type where typname = 'chat_message_type') then
-    create type chat_message_type as enum ('system', 'text');
+    create type chat_message_type as enum ('system', 'text', 'image');
   end if;
 end;
 $$;
 
 create table if not exists users (
   id text primary key,
+  login_id text unique,
   nickname text not null,
   real_name text,
   phone text not null unique,
@@ -51,6 +52,9 @@ create table if not exists users (
   area text,
   temperature numeric(4, 1) not null default 36.5,
   driver_type driver_type not null default 'non_driver',
+  license_verified boolean not null default false,
+  insurance_verified boolean not null default false,
+  driver_verified_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -153,8 +157,21 @@ create table if not exists chat_messages (
   sender_id text references users(id) on delete set null,
   type chat_message_type not null,
   text text,
+  image_url text,
   created_at timestamptz not null default now(),
-  constraint text_message_has_body check (type <> 'text' or text is not null)
+  constraint text_message_has_body check (type <> 'text' or text is not null),
+  constraint image_message_has_url check (type <> 'image' or image_url is not null)
+);
+
+create table if not exists manner_ratings (
+  id text primary key,
+  room_id text not null references chat_rooms(id) on delete cascade,
+  rater_id text not null references users(id) on delete cascade,
+  target_user_id text not null references users(id) on delete cascade,
+  tags text[] not null,
+  temperature_delta numeric(3, 1) not null,
+  created_at timestamptz not null default now(),
+  unique (room_id, rater_id, target_user_id)
 );
 
 create table if not exists reports (

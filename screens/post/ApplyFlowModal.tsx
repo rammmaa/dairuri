@@ -25,6 +25,7 @@ export type ApplyFlowModalProps = {
   post: Post;
   onClose: () => void;
   onOpenChat?: () => void;
+  onReturnHome?: () => void;
 };
 
 const initialTerms: TermsState = {
@@ -38,7 +39,7 @@ export function ApplyFlowModal({
   visible,
   post,
   onClose,
-  onOpenChat,
+  onReturnHome,
 }: ApplyFlowModalProps) {
   const [step, setStep] = useState<ApplyStep>(1);
   const [intro, setIntro] = useState("");
@@ -120,7 +121,7 @@ export function ApplyFlowModal({
 
   const complete = () => {
     onClose();
-    onOpenChat?.();
+    onReturnHome?.();
   };
 
   return (
@@ -210,14 +211,18 @@ export function ApplyFlowModal({
               <CheckCircle2 size={34} color={colors.mintDark} strokeWidth={2.3} />
             </View>
             <Text style={styles.completeTitle}>
-              {isResourceProfile ? "연락 요청 완료" : "지원 완료"}
+              잘 제출되었어요!
             </Text>
             <Text style={styles.description}>
               {isResourceProfile
-                ? "작성하신 연락 내용이 등록자에게 전달되었습니다.\n채팅에서 이어서 이야기해보세요."
+                ? "작성하신 연락 내용이 등록자에게 전달되었습니다."
                 : "작성하신 지원서가 작성자에게 전달되었습니다.\n검토 후 연락 드릴게요!"}
             </Text>
-            <AppButton label="확인" onPress={complete} testID="apply-complete-button" />
+            <AppButton
+              label="메인으로 돌아가기"
+              onPress={complete}
+              testID="apply-complete-button"
+            />
           </View>
         ) : null}
       </View>

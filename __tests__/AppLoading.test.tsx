@@ -22,6 +22,6 @@ describe("App loading state", () => {
   it("renders visible loading copy while fonts are loading", () => {
     render(<App />);
 
-    expect(screen.getByText("다로리를 준비하고 있어요")).toBeTruthy();
+    expect(screen.getByText("다로링크를 준비하고 있어요")).toBeTruthy();
   });
 });

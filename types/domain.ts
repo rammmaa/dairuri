@@ -3,7 +3,13 @@ export type PostType = "carpool" | "job";
 export type PostStatus = "open" | "closed" | "matched";
 export type Weekday = "월" | "화" | "수" | "목" | "금" | "토" | "일";
 export type ApplicationStatus = "pending" | "accepted" | "rejected";
-export type ChatMessageType = "text" | "system" | "postCard";
+export type ChatMessageType = "text" | "system" | "postCard" | "image";
+
+export type DriverVerification = {
+  licenseVerified: boolean;
+  insuranceVerified: boolean;
+  verifiedAt?: string;
+};
 
 export type VehicleInfo = {
   plateNumber: string;
@@ -13,6 +19,7 @@ export type VehicleInfo = {
 
 export type UserProfile = {
   id: string;
+  loginId?: string;
   nickname: string;
   realName?: string;
   phone?: string;
@@ -22,6 +29,7 @@ export type UserProfile = {
   temperature: number;
   driverType: DriverType;
   vehicle?: VehicleInfo;
+  driverVerification?: DriverVerification;
 };
 
 export type BasePost = {
@@ -94,6 +102,7 @@ export type LoginInput = {
 };
 
 export type SignupInput = {
+  loginId: string;
   nickname: string;
   realName?: string;
   phone: string;
@@ -141,6 +150,16 @@ export type ChangePasswordInput = {
   newPassword: string;
 };
 
+export type MannerRatingInput = {
+  roomId: string;
+  tags: string[];
+};
+
+export type MannerRatingResult = {
+  targetUserId: string;
+  temperature: number;
+};
+
 export type ChatRoom = {
   id: string;
   title: string;
@@ -157,6 +176,7 @@ export type ChatMessage = {
   senderId?: string;
   type: ChatMessageType;
   text?: string;
+  imageUrl?: string;
   createdAt: string;
   post?: Post;
 };

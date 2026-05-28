@@ -81,6 +81,7 @@ const TEST_USER_PASSWORD_HASH =
 export function createSeedRecords() {
   const users = [mockMe, mockAuthor].map((user) => ({
     id: user.id,
+    loginId: user.loginId ?? null,
     nickname: user.nickname,
     realName: user.realName ?? null,
     phone: user.phone ?? `${user.id}@darori.local`,
@@ -89,6 +90,9 @@ export function createSeedRecords() {
     area: user.area ?? null,
     temperature: user.temperature,
     driverType: toDatabaseDriverType(user.driverType),
+    licenseVerified: user.driverVerification?.licenseVerified ?? false,
+    insuranceVerified: user.driverVerification?.insuranceVerified ?? false,
+    driverVerifiedAt: user.driverVerification?.verifiedAt ?? null,
     passwordHash: user.id === mockMe.id ? TEST_USER_PASSWORD_HASH : null,
   }));
 

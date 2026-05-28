@@ -101,6 +101,15 @@ describe("MapScreen", () => {
     expect(handleMarkerPress).not.toHaveBeenCalled();
   });
 
+  it("opens a real map search field from the home search bar", () => {
+    render(<MapScreen />);
+
+    fireEvent.press(screen.getByTestId("map-home-search-button"));
+
+    expect(screen.getByTestId("map-home-search-input")).toBeTruthy();
+    expect(screen.getByPlaceholderText("장소 검색")).toBeTruthy();
+  });
+
   it("requests browser location when pressing the current-location button", () => {
     const originalNavigator = global.navigator;
     const getCurrentPosition = jest.fn();
@@ -204,12 +213,12 @@ describe("MapScreen", () => {
 
       expect(screen.getByText("방금 버스 봤어요!")).toBeTruthy();
       expect(screen.getByText("12:01:19")).toBeTruthy();
-      expect(screen.getByText("현위치: 다로리 카페")).toBeTruthy();
+      expect(screen.getByText("현위치: 확인 중")).toBeTruthy();
 
       fireEvent.press(screen.getByTestId("map-home-bus-sighting-save"));
 
       expect(screen.getByText("최근 기록")).toBeTruthy();
-      expect(screen.getByText("12:01:19 · 다로리 카페")).toBeTruthy();
+      expect(screen.getByText("12:01:19 · 확인 중")).toBeTruthy();
     } finally {
       jest.useRealTimers();
     }

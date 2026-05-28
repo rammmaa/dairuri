@@ -10,12 +10,16 @@ import {
   ShieldAlert,
   ThumbsUp,
   UserPlus,
+  X,
   type LucideIcon,
 } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -30,7 +34,14 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockChatRooms, mockMessages } from "../../data/mockDomain";
-import { getChatMessages, getChatRooms, sendMessage } from "../../services/api";
+import {
+  getChatMessages,
+  getChatRooms,
+  sendImageMessage,
+  sendMessage,
+  submitMannerRating,
+} from "../../services/api";
+import { getSessionUser } from "../../services/authSession";
 import type { ChatMessage, ChatRoom } from "../../types/domain";
 
 export type ChatRoomScreenProps = {
@@ -64,6 +75,10 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
   const [searchQuery, setSearchQuery] = useState("");
   const [muted, setMuted] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [attachedPhotoUri, setAttachedPhotoUri] = useState<string | null>(null);
+  const [attachedPhotoPayload, setAttachedPhotoPayload] = useState<string | null>(null);
+  const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const currentUserId = getSessionUser()?.id ?? "me";
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -122,17 +137,22 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
 
   const handleSend = async () => {
     const trimmed = text.trim();
+    const messageText = trimmed;
 
-    if (!trimmed || sending) {
+    if ((!messageText && !attachedPhotoPayload) || sending) {
       return;
     }
 
     setSending(true);
     setSendError(null);
     try {
-      const message = await sendMessage(room.id, trimmed);
+      const message = attachedPhotoPayload
+        ? await sendImageMessage(room.id, attachedPhotoPayload, messageText || undefined)
+        : await sendMessage(room.id, messageText);
       setMessages((currentMessages) => mergeMessages(currentMessages, [message]));
       setText("");
+      setAttachedPhotoUri(null);
+      setAttachedPhotoPayload(null);
     } catch (error) {
       setSendError(error instanceof Error ? error.message : "메시지를 보내지 못했어요.");
     } finally {
@@ -180,6 +200,48 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
     });
   };
 
+  const attachPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setStatusMessage("사진 접근 권한이 필요해요.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.72,
+      base64: true,
+      allowsEditing: false,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    if (!asset) {
+      return;
+    }
+
+    setAttachedPhotoUri(asset.uri);
+    setAttachedPhotoPayload(
+      asset.base64 ? `data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}` : asset.uri,
+    );
+    setStatusMessage(null);
+  };
+
+  const submitManner = async (tag: string) => {
+    try {
+      const result = await submitMannerRating(room.id, [tag]);
+      setMannerSaved(true);
+      setStatusMessage(`매너 평가가 저장되었습니다. 현재 온도 ${result.temperature.toFixed(1)}°C`);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "매너 평가를 저장하지 못했어요.",
+      );
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -216,7 +278,11 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messagesContent}
         renderItem={({ item }) => (
-          <ChatMessageItem message={item} mine={item.senderId === "me"} />
+          <ChatMessageItem
+            message={item}
+            mine={item.senderId === currentUserId}
+            onPreviewImage={setPreviewImageUri}
+          />
         )}
       />
       {statusMessage ? <Text style={styles.roomStatusText}>{statusMessage}</Text> : null}
@@ -230,6 +296,10 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
           }
         }}
         onSend={handleSend}
+        onAttachPhoto={() => {
+          void attachPhoto();
+        }}
+        attachedPhotoUri={attachedPhotoUri}
         sending={sending}
       />
       <ChatMoreActionsSheet
@@ -250,7 +320,9 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
         room={room}
         inviteLink={`darori.chat/${room.id}`}
         mannerSaved={mannerSaved}
-        onRate={() => setMannerSaved(true)}
+        onRate={(tag) => {
+          void submitManner(tag);
+        }}
         onClose={() => setActionModal(null)}
       />
       <ConfirmModal
@@ -266,6 +338,10 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
           onBack?.();
         }}
         testID="chat-leave-confirm"
+      />
+      <ChatImagePreviewModal
+        imageUri={previewImageUri}
+        onClose={() => setPreviewImageUri(null)}
       />
     </KeyboardAvoidingView>
   );
@@ -295,11 +371,6 @@ function ChatHeader({
         <Text style={styles.roomTitle} numberOfLines={1}>
           {room.title}
         </Text>
-        {room.subtitle ? (
-          <Text style={styles.roomSubtitle} numberOfLines={2}>
-            {room.subtitle}
-          </Text>
-        ) : null}
       </View>
       <View style={styles.headerActions}>
         <Pressable
@@ -323,7 +394,15 @@ function ChatHeader({
   );
 }
 
-function ChatMessageItem({ message, mine }: { message: ChatMessage; mine: boolean }) {
+function ChatMessageItem({
+  message,
+  mine,
+  onPreviewImage,
+}: {
+  message: ChatMessage;
+  mine: boolean;
+  onPreviewImage: (imageUri: string) => void;
+}) {
   if (message.type === "system") {
     return (
       <View style={styles.systemMessage}>
@@ -335,7 +414,22 @@ function ChatMessageItem({ message, mine }: { message: ChatMessage; mine: boolea
   return (
     <View style={[styles.messageRow, mine ? styles.myMessageRow : styles.otherMessageRow]}>
       <View style={[styles.bubble, mine ? styles.myBubble : styles.otherBubble]}>
-        <Text style={styles.messageText}>{message.text}</Text>
+        {message.imageUrl ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="사진 미리보기"
+            onPress={() => {
+              if (message.imageUrl) {
+                onPreviewImage(message.imageUrl);
+              }
+            }}
+            testID={`chat-message-image-${message.id}`}
+            style={({ pressed }) => [styles.messageImageButton, pressed && styles.pressed]}
+          >
+            <Image source={{ uri: message.imageUrl }} style={styles.messageImage} />
+          </Pressable>
+        ) : null}
+        {message.text ? <Text style={styles.messageText}>{message.text}</Text> : null}
       </View>
     </View>
   );
@@ -345,51 +439,100 @@ function MessageComposer({
   value,
   onChangeText,
   onSend,
+  onAttachPhoto,
+  attachedPhotoUri,
   sending,
 }: {
   value: string;
   onChangeText: (value: string) => void;
   onSend: () => void;
+  onAttachPhoto: () => void;
+  attachedPhotoUri: string | null;
   sending: boolean;
 }) {
   return (
-    <View style={styles.composer}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="추가 액션"
-        style={({ pressed }) => [styles.composerIconButton, pressed && styles.pressed]}
-      >
-        <Plus size={22} color={colors.black} strokeWidth={2.2} />
-      </Pressable>
-      <TextInput
-        accessibilityLabel="메시지 입력"
-        value={value}
-        onChangeText={onChangeText}
-        placeholder="메시지 보내기"
-        placeholderTextColor={colors.gray400}
-        editable={!sending}
-        style={styles.input}
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="메시지 전송"
-        accessibilityState={{ disabled: sending }}
-        disabled={sending}
-        onPress={onSend}
-        testID="chat-send-button"
-        style={({ pressed }) => [
-          styles.composerIconButton,
-          sending && styles.disabledIconButton,
-          pressed && styles.pressed,
-        ]}
-      >
-        <Send
-          size={21}
-          color={sending ? colors.gray400 : colors.mintDark}
-          strokeWidth={2.2}
+    <View>
+      {attachedPhotoUri ? (
+        <View style={styles.attachmentPreview} testID="chat-attachment-preview">
+          <Image source={{ uri: attachedPhotoUri }} style={styles.attachmentPreviewImage} />
+          <Text style={styles.attachmentPreviewText}>사진 1장 첨부됨</Text>
+        </View>
+      ) : null}
+      <View style={styles.composer}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="사진 첨부"
+          onPress={onAttachPhoto}
+          testID="chat-attach-photo-button"
+          style={({ pressed }) => [styles.composerIconButton, pressed && styles.pressed]}
+        >
+          <Plus size={22} color={colors.black} strokeWidth={2.2} />
+        </Pressable>
+        <TextInput
+          accessibilityLabel="메시지 입력"
+          value={value}
+          onChangeText={onChangeText}
+          placeholder="메시지 보내기"
+          placeholderTextColor={colors.gray400}
+          editable={!sending}
+          style={styles.input}
         />
-      </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="메시지 전송"
+          accessibilityState={{ disabled: sending }}
+          disabled={sending}
+          onPress={onSend}
+          testID="chat-send-button"
+          style={({ pressed }) => [
+            styles.composerIconButton,
+            sending && styles.disabledIconButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Send
+            size={21}
+            color={sending ? colors.gray400 : colors.mintDark}
+            strokeWidth={2.2}
+          />
+        </Pressable>
+      </View>
     </View>
+  );
+}
+
+function ChatImagePreviewModal({
+  imageUri,
+  onClose,
+}: {
+  imageUri: string | null;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      visible={imageUri !== null}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.imagePreviewOverlay} testID="chat-image-preview">
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            resizeMode="contain"
+            style={styles.imagePreviewImage}
+          />
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="사진 미리보기 닫기"
+          onPress={onClose}
+          style={({ pressed }) => [styles.imagePreviewCloseButton, pressed && styles.pressed]}
+        >
+          <X size={24} color={colors.surface} strokeWidth={2.4} />
+        </Pressable>
+      </View>
+    </Modal>
   );
 }
 
@@ -432,7 +575,7 @@ function ChatMoreActionsSheet({
         />
         <ChatMoreMenuItem
           icon={IdCard}
-          label="면허증, 자동차 보험 조회하기"
+          label="운전자 인증 확인하기"
           onPress={onOpenCredentials}
         />
         <ChatMoreMenuItem
@@ -446,7 +589,7 @@ function ChatMoreActionsSheet({
         <ChatMoreMenuItem icon={Search} label="검색하기" onPress={onSearch} />
         <ChatMoreMenuItem
           icon={BellOff}
-          label={muted ? "알람켜기" : "알람끄기"}
+          label={muted ? "알림켜기" : "알림끄기"}
           onPress={onToggleMute}
         />
         <ChatMoreMenuItem
@@ -484,14 +627,18 @@ function ChatActionModal({
   room: ChatRoom;
   inviteLink: string;
   mannerSaved: boolean;
-  onRate: () => void;
+  onRate: (tag: string) => void;
   onClose: () => void;
 }) {
   if (!visible || mode === null) {
     return null;
   }
 
-  const driver = room.participants.find((participant) => participant.vehicle);
+  const verifiedDriver = room.participants.find(
+    (participant) =>
+      participant.driverVerification?.licenseVerified &&
+      participant.driverVerification.insuranceVerified,
+  );
 
   return (
     <View style={styles.actionOverlay}>
@@ -505,32 +652,29 @@ function ChatActionModal({
         {mode === "manner" ? (
           <>
             <Text style={styles.actionTitle}>매너 평가하기</Text>
-            <Text style={styles.actionDescription}>함께한 대화는 어땠나요?</Text>
+            <Text style={styles.actionDescription}>좋았던 항목을 선택해주세요.</Text>
             {mannerSaved ? (
               <Text style={styles.actionSuccessText}>매너 평가가 저장되었습니다.</Text>
             ) : (
-              <View style={styles.ratingRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onRate}
-                  style={({ pressed }) => [
-                    styles.ratingButton,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={styles.ratingButtonText}>좋아요</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onRate}
-                  style={({ pressed }) => [
-                    styles.ratingButton,
-                    styles.ratingButtonSecondary,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={styles.ratingButtonText}>아쉬워요</Text>
-                </Pressable>
+              <View style={styles.ratingList}>
+                {[
+                  "시간 약속을 잘 지켰어요",
+                  "친절하게 소통했어요",
+                  "안전하게 운행했어요",
+                  "응답이 빨랐어요",
+                ].map((label) => (
+                  <Pressable
+                    key={label}
+                    accessibilityRole="button"
+                    onPress={() => onRate(label)}
+                    style={({ pressed }) => [
+                      styles.ratingButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.ratingButtonText}>{label}</Text>
+                  </Pressable>
+                ))}
               </View>
             )}
           </>
@@ -538,24 +682,10 @@ function ChatActionModal({
 
         {mode === "credentials" ? (
           <>
-            <Text style={styles.actionTitle}>면허증, 자동차 보험 조회</Text>
-            <Text style={styles.actionSuccessText}>보험 확인 완료</Text>
-            <View style={styles.infoList}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>운전자</Text>
-                <Text style={styles.infoValue}>{driver?.realName ?? "확인된 운전자"}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>차량번호</Text>
-                <Text style={styles.infoValue}>
-                  {driver?.vehicle?.plateNumber ?? "등록된 차량"}
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>확인 상태</Text>
-                <Text style={styles.infoValue}>면허 및 보험 유효</Text>
-              </View>
-            </View>
+            <Text style={styles.actionTitle}>운전자 인증</Text>
+            <Text style={styles.actionSuccessText}>
+              {verifiedDriver ? "인증됨" : "인증 정보 없음"}
+            </Text>
           </>
         ) : null}
 
@@ -786,6 +916,16 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.regular,
   },
+  messageImageButton: {
+    borderRadius: 10,
+  },
+  messageImage: {
+    width: 180,
+    height: 132,
+    marginBottom: 6,
+    borderRadius: 10,
+    backgroundColor: colors.gray100,
+  },
   sendErrorText: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 8,
@@ -803,6 +943,28 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.medium,
+  },
+  attachmentPreview: {
+    paddingHorizontal: spacing.screenX,
+    paddingTop: 8,
+    paddingBottom: 2,
+    backgroundColor: colors.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  attachmentPreviewImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.gray100,
+  },
+  attachmentPreviewText: {
+    color: colors.mintDark,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
   },
   composer: {
     minHeight: 58,
@@ -836,6 +998,27 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     fontWeight: typography.weight.regular,
+  },
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.94)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imagePreviewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  imagePreviewCloseButton: {
+    position: "absolute",
+    top: 48,
+    right: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   moreGroup: {
     paddingVertical: 15,
@@ -918,13 +1101,12 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.bold,
     textAlign: "center",
   },
-  ratingRow: {
-    flexDirection: "row",
+  ratingList: {
     gap: 8,
   },
   ratingButton: {
-    flex: 1,
     minHeight: 44,
+    paddingHorizontal: 14,
     borderRadius: 12,
     backgroundColor: colors.mint,
     alignItems: "center",

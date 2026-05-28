@@ -65,6 +65,7 @@ rsync -az --delete \
   --exclude 'coverage' \
   --exclude 'screenshots' \
   --exclude '*.pem' \
+  --exclude '*.apk' \
   ./ "$SSH_TARGET:$EC2_APP_DIR/"
 
 scp "${SSH_OPTS[@]}" "$EC2_ENV_FILE" "$SSH_TARGET:$EC2_APP_DIR/.env"

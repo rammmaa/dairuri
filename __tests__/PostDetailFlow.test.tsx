@@ -25,7 +25,7 @@ describe("PostDetailScreen", () => {
 
     expect(screen.getByText("인재 풀 등록")).toBeTruthy();
     expect(screen.getByText("우리마이사랑해")).toBeTruthy();
-    expect(screen.getByText("80°C")).toBeTruthy();
+    expect(screen.getByText("80.0°C")).toBeTruthy();
     expect(
       screen.getByText("농촌 일손과 카페 보조 도울 수 있어요"),
     ).toBeTruthy();
@@ -55,10 +55,10 @@ describe("PostDetailScreen", () => {
     expect(screen.getByText("3명")).toBeTruthy();
   });
 
-  it("validates the apply steps and completes through the modal", async () => {
-    const onOpenChat = jest.fn();
+  it("validates the apply steps and returns home after submission", async () => {
+    const onSubmitted = jest.fn();
 
-    render(<PostDetailScreen postId="job-1" onOpenChat={onOpenChat} />);
+    render(<PostDetailScreen postId="job-1" onSubmitted={onSubmitted} />);
 
     fireEvent.press(screen.getByText("연락하기"));
 
@@ -93,13 +93,13 @@ describe("PostDetailScreen", () => {
     fireEvent.press(screen.getByTestId("apply-terms-confirm-button"));
 
     await waitFor(() => {
-      expect(screen.getAllByText("연락 요청 완료").length).toBeGreaterThan(0);
+      expect(screen.getByText("잘 제출되었어요!")).toBeTruthy();
     });
 
     fireEvent.press(screen.getByTestId("apply-complete-button"));
 
-    expect(onOpenChat).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText("연락 요청 완료")).toBeNull();
+    expect(onSubmitted).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("잘 제출되었어요!")).toBeNull();
   });
 
   it("does not let the current user apply to their own post", () => {
@@ -127,6 +127,6 @@ describe("PostDetailScreen", () => {
     fireEvent.press(screen.getByTestId("apply-terms-confirm-button"));
 
     expect(await screen.findByText("이미 신청한 모집글입니다.")).toBeTruthy();
-    expect(screen.queryByText("연락 요청 완료")).toBeNull();
+    expect(screen.queryByText("잘 제출되었어요!")).toBeNull();
   });
 });

@@ -47,7 +47,7 @@ describe("App tabs", () => {
     expect(screen.getByText("지금 함께 이동할 대화를 확인하세요")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("chat-room-brungpot"));
-    expect(screen.getByText("부릉팟")).toBeTruthy();
+    expect(screen.getByText("‘청도감 학원’ 함께 다니실 사람 구해요")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("chat-room-back"));
     expect(screen.getByText("지금 함께 이동할 대화를 확인하세요")).toBeTruthy();

@@ -1,4 +1,4 @@
-import { ChevronRight, EyeOff, LockKeyhole, Scissors } from "lucide-react-native";
+import { ChevronRight, Eye, EyeOff, LockKeyhole, Scissors } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   Image,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   type StyleProp,
   type ViewStyle,
@@ -15,7 +16,6 @@ import type { ReactNode } from "react";
 import { AppButton } from "../../components/AppButton";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { Header } from "../../components/Header";
-import { TextInputField } from "../../components/TextInputField";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
@@ -35,6 +35,10 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [currentPasswordVisible, setCurrentPasswordVisible] = useState(false);
+  const [newPasswordVisible, setNewPasswordVisible] = useState(false);
+  const [newPasswordConfirmVisible, setNewPasswordConfirmVisible] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [accountActionLoading, setAccountActionLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | undefined>(() =>
@@ -43,6 +47,10 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const vehicleImages = profile?.vehicle?.images ?? [];
   const email = splitEmail(profile?.email);
+  const driverVerified = Boolean(
+    profile?.driverVerification?.licenseVerified &&
+      profile.driverVerification.insuranceVerified,
+  );
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -102,7 +110,12 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
   };
 
   const handleChangePassword = async () => {
-    if (passwordSaving || newPassword.length < 8 || !currentPassword.trim()) {
+    if (
+      passwordSaving ||
+      newPassword.length < 8 ||
+      newPassword !== newPasswordConfirm ||
+      !currentPassword.trim()
+    ) {
       return;
     }
 
@@ -113,6 +126,7 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
       setPasswordModalVisible(false);
       setCurrentPassword("");
       setNewPassword("");
+      setNewPasswordConfirm("");
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "비밀번호를 변경하지 못했어요.",
@@ -144,6 +158,9 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
           </Section>
 
           <Section title="차량 정보">
+            <Text style={driverVerified ? styles.verifiedText : styles.unverifiedText}>
+              {driverVerified ? "인증됨" : "인증 필요"}
+            </Text>
             <Text style={styles.subsectionLabel}>차량 번호</Text>
             <ReadonlyField
               value={maskPlateNumber(profile?.vehicle?.plateNumber)}
@@ -229,24 +246,41 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
         <View style={styles.modalOverlay} testID="settings-password-modal">
           <View style={styles.passwordCard}>
             <Text style={styles.passwordTitle}>비밀번호 변경</Text>
-            <TextInputField
+            <SecurePasswordField
               label="현재 비밀번호"
               value={currentPassword}
               onChangeText={setCurrentPassword}
-              secureTextEntry
+              visible={currentPasswordVisible}
+              onToggleVisible={() => setCurrentPasswordVisible((current) => !current)}
               testID="settings-current-password"
             />
-            <TextInputField
+            <SecurePasswordField
               label="새 비밀번호"
               value={newPassword}
               onChangeText={setNewPassword}
-              secureTextEntry
+              visible={newPasswordVisible}
+              onToggleVisible={() => setNewPasswordVisible((current) => !current)}
               error={
                 newPassword.length > 0 && newPassword.length < 8
                   ? "8자 이상 입력해주세요."
                   : undefined
               }
               testID="settings-new-password"
+            />
+            <SecurePasswordField
+              label="새 비밀번호 확인"
+              value={newPasswordConfirm}
+              onChangeText={setNewPasswordConfirm}
+              visible={newPasswordConfirmVisible}
+              onToggleVisible={() =>
+                setNewPasswordConfirmVisible((current) => !current)
+              }
+              error={
+                newPasswordConfirm.length > 0 && newPassword !== newPasswordConfirm
+                  ? "새 비밀번호가 일치하지 않아요."
+                  : undefined
+              }
+              testID="settings-new-password-confirm"
             />
             <View style={styles.passwordActions}>
               <AppButton
@@ -265,6 +299,7 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
                 size="medium"
                 disabled={
                   passwordSaving || !currentPassword.trim() || newPassword.length < 8
+                  || newPassword !== newPasswordConfirm
                 }
                 onPress={handleChangePassword}
                 style={styles.passwordAction}
@@ -274,6 +309,56 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
           </View>
         </View>
       ) : null}
+    </View>
+  );
+}
+
+type SecurePasswordFieldProps = {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  visible: boolean;
+  onToggleVisible: () => void;
+  error?: string;
+  testID: string;
+};
+
+function SecurePasswordField({
+  label,
+  value,
+  onChangeText,
+  visible,
+  onToggleVisible,
+  error,
+  testID,
+}: SecurePasswordFieldProps) {
+  const Icon = visible ? EyeOff : Eye;
+
+  return (
+    <View style={styles.passwordField}>
+      <Text style={styles.passwordFieldLabel}>{label}</Text>
+      <View style={styles.passwordInputBox}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={!visible}
+          placeholder={label}
+          placeholderTextColor={colors.gray300}
+          autoCapitalize="none"
+          testID={testID}
+          style={styles.passwordInput}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={visible ? "비밀번호 숨기기" : "비밀번호 보기"}
+          hitSlop={8}
+          testID={`${testID}-visibility-toggle`}
+          onPress={onToggleVisible}
+        >
+          <Icon size={20} color={colors.gray300} strokeWidth={2.1} />
+        </Pressable>
+      </View>
+      {error ? <Text style={styles.passwordFieldError}>{error}</Text> : null}
     </View>
   );
 }
@@ -417,6 +502,30 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.xs,
     fontWeight: typography.weight.regular,
   },
+  verifiedText: {
+    alignSelf: "flex-start",
+    minHeight: 24,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.mintLight,
+    color: colors.mintDark,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: 24,
+    fontWeight: typography.weight.bold,
+  },
+  unverifiedText: {
+    alignSelf: "flex-start",
+    minHeight: 24,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.gray100,
+    color: colors.gray400,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: 24,
+    fontWeight: typography.weight.bold,
+  },
   vehicleImages: {
     gap: 8,
   },
@@ -508,6 +617,42 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.lg,
     fontWeight: typography.weight.bold,
     textAlign: "center",
+  },
+  passwordField: {
+    gap: 8,
+  },
+  passwordFieldLabel: {
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    fontWeight: typography.weight.bold,
+  },
+  passwordInputBox: {
+    minHeight: 52,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: colors.gray50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    minHeight: 44,
+    paddingVertical: 0,
+    color: colors.black,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.medium,
+  },
+  passwordFieldError: {
+    color: colors.red,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    fontWeight: typography.weight.regular,
   },
   passwordActions: {
     flexDirection: "row",

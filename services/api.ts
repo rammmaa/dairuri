@@ -32,6 +32,10 @@ export const login = (...args: Parameters<typeof mockApi.login>) =>
 export const signup = (...args: Parameters<typeof mockApi.signup>) =>
   activeApi().signup(...args);
 
+export const checkLoginIdAvailability = (
+  ...args: Parameters<typeof mockApi.checkLoginIdAvailability>
+) => activeApi().checkLoginIdAvailability(...args);
+
 export const requestPhoneVerification = (
   ...args: Parameters<typeof mockApi.requestPhoneVerification>
 ) => activeApi().requestPhoneVerification(...args);
@@ -103,6 +107,14 @@ export const getChatMessages = (
 
 export const sendMessage = (...args: Parameters<typeof mockApi.sendMessage>) =>
   activeApi().sendMessage(...args);
+
+export const sendImageMessage = (
+  ...args: Parameters<typeof mockApi.sendImageMessage>
+) => activeApi().sendImageMessage(...args);
+
+export const submitMannerRating = (
+  ...args: Parameters<typeof mockApi.submitMannerRating>
+) => activeApi().submitMannerRating(...args);
 
 export const submitReport = (...args: Parameters<typeof mockApi.submitReport>) =>
   activeApi().submitReport(...args);

@@ -10,6 +10,7 @@ import type {
   ChatMessage,
   ChatRoom,
   LoginInput,
+  MannerRatingResult,
   PhoneVerificationConfirmInput,
   PhoneVerificationConfirmResult,
   PhoneVerificationStartInput,
@@ -58,6 +59,14 @@ export async function signup(input: SignupInput): Promise<AuthSession> {
   });
   await persistAuthSession(session.token, session.user);
   return session;
+}
+
+export async function checkLoginIdAvailability(input: {
+  loginId: string;
+}): Promise<{ available: boolean }> {
+  return apiRequest<{ available: boolean }>(
+    `/auth/login-id-availability?loginId=${encodeURIComponent(input.loginId)}`,
+  );
 }
 
 export async function requestPhoneVerification(
@@ -292,6 +301,38 @@ export async function sendMessage(
         },
       ),
     () => mockApi.sendMessage(roomId, text),
+  );
+}
+
+export async function sendImageMessage(
+  roomId: string,
+  imageUrl: string,
+  text?: string,
+): Promise<ChatMessage> {
+  return withWebTestFallback(
+    () =>
+      apiRequest<ChatMessage>(
+        `/chat/rooms/${encodeURIComponent(roomId)}/messages`,
+        {
+          method: "POST",
+          body: { imageUrl, text },
+        },
+      ),
+    () => mockApi.sendImageMessage(roomId, imageUrl, text),
+  );
+}
+
+export async function submitMannerRating(
+  roomId: string,
+  tags: string[],
+): Promise<MannerRatingResult> {
+  return withWebTestFallback(
+    () =>
+      apiRequest<MannerRatingResult>("/manner-ratings", {
+        method: "POST",
+        body: { roomId, tags },
+      }),
+    () => mockApi.submitMannerRating(roomId, tags),
   );
 }
 

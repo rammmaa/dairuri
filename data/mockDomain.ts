@@ -11,6 +11,7 @@ import type {
 
 export const mockMe: UserProfile = {
   id: "me",
+  loginId: "rammma",
   nickname: "다로리인",
   realName: "하람",
   phone: "010-0000-0000",
@@ -19,6 +20,11 @@ export const mockMe: UserProfile = {
   area: "남성현역",
   temperature: 40.6,
   driverType: "driver",
+  driverVerification: {
+    licenseVerified: true,
+    insuranceVerified: true,
+    verifiedAt: "2026-05-14T00:00:00.000Z",
+  },
   vehicle: {
     plateNumber: "123가 5678",
     modelName: "SUV",
@@ -32,12 +38,18 @@ export const mockMe: UserProfile = {
 
 export const mockAuthor: UserProfile = {
   id: "author-1",
+  loginId: "darori_author",
   nickname: "우리마이사랑해",
   realName: "김진도",
   phone: "010-1234-4567",
   area: "프로필 보기",
   temperature: 80,
   driverType: "driver",
+  driverVerification: {
+    licenseVerified: true,
+    insuranceVerified: true,
+    verifiedAt: "2026-05-14T00:00:00.000Z",
+  },
   vehicle: {
     plateNumber: "357나2703",
     modelName: "벤츠",
@@ -108,7 +120,7 @@ export const mockApplications: Application[] = [
 export const mockChatRooms: ChatRoom[] = [
   {
     id: "room-1",
-    title: "부릉팟",
+    title: "‘청도감 학원’ 함께 다니실 사람 구해요",
     subtitle: "남성현역 > 청도명어학원 / 화, 목 16:00",
     participants: [mockMe, mockAuthor],
     postId: "carpool-1",
@@ -117,7 +129,7 @@ export const mockChatRooms: ChatRoom[] = [
   },
   {
     id: "room-2",
-    title: "농촌 일손 연락방",
+    title: "농촌 일손과 카페 보조 도울 수 있어요",
     subtitle: "다로리 카페 인근 / 인재 풀 등록",
     participants: [mockMe, mockAuthor],
     postId: "job-1",
@@ -149,6 +161,14 @@ export const mockMessages: ChatMessage[] = [
     type: "text",
     text: "네, 4시 20분에 정문 앞으로 갈게요.",
     createdAt: "2026-05-14T09:08:00.000Z",
+  },
+  {
+    id: "message-image-1",
+    roomId: "room-1",
+    senderId: "author-1",
+    type: "image",
+    imageUrl: "https://images.unsplash.com/photo-1549924231-f129b911e442?w=720",
+    createdAt: "2026-05-14T09:09:00.000Z",
   },
 ];
 

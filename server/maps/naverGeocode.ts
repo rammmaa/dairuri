@@ -39,6 +39,14 @@ type NaverLocalSearchResponse = {
   items?: NaverLocalSearchItem[];
 };
 
+type OpenStreetMapSearchItem = {
+  place_id?: number | string;
+  display_name?: string;
+  lat?: string;
+  lon?: string;
+  name?: string;
+};
+
 export class NaverMapsConfigError extends Error {
   constructor(message: string) {
     super(message);
@@ -107,6 +115,17 @@ export function buildNaverLocalSearchUrl(query: string) {
   return url;
 }
 
+export function buildFallbackPlaceSearchUrl(query: string) {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+
+  url.searchParams.set("q", query.trim());
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "5");
+  url.searchParams.set("countrycodes", "kr");
+  url.searchParams.set("accept-language", "ko");
+  return url;
+}
+
 export function mapNaverGeocodeResponse(
   query: string,
   payload: NaverGeocodeResponse,
@@ -169,6 +188,33 @@ export function mapNaverLocalSearchResponse(
     .filter((place): place is PlaceCandidate => place !== null);
 }
 
+export function mapOpenStreetMapSearchResponse(
+  query: string,
+  payload: OpenStreetMapSearchItem[],
+): PlaceCandidate[] {
+  const trimmedQuery = query.trim();
+
+  return payload
+    .map((item, index): PlaceCandidate | null => {
+      const latitude = Number(item.lat);
+      const longitude = Number(item.lon);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return null;
+      }
+
+      return {
+        id: makeFallbackPlaceId(trimmedQuery, index),
+        name: item.name?.trim() || trimmedQuery,
+        address: item.display_name?.trim() || "검색된 지도 위치",
+        latitude,
+        longitude,
+        source: "fallback",
+      };
+    })
+    .filter((place): place is PlaceCandidate => place !== null);
+}
+
 export async function searchNaverPlaces(
   query: string,
   options: {
@@ -199,10 +245,6 @@ export async function searchNaverPlaces(
   const fetchImpl = options.fetchImpl ?? fetch;
   const searches: Array<Promise<PlaceCandidate[]>> = [];
 
-  if (hasGeocodeCredentials && config.ncpKeyId && config.apiKey) {
-    searches.push(searchNaverGeocode(trimmedQuery, fetchImpl, config));
-  }
-
   if (
     hasLocalSearchCredentials &&
     config.searchClientId &&
@@ -211,19 +253,47 @@ export async function searchNaverPlaces(
     searches.push(searchNaverLocal(trimmedQuery, fetchImpl, config));
   }
 
+  if (hasGeocodeCredentials && config.ncpKeyId && config.apiKey) {
+    searches.push(searchNaverGeocode(trimmedQuery, fetchImpl, config));
+  }
+
   const settled = await Promise.allSettled(searches);
   const places = settled.flatMap((result) =>
     result.status === "fulfilled" ? result.value : [],
   );
+  const dedupedPlaces = dedupePlaces(places);
 
-  if (places.length > 0 || settled.some((result) => result.status === "fulfilled")) {
-    return dedupePlaces(places);
+  if (dedupedPlaces.length > 0) {
+    return dedupedPlaces;
+  }
+
+  if (settled.some((result) => result.status === "fulfilled")) {
+    return searchFallbackPlaces(trimmedQuery, fetchImpl);
   }
 
   const firstError = settled.find(
     (result): result is PromiseRejectedResult => result.status === "rejected",
   );
   throw firstError?.reason ?? new Error("Naver place search failed");
+}
+
+async function searchFallbackPlaces(query: string, fetchImpl: typeof fetch) {
+  const response = await fetchImpl(buildFallbackPlaceSearchUrl(query).toString(), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "darori/1.0 place-search",
+    },
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return mapOpenStreetMapSearchResponse(
+    query,
+    (await response.json()) as OpenStreetMapSearchItem[],
+  );
 }
 
 function trimOptional(value: string | undefined) {
@@ -233,6 +303,10 @@ function trimOptional(value: string | undefined) {
 
 function makePlaceId(query: string, index: number) {
   return `naver-${query}-${index}`.replace(/[^a-zA-Z0-9가-힣_-]/g, "-");
+}
+
+function makeFallbackPlaceId(query: string, index: number) {
+  return `fallback-${query}-${index}`.replace(/[^a-zA-Z0-9가-힣_-]/g, "-");
 }
 
 async function searchNaverGeocode(

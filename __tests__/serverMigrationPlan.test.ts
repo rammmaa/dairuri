@@ -71,6 +71,32 @@ describe("server database migration plan", () => {
       ]),
     );
   });
+
+  it("ships a login id migration for production signups", async () => {
+    const migrations = await readSchemaMigrations();
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "007_login_ids",
+          sql: expect.stringContaining("login_id"),
+        }),
+      ]),
+    );
+  });
+
+  it("ships chat image, driver verification, and manner rating migrations", async () => {
+    const migrations = await readSchemaMigrations();
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "008_manner_ratings_and_image_messages",
+          sql: expect.stringContaining("manner_ratings"),
+        }),
+      ]),
+    );
+  });
 });
 
 describe("readSchemaMigrations", () => {

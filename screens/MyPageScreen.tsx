@@ -22,9 +22,14 @@ import {
 
 import { BottomNav } from "../components/BottomNav";
 import { colors } from "../constants/colors";
+import { screenTopInset } from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
+import {
+  formatMannerTemperature,
+  getMannerTemperatureProgress,
+} from "../data/mannerTemperature";
 import { mockMe } from "../data/mockDomain";
 import { getMe, getReceivedApplications } from "../services/api";
 import type { ApplicationDetail, ApplicationStatus, UserProfile } from "../types/domain";
@@ -39,11 +44,12 @@ type ProfileMenuItem = {
   id: string;
   label: string;
   icon: LucideIcon;
+  implemented?: boolean;
 };
 
 const profileMenuItems: ProfileMenuItem[] = [
   { id: "notice", label: "공지사항", icon: Megaphone },
-  { id: "settings", label: "설정", icon: Settings },
+  { id: "settings", label: "설정", icon: Settings, implemented: true },
   { id: "faq", label: "FAQ", icon: CircleHelp },
   { id: "appInfo", label: "어플 정보", icon: Info },
   { id: "terms", label: "약관 및 정책", icon: FileBadge },
@@ -109,8 +115,9 @@ export function MyPageScreen({
     };
   }, []);
 
-  const temperature = profile?.temperature ?? 0;
-  const progress = `${Math.min(100, Math.max(0, temperature))}%` as `${number}%`;
+  const temperature = profile?.temperature ?? 36.5;
+  const temperatureDisplay = formatMannerTemperature(temperature);
+  const progress = getMannerTemperatureProgress(temperature);
   const pendingApplications = receivedApplications.filter(
     (detail) => detail.application.status === "pending",
   );
@@ -138,9 +145,6 @@ export function MyPageScreen({
               <Text style={styles.profileName}>
                 {profile?.nickname ?? "닉네임"}
               </Text>
-              <Text style={styles.profileMeta}>
-                {profile?.realName ?? "김XX"}
-              </Text>
               <Text style={styles.profileStatus}>
                 {profile?.driverType === "driver" ? "N년차 운전자" : "비운전자"}
               </Text>
@@ -160,14 +164,14 @@ export function MyPageScreen({
           <View style={styles.temperatureCard}>
             <View style={styles.temperatureHeader}>
               <Text style={styles.temperatureTitle}>매너온도</Text>
-              <Text style={styles.temperatureValue}>{temperature.toFixed(1)}도</Text>
+              <View style={styles.temperatureValueGroup}>
+                <Text style={styles.temperatureValue}>{temperatureDisplay.value}</Text>
+                <Text style={styles.temperatureLabel}>{temperatureDisplay.label}</Text>
+              </View>
             </View>
             <View style={styles.temperatureTrack}>
               <View style={[styles.temperatureFill, { width: progress }]} />
-              <View style={styles.temperatureMarker} />
             </View>
-            <Text style={styles.temperatureHint}>완료한 세이라이드 N%의</Text>
-            <Text style={styles.temperatureHint}>추천률 00%</Text>
           </View>
 
           <View style={styles.applicationCard}>
@@ -183,9 +187,9 @@ export function MyPageScreen({
               </Text>
             </View>
 
-            {receivedApplications.length ? (
+            {pendingApplications.length ? (
               <View style={styles.applicationList}>
-                {receivedApplications.slice(0, 3).map((detail) => (
+                {pendingApplications.slice(0, 3).map((detail) => (
                   <ApplicationReviewEntry
                     key={detail.application.id}
                     detail={detail}
@@ -280,22 +284,33 @@ type ProfileMenuRowProps = {
 
 function ProfileMenuRow({ item, onPress }: ProfileMenuRowProps) {
   const Icon = item.icon;
+  const disabled = !item.implemented;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={item.label}
-      onPress={onPress}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      testID={`profile-menu-${item.id}`}
+      onPress={disabled ? undefined : onPress}
       style={({ pressed }) => [
         styles.menuRow,
-        pressed && styles.menuRowPressed,
+        disabled && styles.menuRowDisabled,
+        pressed && !disabled && styles.menuRowPressed,
       ]}
     >
       <View style={styles.menuIconFrame}>
-        <Icon size={20} color={colors.gray400} strokeWidth={2.1} />
+        <Icon
+          size={20}
+          color={disabled ? colors.gray300 : colors.gray400}
+          strokeWidth={2.1}
+        />
       </View>
 
-      <Text style={styles.menuLabel}>{item.label}</Text>
+      <Text style={[styles.menuLabel, disabled && styles.menuLabelDisabled]}>
+        {item.label}
+      </Text>
 
       <ChevronRight size={19} color={colors.mutedText} strokeWidth={2.2} />
     </Pressable>
@@ -317,16 +332,21 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 22,
+    paddingTop: 0,
     paddingBottom: spacing.navHeight + 30,
     gap: 10,
   },
   headerTitle: {
+    marginHorizontal: -spacing.screenX,
+    paddingHorizontal: spacing.screenX,
+    paddingTop: 52 + screenTopInset,
+    paddingBottom: 12,
+    backgroundColor: colors.surface,
     color: colors.black,
     fontFamily: typography.family.body,
-    fontSize: typography.size.base,
-    lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
+    fontSize: 24,
+    lineHeight: 31,
+    fontWeight: typography.weight.bold,
   },
   profileCard: {
     width: "100%",
@@ -355,7 +375,7 @@ const styles = StyleSheet.create({
   profileCopy: {
     flex: 1,
     minWidth: 0,
-    gap: 3,
+    gap: 6,
   },
   profileName: {
     color: colors.black,
@@ -363,13 +383,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
     fontWeight: typography.weight.bold,
-  },
-  profileMeta: {
-    color: colors.grayText,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   profileStatus: {
     color: colors.grayText,
@@ -411,9 +424,25 @@ const styles = StyleSheet.create({
   temperatureValue: {
     color: colors.yellowText,
     fontFamily: typography.family.body,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    fontWeight: typography.weight.bold,
+  },
+  temperatureValueGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  temperatureLabel: {
+    minHeight: 24,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: colors.yellowLight,
+    color: colors.yellowText,
+    fontFamily: typography.family.body,
+    fontSize: typography.size.xs,
+    lineHeight: 24,
+    fontWeight: typography.weight.bold,
   },
   temperatureTrack: {
     height: 14,
@@ -426,25 +455,23 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: colors.mint,
   },
-  temperatureMarker: {
-    position: "absolute",
-    left: "54%",
-    width: "24%",
-    height: "100%",
-    borderRadius: 999,
-    backgroundColor: colors.yellow,
-  },
   temperatureHint: {
     color: colors.grayText,
     fontFamily: typography.family.body,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
     fontWeight: typography.weight.regular,
-    textAlign: "right",
+    textAlign: "left",
   },
   menuList: {
     width: "100%",
     gap: 10,
+  },
+  menuRowDisabled: {
+    opacity: 0.48,
+  },
+  menuLabelDisabled: {
+    color: colors.gray400,
   },
   applicationCard: {
     paddingHorizontal: 16,

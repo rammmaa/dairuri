@@ -35,6 +35,12 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
     initialProfile?.avatarUrl,
   );
   const [avatarChanged, setAvatarChanged] = useState(false);
+  const [driverVerified, setDriverVerified] = useState(
+    Boolean(
+      initialProfile?.driverVerification?.licenseVerified &&
+        initialProfile.driverVerification.insuranceVerified,
+    ),
+  );
   const [imageSheetVisible, setImageSheetVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -54,6 +60,12 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
         setNickname(profile.nickname);
         setDriverType(profile.driverType);
         setAvatarUrl(profile.avatarUrl);
+        setDriverVerified(
+          Boolean(
+            profile.driverVerification?.licenseVerified &&
+              profile.driverVerification.insuranceVerified,
+          ),
+        );
         setAvatarChanged(false);
       })
       .catch((error) => {
@@ -140,7 +152,17 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
                 label="운전자"
                 icon="car"
                 selected={driverType === "driver"}
-                onPress={() => setDriverType("driver")}
+                onPress={() => {
+                  if (!driverVerified) {
+                    setErrorMessage(
+                      "운전자로 변경하려면 운전면허와 자동차 보험 인증이 필요해요.",
+                    );
+                    return;
+                  }
+
+                  setErrorMessage(null);
+                  setDriverType("driver");
+                }}
               />
               <DriverOption
                 label="비운전자"

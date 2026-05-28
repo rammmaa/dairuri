@@ -14,6 +14,7 @@ import type {
   ChatRoom,
   DriverType,
   LoginInput,
+  MannerRatingResult,
   Post,
   SignupInput,
   UpdateUserProfileInput,
@@ -28,6 +29,7 @@ import { hashSessionToken } from "./sessionCrypto";
 
 type UserRow = {
   id: string;
+  login_id?: string | null;
   nickname: string;
   real_name: string | null;
   phone: string | null;
@@ -36,6 +38,9 @@ type UserRow = {
   area: string | null;
   temperature: string | number;
   driver_type: "driver" | "non_driver";
+  license_verified?: boolean | null;
+  insurance_verified?: boolean | null;
+  driver_verified_at?: Date | null;
   password_hash?: string | null;
   plate_number?: string | null;
   model_name?: string | null;
@@ -78,6 +83,9 @@ type PostRow = {
   author_area: string | null;
   author_temperature: string | number;
   author_driver_type: "driver" | "non_driver";
+  author_license_verified?: boolean | null;
+  author_insurance_verified?: boolean | null;
+  author_driver_verified_at?: Date | null;
   author_plate_number: string | null;
   author_model_name: string | null;
   author_vehicle_images: string[] | null;
@@ -99,6 +107,9 @@ type ApplicationRow = {
   applicant_area: string | null;
   applicant_temperature: string | number;
   applicant_driver_type: "driver" | "non_driver";
+  applicant_license_verified?: boolean | null;
+  applicant_insurance_verified?: boolean | null;
+  applicant_driver_verified_at?: Date | null;
   applicant_plate_number: string | null;
   applicant_model_name: string | null;
   applicant_vehicle_images: string[] | null;
@@ -218,6 +229,7 @@ export class RepositoryInputError extends Error {
 const AUTH_SESSION_TTL_DAYS = 30;
 
 export async function registerUser(input: SignupInput): Promise<AuthSession> {
+  const loginId = validateLoginId(input.loginId);
   const nickname = requiredRepositoryText(input.nickname, "nickname");
   const phone = requiredRepositoryText(input.phone, "phone");
   const password = validatePassword(input.password);
@@ -225,6 +237,8 @@ export async function registerUser(input: SignupInput): Promise<AuthSession> {
   const email = optionalText(input.email);
   const realName = optionalText(input.realName) ?? nickname;
   const userId = `user-${randomUUID()}`;
+  const driverVerified =
+    input.driverType === "driver" && Boolean(input.vehicle?.plateNumber?.trim());
   assertPhoneVerificationProof(input.phoneVerification);
 
   const pool = getPostgresPool();
@@ -236,16 +250,21 @@ export async function registerUser(input: SignupInput): Promise<AuthSession> {
     await client.query(
       `
         insert into users (
-          id, nickname, real_name, phone, email, driver_type, password_hash
-        ) values ($1, $2, $3, $4, $5, $6, $7)
+          id, login_id, nickname, real_name, phone, email, driver_type,
+          license_verified, insurance_verified, driver_verified_at, password_hash
+        ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, case when $10 then now() else null end, $11)
       `,
       [
         userId,
+        loginId,
         nickname,
         realName,
         phone,
         email,
         driverType,
+        driverVerified,
+        driverVerified,
+        driverVerified,
         hashPassword(password),
       ],
     );
@@ -271,7 +290,7 @@ export async function registerUser(input: SignupInput): Promise<AuthSession> {
   } catch (error) {
     await client.query("rollback");
     if (isUniqueViolation(error)) {
-      throw new RepositoryInputError("phone or email is already registered");
+      throw new RepositoryInputError("phone, email, or login id is already registered");
     }
     throw error;
   } finally {
@@ -292,7 +311,7 @@ export async function authenticateUser(input: LoginInput): Promise<AuthSession> 
   const { rows } = await getPostgresPool().query<UserRow>(
     `
       ${userSelectSql()}
-      where u.phone = $1 or u.email = $1 or u.id = $1
+      where u.phone = $1 or u.email = $1 or u.login_id = $1 or u.id = $1
       limit 1
     `,
     [identifier],
@@ -304,6 +323,21 @@ export async function authenticateUser(input: LoginInput): Promise<AuthSession> 
   }
 
   return createAuthSessionForUser(mapUserRow(row));
+}
+
+export async function checkLoginIdAvailability(loginIdInput: string) {
+  const loginId = validateLoginId(loginIdInput);
+  const { rows } = await getPostgresPool().query<{ exists: boolean }>(
+    `
+      select exists(
+        select 1 from users
+        where login_id = $1 or id = $1
+      ) as exists
+    `,
+    [loginId],
+  );
+
+  return { available: !rows[0]?.exists };
 }
 
 export async function changeUserPassword(
@@ -414,6 +448,115 @@ export async function createReport(
   };
 }
 
+export async function createMannerRating(
+  roomId: string,
+  tags: string[],
+  raterId: string,
+): Promise<MannerRatingResult> {
+  await assertRoomParticipant(roomId, raterId);
+  const normalizedTags = normalizeMannerTags(tags);
+  const targetUserId = await getFirstOtherParticipantId(roomId, raterId);
+  const nextDelta = calculateMannerTemperatureDelta(normalizedTags);
+  const pool = getPostgresPool();
+  const client = await pool.connect();
+
+  try {
+    await client.query("begin");
+    const { rows } = await client.query<{ temperature_delta: string | number }>(
+      `
+        select temperature_delta
+        from manner_ratings
+        where room_id = $1 and rater_id = $2 and target_user_id = $3
+        for update
+      `,
+      [roomId, raterId, targetUserId],
+    );
+    const previousDelta = rows[0] ? Number(rows[0].temperature_delta) : 0;
+
+    await client.query(
+      `
+        insert into manner_ratings (
+          id, room_id, rater_id, target_user_id, tags, temperature_delta, created_at
+        ) values ($1, $2, $3, $4, $5, $6, now())
+        on conflict (room_id, rater_id, target_user_id) do update set
+          tags = excluded.tags,
+          temperature_delta = excluded.temperature_delta,
+          created_at = now()
+      `,
+      [
+        `manner-${randomUUID()}`,
+        roomId,
+        raterId,
+        targetUserId,
+        normalizedTags,
+        nextDelta,
+      ],
+    );
+
+    const { rows: userRows } = await client.query<{ temperature: string | number }>(
+      `
+        update users
+        set temperature = least(100, greatest(0, temperature - $2 + $3)),
+            updated_at = now()
+        where id = $1
+        returning temperature
+      `,
+      [targetUserId, previousDelta, nextDelta],
+    );
+
+    await client.query("commit");
+
+    return {
+      targetUserId,
+      temperature: Number(userRows[0].temperature),
+    };
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function getFirstOtherParticipantId(roomId: string, userId: string) {
+  const { rows } = await getPostgresPool().query<{ user_id: string }>(
+    `
+      select user_id
+      from chat_room_participants
+      where room_id = $1 and user_id <> $2
+      order by created_at asc
+      limit 1
+    `,
+    [roomId, userId],
+  );
+
+  const targetUserId = rows[0]?.user_id;
+  if (!targetUserId) {
+    throw new RepositoryInputError("manner rating target is missing");
+  }
+
+  return targetUserId;
+}
+
+function normalizeMannerTags(tags: string[]) {
+  if (!Array.isArray(tags)) {
+    throw new RepositoryInputError("manner tags are required");
+  }
+
+  const normalizedTags = Array.from(
+    new Set(tags.map((tag) => tag.trim()).filter(Boolean)),
+  );
+  if (normalizedTags.length === 0) {
+    throw new RepositoryInputError("manner tags are required");
+  }
+
+  return normalizedTags.slice(0, 6);
+}
+
+function calculateMannerTemperatureDelta(tags: string[]) {
+  return Math.min(1.2, Math.max(0.3, tags.length * 0.3));
+}
+
 type ChatRoomRow = {
   id: string;
   post_id: string | null;
@@ -426,8 +569,9 @@ type ChatMessageRow = {
   id: string;
   room_id: string;
   sender_id: string | null;
-  type: "system" | "text";
+  type: "system" | "text" | "image";
   text: string | null;
+  image_url: string | null;
   created_at: Date;
 };
 
@@ -720,7 +864,7 @@ export async function listReceivedApplicationDetails(
     `
       ${applicationSelectSql()}
       join posts p on p.id = a.post_id
-      where p.author_id = $1
+      where p.author_id = $1 and a.status = 'pending'
       order by a.created_at desc
     `,
     [reviewerUserId],
@@ -955,7 +1099,7 @@ export async function listChatMessages(
   await assertRoomParticipant(roomId, userId);
   const { rows } = await getPostgresPool().query<ChatMessageRow>(
     `
-      select id, room_id, sender_id, type, text, created_at
+      select id, room_id, sender_id, type, text, image_url, created_at
       from chat_messages
       where room_id = $1
       order by created_at asc
@@ -969,25 +1113,32 @@ export async function listChatMessages(
     senderId: message.sender_id ?? undefined,
     type: message.type,
     text: message.text ?? undefined,
+    imageUrl: message.image_url ?? undefined,
     createdAt: message.created_at.toISOString(),
   }));
 }
 
 export async function createChatMessage(
   roomId: string,
-  text: string,
+  input: { text?: string; imageUrl?: string },
   userId: string,
 ): Promise<ChatMessage> {
   await assertRoomParticipant(roomId, userId);
+  const text = optionalText(input.text);
+  const imageUrl = optionalText(input.imageUrl);
+  const type = imageUrl ? "image" : "text";
+  if (type === "text" && !text) {
+    throw new RepositoryInputError("text is required");
+  }
   const id = `message-${randomUUID()}`;
   const createdAt = new Date().toISOString();
   const { rows } = await getPostgresPool().query<ChatMessageRow>(
     `
-      insert into chat_messages (id, room_id, sender_id, type, text, created_at)
-      values ($1, $2, $3, 'text', $4, $5)
-      returning id, room_id, sender_id, type, text, created_at
+      insert into chat_messages (id, room_id, sender_id, type, text, image_url, created_at)
+      values ($1, $2, $3, $4, $5, $6, $7)
+      returning id, room_id, sender_id, type, text, image_url, created_at
     `,
-    [id, roomId, userId, text, createdAt],
+    [id, roomId, userId, type, text, imageUrl, createdAt],
   );
 
   return {
@@ -996,6 +1147,7 @@ export async function createChatMessage(
     senderId: rows[0].sender_id ?? undefined,
     type: rows[0].type,
     text: rows[0].text ?? undefined,
+    imageUrl: rows[0].image_url ?? undefined,
     createdAt: rows[0].created_at.toISOString(),
   };
 }
@@ -1005,6 +1157,7 @@ export async function getUserById(id: string): Promise<UserProfile | undefined> 
     `
       select
         u.id,
+        u.login_id,
         u.nickname,
         u.real_name,
         u.phone,
@@ -1013,6 +1166,9 @@ export async function getUserById(id: string): Promise<UserProfile | undefined> 
         u.area,
         u.temperature,
         u.driver_type,
+        u.license_verified,
+        u.insurance_verified,
+        u.driver_verified_at,
         v.plate_number,
         v.model_name,
         v.image_urls as vehicle_images
@@ -1036,6 +1192,17 @@ export async function updateUserProfile(
 
   const driverType =
     input.driverType === undefined ? undefined : toDatabaseDriverType(input.driverType);
+  if (input.driverType === "driver") {
+    const currentUser = await getUserById(userId);
+    if (
+      !currentUser?.driverVerification?.licenseVerified ||
+      !currentUser.driverVerification.insuranceVerified
+    ) {
+      throw new RepositoryInputError(
+        "driver verification is required before switching to driver",
+      );
+    }
+  }
   const avatarUrl =
     input.avatarUrl === undefined
       ? undefined
@@ -1114,6 +1281,9 @@ function applicationSelectSql() {
       u.area as applicant_area,
       u.temperature as applicant_temperature,
       u.driver_type as applicant_driver_type,
+      u.license_verified as applicant_license_verified,
+      u.insurance_verified as applicant_insurance_verified,
+      u.driver_verified_at as applicant_driver_verified_at,
       v.plate_number as applicant_plate_number,
       v.model_name as applicant_model_name,
       v.image_urls as applicant_vehicle_images
@@ -1137,6 +1307,11 @@ function mapApplicationRow(row: ApplicationRow): Application {
       area: row.applicant_area ?? undefined,
       temperature: Number(row.applicant_temperature),
       driverType: fromDatabaseDriverType(row.applicant_driver_type),
+      driverVerification: mapDriverVerification({
+        license_verified: row.applicant_license_verified,
+        insurance_verified: row.applicant_insurance_verified,
+        driver_verified_at: row.applicant_driver_verified_at,
+      }),
       vehicle: row.applicant_plate_number
         ? {
             plateNumber: row.applicant_plate_number,
@@ -1237,9 +1412,7 @@ async function assertRoomParticipant(roomId: string, userId: string) {
 }
 
 function buildChatRoomTitle(review: ApplicationReviewRow) {
-  return review.post_type === "job"
-    ? `${review.post_title} 연락방`
-    : `${review.post_title} 매칭방`;
+  return review.post_title;
 }
 
 function buildChatRoomSubtitle(review: ApplicationReviewRow) {
@@ -1257,6 +1430,7 @@ async function listRoomParticipants(roomId: string): Promise<UserProfile[]> {
     `
       select
         u.id,
+        u.login_id,
         u.nickname,
         u.real_name,
         u.phone,
@@ -1265,6 +1439,9 @@ async function listRoomParticipants(roomId: string): Promise<UserProfile[]> {
         u.area,
         u.temperature,
         u.driver_type,
+        u.license_verified,
+        u.insurance_verified,
+        u.driver_verified_at,
         v.plate_number,
         v.model_name,
         v.image_urls as vehicle_images
@@ -1296,6 +1473,9 @@ function postSelectSql() {
       u.area as author_area,
       u.temperature as author_temperature,
       u.driver_type as author_driver_type,
+      u.license_verified as author_license_verified,
+      u.insurance_verified as author_insurance_verified,
+      u.driver_verified_at as author_driver_verified_at,
       v.plate_number as author_plate_number,
       v.model_name as author_model_name,
       v.image_urls as author_vehicle_images
@@ -1363,6 +1543,11 @@ function mapAuthor(row: PostRow): UserProfile {
     area: row.author_area ?? undefined,
     temperature: Number(row.author_temperature),
     driverType: fromDatabaseDriverType(row.author_driver_type),
+    driverVerification: mapDriverVerification({
+      license_verified: row.author_license_verified,
+      insurance_verified: row.author_insurance_verified,
+      driver_verified_at: row.author_driver_verified_at,
+    }),
     vehicle: row.author_plate_number
       ? {
           plateNumber: row.author_plate_number,
@@ -1376,6 +1561,7 @@ function mapAuthor(row: PostRow): UserProfile {
 function mapUserRow(row: UserRow): UserProfile {
   return {
     id: row.id,
+    loginId: row.login_id ?? undefined,
     nickname: row.nickname,
     realName: row.real_name ?? undefined,
     phone: row.phone ?? undefined,
@@ -1384,6 +1570,7 @@ function mapUserRow(row: UserRow): UserProfile {
     area: row.area ?? undefined,
     temperature: Number(row.temperature),
     driverType: fromDatabaseDriverType(row.driver_type),
+    driverVerification: mapDriverVerification(row),
     vehicle: row.plate_number
       ? {
           plateNumber: row.plate_number,
@@ -1391,6 +1578,22 @@ function mapUserRow(row: UserRow): UserProfile {
           images: row.vehicle_images ?? [],
         }
       : undefined,
+  };
+}
+
+function mapDriverVerification(row: {
+  license_verified?: boolean | null;
+  insurance_verified?: boolean | null;
+  driver_verified_at?: Date | null;
+}) {
+  if (!row.license_verified && !row.insurance_verified) {
+    return undefined;
+  }
+
+  return {
+    licenseVerified: Boolean(row.license_verified),
+    insuranceVerified: Boolean(row.insurance_verified),
+    verifiedAt: row.driver_verified_at?.toISOString(),
   };
 }
 
@@ -1542,6 +1745,17 @@ function validatePassword(value: string | undefined) {
   return password;
 }
 
+function validateLoginId(value: string | undefined) {
+  const loginId = requiredRepositoryText(value, "loginId");
+  if (!/^[A-Za-z0-9_]{4,20}$/.test(loginId)) {
+    throw new RepositoryInputError(
+      "loginId must be 4-20 letters, numbers, or underscores",
+    );
+  }
+
+  return loginId;
+}
+
 function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");
@@ -1581,6 +1795,7 @@ function userSelectSql() {
   return `
     select
       u.id,
+      u.login_id,
       u.nickname,
       u.real_name,
       u.phone,
@@ -1589,6 +1804,9 @@ function userSelectSql() {
       u.area,
       u.temperature,
       u.driver_type,
+      u.license_verified,
+      u.insurance_verified,
+      u.driver_verified_at,
       u.password_hash,
       v.plate_number,
       v.model_name,

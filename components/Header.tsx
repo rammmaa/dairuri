@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../constants/colors";
+import { screenTopInset } from "../constants/safeArea";
 import { typography } from "../constants/typography";
 
 export type HeaderProps = {
@@ -48,8 +49,9 @@ export function Header({
 
 const styles = StyleSheet.create({
   root: {
-    minHeight: 52,
+    minHeight: 52 + screenTopInset,
     paddingHorizontal: 16,
+    paddingTop: screenTopInset,
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",

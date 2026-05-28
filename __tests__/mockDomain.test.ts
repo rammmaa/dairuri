@@ -7,7 +7,13 @@ import {
   mockChatRooms,
   mockPosts,
 } from "../data/mockDomain";
-import { applyToPost, getPost, sendMessage } from "../services/mockApi";
+import {
+  applyToPost,
+  getPost,
+  sendImageMessage,
+  sendMessage,
+  submitMannerRating,
+} from "../services/mockApi";
 
 describe("mock domain service", () => {
   it("exposes posts, applications, and chat rooms for remaining Darori flows", () => {
@@ -34,6 +40,27 @@ describe("mock domain service", () => {
       roomId: "room-1",
       senderId: "me",
       type: "text",
+    });
+
+    await expect(
+      sendImageMessage("room-1", "data:image/jpeg;base64,abc", "사진 확인해주세요."),
+    ).resolves.toMatchObject({
+      roomId: "room-1",
+      senderId: "me",
+      type: "image",
+      imageUrl: "data:image/jpeg;base64,abc",
+    });
+  });
+
+  it("stores manner ratings and applies a bounded temperature increase", async () => {
+    const rating = await submitMannerRating("room-1", [
+      "시간 약속을 잘 지켰어요",
+      "친절하게 소통했어요",
+    ]);
+
+    expect(rating).toMatchObject({
+      targetUserId: "author-1",
+      temperature: 80.6,
     });
   });
 });

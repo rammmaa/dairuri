@@ -6,7 +6,8 @@ import { SettingsScreen } from "../screens/profile/SettingsScreen";
 import { SavedPostsScreen } from "../screens/profile/SavedPostsScreen";
 import { MyPostsScreen } from "../screens/profile/MyPostsScreen";
 import { MyPageScreen } from "../screens/MyPageScreen";
-import { resetMockDatabase } from "../services/mockDb";
+import { connectMockDatabase, resetMockDatabase } from "../services/mockDb";
+import { updateMe } from "../services/mockApi";
 
 describe("Profile settings flow", () => {
   beforeEach(() => {
@@ -19,11 +20,17 @@ describe("Profile settings flow", () => {
     render(<MyPageScreen onOpenProfileScreen={onOpenProfileScreen} />);
 
     expect(screen.getByText("매너온도")).toBeTruthy();
-    expect(screen.getByText("40.6도")).toBeTruthy();
+    expect(screen.getByText("40.6°C")).toBeTruthy();
+    expect(screen.getByText("안정")).toBeTruthy();
+    expect(screen.queryByText("완료한 세이라이드 N%의")).toBeNull();
+    expect(screen.queryByText("하람")).toBeNull();
     expect(screen.getByText("공지사항")).toBeTruthy();
     expect(screen.getByText("FAQ")).toBeTruthy();
     expect(screen.getByText("어플 정보")).toBeTruthy();
     expect(screen.getByText("약관 및 정책")).toBeTruthy();
+    expect(screen.getByTestId("profile-menu-notice").props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
 
     fireEvent.press(screen.getByTestId("profile-edit-button"));
     expect(onOpenProfileScreen).toHaveBeenCalledWith("edit");
@@ -44,6 +51,18 @@ describe("Profile settings flow", () => {
     fireEvent.press(screen.getByTestId("application-review-entry-application-1"));
 
     expect(onOpenApplicationReview).toHaveBeenCalledWith("application-1");
+  });
+
+  it("hides accepted applications from the pending received-requests card", async () => {
+    const database = connectMockDatabase();
+    database.applications[0].status = "accepted";
+
+    render(<MyPageScreen />);
+
+    expect(await screen.findByText("받은 지원 요청")).toBeTruthy();
+    expect(screen.getByText("0건 대기")).toBeTruthy();
+    expect(screen.getByText("아직 검토할 지원 요청이 없어요")).toBeTruthy();
+    expect(screen.queryByTestId("application-review-entry-application-1")).toBeNull();
   });
 
   it("opens the profile image sheet and saves profile edits", async () => {
@@ -79,6 +98,7 @@ describe("Profile settings flow", () => {
     expect(screen.getByText("010-0000-0000")).toBeTruthy();
     expect(screen.getByText("test")).toBeTruthy();
     expect(screen.getByText("@example.com")).toBeTruthy();
+    expect(screen.getByText("인증됨")).toBeTruthy();
     expect(screen.getByText("123가 ****")).toBeTruthy();
     expect(screen.getByTestId("settings-vehicle-image-0")).toBeTruthy();
 
@@ -88,6 +108,40 @@ describe("Profile settings flow", () => {
     fireEvent.press(screen.getByText("로그아웃하기"));
 
     expect(onLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it("requires matching visible password fields before password change", () => {
+    render(<SettingsScreen />);
+
+    fireEvent.press(screen.getByText("비밀번호 변경"));
+
+    expect(screen.getByText("새 비밀번호 확인")).toBeTruthy();
+    expect(screen.getByTestId("settings-current-password").props.secureTextEntry).toBe(
+      true,
+    );
+    fireEvent.press(screen.getByTestId("settings-current-password-visibility-toggle"));
+    expect(screen.getByTestId("settings-current-password").props.secureTextEntry).toBe(
+      false,
+    );
+
+    fireEvent.changeText(screen.getByTestId("settings-current-password"), "password123");
+    fireEvent.changeText(screen.getByTestId("settings-new-password"), "newpassword123");
+    fireEvent.changeText(screen.getByTestId("settings-new-password-confirm"), "different");
+
+    expect(screen.getByText("새 비밀번호가 일치하지 않아요.")).toBeTruthy();
+    expect(screen.getByTestId("settings-password-submit").props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+  });
+
+  it("blocks switching to driver before driver verification is complete", async () => {
+    const database = connectMockDatabase();
+    database.users[0].driverType = "nonDriver";
+    database.users[0].driverVerification = undefined;
+
+    await expect(updateMe({ driverType: "driver" })).rejects.toThrow(
+      "운전자로 변경하려면 운전면허와 자동차 보험 인증이 필요해요.",
+    );
   });
 
   it("renders saved posts from mock posts", () => {

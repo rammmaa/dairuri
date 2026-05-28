@@ -120,7 +120,7 @@ describe("Recruitment creation flow", () => {
 
     fireEvent.press(screen.getByText("라이드 모집 시작하기"));
     expect(await screen.findByText("지금 함께 이동할 대화를 확인하세요")).toBeTruthy();
-    expect(screen.getByText("부릉팟")).toBeTruthy();
+    expect(screen.getByText("‘청도감 학원’ 함께 다니실 사람 구해요")).toBeTruthy();
   });
 
   it("branches to the resource profile flow and requires profile fields before the final check", async () => {

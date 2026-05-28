@@ -1,6 +1,7 @@
 import {
   buildNaverGeocodeUrl,
   buildNaverLocalSearchUrl,
+  mapOpenStreetMapSearchResponse,
   mapNaverGeocodeResponse,
   mapNaverLocalSearchResponse,
   readNaverMapsRuntimeConfig,
@@ -88,13 +89,32 @@ describe("Naver geocoding integration", () => {
     ]);
   });
 
-  it("uses local search results when geocoding returns no address candidates", async () => {
+  it("maps fallback place search results into app place candidates", () => {
+    const places = mapOpenStreetMapSearchResponse("청도역", [
+      {
+        place_id: 100,
+        display_name: "청도역, 청도읍, 청도군, 경상북도, 대한민국",
+        lat: "35.647383",
+        lon: "128.736146",
+        name: "청도역",
+      },
+    ]);
+
+    expect(places).toEqual([
+      {
+        id: "fallback-청도역-0",
+        name: "청도역",
+        address: "청도역, 청도읍, 청도군, 경상북도, 대한민국",
+        latitude: 35.647383,
+        longitude: 128.736146,
+        source: "fallback",
+      },
+    ]);
+  });
+
+  it("uses local search results for place-name candidates", async () => {
     const fetchImpl = jest
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ addresses: [] }),
-      })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -108,6 +128,10 @@ describe("Naver geocoding integration", () => {
             },
           ],
         }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ addresses: [] }),
       });
 
     await expect(
@@ -129,11 +153,107 @@ describe("Naver geocoding integration", () => {
     ]);
 
     expect(fetchImpl).toHaveBeenCalledTimes(2);
-    expect(fetchImpl.mock.calls[1][1]).toMatchObject({
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({
       headers: expect.objectContaining({
         "X-Naver-Client-Id": "search-client-id",
         "X-Naver-Client-Secret": "search-secret",
       }),
     });
+  });
+
+  it("prioritizes Naver local search places over broad geocoding matches", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              title: "<b>청도역</b>",
+              roadAddress: "경북 청도군 청도읍 청화로 214",
+              address: "경북 청도군 청도읍 고수리 969-7",
+              mapx: "1287361460",
+              mapy: "356473830",
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          addresses: [
+            {
+              roadAddress: "경상북도 청도군 청도읍",
+              x: "128.7461654",
+              y: "35.6398546",
+            },
+          ],
+        }),
+      });
+
+    await expect(
+      searchNaverPlaces("청도역", {
+        fetchImpl: fetchImpl as never,
+        config: {
+          ncpKeyId: "map-client-id",
+          apiKey: "map-secret",
+          searchClientId: "search-client-id",
+          searchClientSecret: "search-secret",
+        },
+      }),
+    ).resolves.toMatchObject([
+      {
+        name: "청도역",
+        address: "경북 청도군 청도읍 청화로 214",
+      },
+      {
+        name: "청도역",
+        address: "경상북도 청도군 청도읍",
+      },
+    ]);
+
+    expect(fetchImpl.mock.calls[0][0]).toContain("/v1/search/local.json");
+    expect(fetchImpl.mock.calls[1][0]).toContain("/map-geocode/v2/geocode");
+  });
+
+  it("falls back to public place search when Naver address search returns no candidates", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ addresses: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          {
+            place_id: 100,
+            display_name: "청도역, 청도읍, 청도군, 경상북도, 대한민국",
+            lat: "35.647383",
+            lon: "128.736146",
+            name: "청도역",
+          },
+        ],
+      });
+
+    await expect(
+      searchNaverPlaces("청도역", {
+        fetchImpl: fetchImpl as never,
+        config: {
+          ncpKeyId: "map-client-id",
+          apiKey: "map-secret",
+        },
+      }),
+    ).resolves.toMatchObject([
+      {
+        name: "청도역",
+        latitude: 35.647383,
+        longitude: 128.736146,
+        source: "fallback",
+      },
+    ]);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[1][0]).toContain("nominatim.openstreetmap.org");
   });
 });

@@ -16,6 +16,7 @@ describe("server signup phone verification gate", () => {
   it("rejects signup before a verified phone proof is attached", async () => {
     await expect(
       registerUser({
+        loginId: "tester123",
         nickname: "테스터",
         realName: "테스터",
         phone: "010-1234-5678",
