@@ -4,6 +4,10 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppButton } from "../../components/AppButton";
 import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockApplications, mockPosts } from "../../data/mockDomain";
@@ -47,6 +51,7 @@ export function ApplicationReviewScreen({
   onGoHome,
   onOpenChat,
 }: ApplicationReviewScreenProps) {
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
   const initialDetail = useMemo(
     () => getInitialApplicationDetail(applicationId),
     [applicationId],
@@ -197,8 +202,12 @@ export function ApplicationReviewScreen({
       <Header title={headerTitle} showBack onBack={onBack} />
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 112 + bottomInset },
+        ]}
         showsVerticalScrollIndicator={false}
+        testID="application-review-scroll"
       >
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
@@ -239,7 +248,13 @@ export function ApplicationReviewScreen({
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: spacing.bottomButton + bottomInset },
+        ]}
+        testID="application-review-footer"
+      >
         <AppButton
           label="거절"
           variant="danger"
@@ -292,7 +307,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.screenX,
-    paddingBottom: 112,
     gap: 20,
   },
   loadingState: {
@@ -408,7 +422,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: spacing.screenX,
     paddingTop: 12,
-    paddingBottom: spacing.bottomButton,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.surface,

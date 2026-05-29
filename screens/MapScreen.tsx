@@ -18,6 +18,10 @@ import { MapPreview } from "../components/MapPreview";
 import type { MapPreviewCamera } from "../components/mapPreviewData";
 import { RecruitmentCard } from "../components/RecruitmentCard";
 import { colors } from "../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import {
@@ -103,6 +107,7 @@ export function MapScreen({
   const [busArchiveLocationLabel, setBusArchiveLocationLabel] = useState(
     BUS_ARCHIVE_UNKNOWN_LOCATION_LABEL,
   );
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
   const [recruitmentPosts, setRecruitmentPosts] = useState<MapHomePost[]>(() =>
     process.env.NODE_ENV === "test" ? mapHomePosts : [],
   );
@@ -500,7 +505,10 @@ export function MapScreen({
 
         <View
           testID="map-home-bottom-sheet"
-          style={[styles.bottomSheet, { top: sheetTop }]}
+          style={[
+            styles.bottomSheet,
+            { top: sheetTop, bottom: spacing.navHeight + bottomInset },
+          ]}
         >
           {isBusArchiveMode ? (
             <View
@@ -821,7 +829,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: spacing.navHeight,
     backgroundColor: colors.sheet,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

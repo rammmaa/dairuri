@@ -17,6 +17,10 @@ import { AppButton } from "../../components/AppButton";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockMe } from "../../data/mockDomain";
@@ -31,6 +35,7 @@ export type SettingsScreenProps = {
 type ConfirmationTarget = "logout" | "delete" | null;
 
 export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
   const [confirmationTarget, setConfirmationTarget] = useState<ConfirmationTarget>(null);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -143,8 +148,12 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 124 + bottomInset },
+          ]}
           showsVerticalScrollIndicator={false}
+          testID="settings-scroll"
         >
           <Section title="전화번호">
             <ReadonlyField value={profile?.phone ?? "전화번호 없음"} />
@@ -206,7 +215,10 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View
+          style={[styles.footer, { paddingBottom: 24 + bottomInset }]}
+          testID="settings-footer"
+        >
           <AppButton
             label="로그아웃"
             variant="outline"
@@ -454,7 +466,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 20,
-    paddingBottom: 124,
     gap: 20,
   },
   section: {
@@ -581,7 +592,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: spacing.screenX,
     paddingTop: 12,
-    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.surface,

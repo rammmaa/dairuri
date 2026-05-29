@@ -13,6 +13,10 @@ import { AppButton } from "../../components/AppButton";
 import { Header } from "../../components/Header";
 import { TextInputField } from "../../components/TextInputField";
 import { colors } from "../../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockMe } from "../../data/mockDomain";
@@ -27,6 +31,7 @@ export type ProfileEditScreenProps = {
 
 export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
   const initialProfile = process.env.NODE_ENV === "test" ? mockMe : undefined;
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
   const [nickname, setNickname] = useState(initialProfile?.nickname ?? "");
   const [driverType, setDriverType] = useState<DriverType>(
     initialProfile?.driverType ?? "nonDriver",
@@ -115,8 +120,12 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 120 + bottomInset },
+          ]}
           showsVerticalScrollIndicator={false}
+          testID="profile-edit-scroll"
         >
           <View style={styles.avatarBlock}>
             <View style={styles.avatarFrame}>
@@ -176,7 +185,10 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View
+          style={[styles.footer, { paddingBottom: 24 + bottomInset }]}
+          testID="profile-edit-footer"
+        >
           <AppButton
             label={saving ? "저장 중" : "수정"}
             onPress={handleSave}
@@ -248,7 +260,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 24,
-    paddingBottom: 120,
     gap: 24,
   },
   avatarBlock: {
@@ -337,7 +348,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: spacing.screenX,
     paddingTop: 12,
-    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.surface,

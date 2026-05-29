@@ -28,6 +28,10 @@ import type { LucideIcon } from "lucide-react-native";
 import { BottomNav } from "../components/BottomNav";
 import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
@@ -133,6 +137,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
   const [rooms, setRooms] = useState<ChatListRoom[]>(() =>
     process.env.NODE_ENV === "test" ? chatRooms : [],
   );
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -304,7 +309,10 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
 
         <ScrollView
           style={styles.messagesScroll}
-          contentContainerStyle={styles.messagesContent}
+          contentContainerStyle={[
+            styles.messagesContent,
+            { paddingBottom: 80 + bottomInset },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.dateText}>2026년 5월 5일</Text>
@@ -362,10 +370,20 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
         </ScrollView>
 
         {inlineStatusMessage ? (
-          <Text style={styles.inlineStatusText}>{inlineStatusMessage}</Text>
+          <Text
+            style={[
+              styles.inlineStatusText,
+              { paddingBottom: 80 + bottomInset },
+            ]}
+          >
+            {inlineStatusMessage}
+          </Text>
         ) : null}
 
-        <View style={styles.inputBar}>
+        <View
+          style={[styles.inputBar, { bottom: 36 + bottomInset }]}
+          testID="chat-room-input-bar"
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="사진 첨부"
@@ -404,7 +422,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
               onPress={() => setMenuOpen(false)}
               style={styles.menuBackdrop}
             />
-            <View style={styles.menuPanel}>
+            <View style={[styles.menuPanel, { bottom: 22 + bottomInset }]}>
               <View style={styles.menuSectionLarge}>
                 <MenuAction
                   icon={ThumbsUp}

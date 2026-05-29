@@ -1,11 +1,17 @@
 import { StyleSheet } from "react-native";
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { BottomNav } from "../components/BottomNav";
 import { spacing } from "../constants/spacing";
 import { bottomNavItems } from "../data/mapHome";
+import { ChatScreen } from "../screens/ChatScreen";
+import { CreateRecruitmentScreen } from "../screens/CreateRecruitmentScreen";
+import { MapScreen } from "../screens/MapScreen";
+import { ApplicationReviewScreen } from "../screens/post/ApplicationReviewScreen";
 import { PostDetailScreen } from "../screens/post/PostDetailScreen";
+import { ProfileEditScreen } from "../screens/profile/ProfileEditScreen";
+import { SettingsScreen } from "../screens/profile/SettingsScreen";
 
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -73,5 +79,70 @@ describe("runtime safe area insets", () => {
 
     expect(footerStyle.minHeight).toBe(76 + 34);
     expect(footerStyle.paddingBottom).toBe(14 + 34);
+  });
+
+  it("keeps fixed creation and chat controls above the provider bottom inset", () => {
+    render(withInsets(34, <CreateRecruitmentScreen />));
+
+    const recruitmentFooterStyle = StyleSheet.flatten(
+      screen.getByTestId("recruitment-footer").props.style,
+    );
+    const recruitmentContentStyle = StyleSheet.flatten(
+      screen.getByTestId("recruitment-create-scroll").props.contentContainerStyle,
+    );
+
+    expect(recruitmentFooterStyle.bottom).toBe(34 + 34);
+    expect(recruitmentContentStyle.paddingBottom).toBe(126 + 34);
+
+    render(withInsets(34, <ChatScreen />));
+    fireEvent.press(screen.getByTestId("chat-room-brungpot"));
+
+    const inputBarStyle = StyleSheet.flatten(
+      screen.getByTestId("chat-room-input-bar").props.style,
+    );
+
+    expect(inputBarStyle.bottom).toBe(36 + 34);
+  });
+
+  it("adds the provider bottom inset to fixed profile and review footers", () => {
+    render(withInsets(34, <ProfileEditScreen />));
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId("profile-edit-footer").props.style)
+        .paddingBottom,
+    ).toBe(24 + 34);
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId("profile-edit-scroll").props.contentContainerStyle,
+      ).paddingBottom,
+    ).toBe(120 + 34);
+
+    render(withInsets(34, <SettingsScreen />));
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId("settings-footer").props.style)
+        .paddingBottom,
+    ).toBe(24 + 34);
+    expect(
+      StyleSheet.flatten(screen.getByTestId("settings-scroll").props.contentContainerStyle)
+        .paddingBottom,
+    ).toBe(124 + 34);
+
+    render(withInsets(34, <ApplicationReviewScreen applicationId="application-1" />));
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId("application-review-footer").props.style)
+        .paddingBottom,
+    ).toBe(16 + 34);
+  });
+
+  it("keeps the map bottom sheet above the safe-area-aware bottom navigation", () => {
+    render(withInsets(34, <MapScreen />));
+
+    const bottomSheetStyle = StyleSheet.flatten(
+      screen.getByTestId("map-home-bottom-sheet").props.style,
+    );
+
+    expect(bottomSheetStyle.bottom).toBe(spacing.navHeight + 34);
   });
 });

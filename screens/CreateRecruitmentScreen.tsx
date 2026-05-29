@@ -22,6 +22,10 @@ import type { LucideIcon } from "lucide-react-native";
 import { MapPreview } from "../components/MapPreview";
 import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { createPost } from "../services/api";
@@ -115,6 +119,7 @@ export function CreateRecruitmentScreen({
   const progress = selectedType
     ? Math.min((screenIndex + 1) / totalScreens, 1)
     : 0.22;
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
 
   const allAgreementsChecked = useMemo(
     () => agreementItems.every((item) => agreements[item.id]),
@@ -427,9 +432,13 @@ export function CreateRecruitmentScreen({
       <View style={styles.screen} testID="recruitment-create-screen">
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 126 + bottomInset },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          testID="recruitment-create-scroll"
         >
           <View style={styles.header}>
             <Pressable
@@ -463,7 +472,10 @@ export function CreateRecruitmentScreen({
           ) : null}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View
+          style={[styles.footer, { bottom: 34 + bottomInset }]}
+          testID="recruitment-footer"
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={buttonLabel}
@@ -1497,7 +1509,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 28,
-    paddingBottom: 126,
     gap: 30,
   },
   submitError: {
@@ -1931,7 +1942,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 20,
     right: 20,
-    bottom: 34,
   },
   footerButton: {
     height: 64,
