@@ -19,9 +19,12 @@ jest.mock("expo-location", () => ({
 import App from "../App";
 
 describe("App loading state", () => {
-  it("renders visible loading copy while fonts are loading", () => {
+  it("does not render text before fixed app fonts are loaded", () => {
     render(<App />);
 
-    expect(screen.getByText("다로링크를 준비하고 있어요")).toBeTruthy();
+    expect(screen.queryByText("다로링크를 준비하고 있어요")).toBeNull();
+    expect(screen.toJSON()).toMatchObject({
+      type: "View",
+    });
   });
 });

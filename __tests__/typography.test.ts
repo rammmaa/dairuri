@@ -4,7 +4,9 @@ import path from "path";
 import { typography } from "../constants/typography";
 
 const appSourceRoots = ["components", "constants", "screens"];
+const appEntryFiles = ["App.tsx"];
 const forbiddenFontName = ["In", "ter"].join("");
+const forbiddenSystemFontPattern = /\b(Menlo|monospace|Helvetica|System|Noto_Sans)\b/;
 
 function listSourceFiles(root: string): string[] {
   const absoluteRoot = path.join(process.cwd(), root);
@@ -34,6 +36,11 @@ function listSourceFiles(root: string): string[] {
 const forbiddenFontPattern = new RegExp(`\\b${forbiddenFontName}\\b`);
 
 describe("typography tokens", () => {
+  const appSourceFiles = [
+    ...appSourceRoots.flatMap(listSourceFiles),
+    ...appEntryFiles,
+  ];
+
   it("uses Noto Sans for every weight family", () => {
     for (const family of Object.values(typography.family)) {
       expect(family).toContain("NotoSans");
@@ -46,15 +53,23 @@ describe("typography tokens", () => {
   });
 
   it("keeps the forbidden typeface out of every app source file", () => {
-    for (const filePath of appSourceRoots.flatMap(listSourceFiles)) {
+    for (const filePath of appSourceFiles) {
       const source = readFileSync(path.join(process.cwd(), filePath), "utf8");
 
       expect(source).not.toMatch(forbiddenFontPattern);
     }
   });
 
+  it("does not reference platform or system fonts in app source", () => {
+    for (const filePath of appSourceFiles) {
+      const source = readFileSync(path.join(process.cwd(), filePath), "utf8");
+
+      expect(source).not.toMatch(forbiddenSystemFontPattern);
+    }
+  });
+
   it("expresses weight through fontFamily, never fontWeight", () => {
-    for (const filePath of appSourceRoots.flatMap(listSourceFiles)) {
+    for (const filePath of appSourceFiles) {
       const source = readFileSync(path.join(process.cwd(), filePath), "utf8");
 
       expect(source).not.toMatch(/fontWeight\s*:/);
@@ -62,7 +77,7 @@ describe("typography tokens", () => {
   });
 
   it("does not hardcode text font sizes in style objects", () => {
-    for (const filePath of appSourceRoots.flatMap(listSourceFiles)) {
+    for (const filePath of appSourceFiles) {
       const source = readFileSync(path.join(process.cwd(), filePath), "utf8");
 
       expect(source).not.toMatch(/fontSize\s*:\s*\d+/);

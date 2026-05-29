@@ -9,7 +9,6 @@ import {
 } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -992,12 +991,7 @@ const styles = StyleSheet.create({
   clock: {
     marginTop: 16,
     color: colors.black,
-    fontFamily:
-      Platform.select({
-        ios: "Menlo",
-        android: "monospace",
-        default: typography.family.bold,
-      }) ?? typography.family.bold,
+    fontFamily: typography.family.bold,
     fontSize: STATUS_BUS_NUMBER_FONT_SIZE,
     lineHeight: STATUS_BUS_NUMBER_LINE_HEIGHT,
     letterSpacing: 1.5,

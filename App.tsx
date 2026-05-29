@@ -7,7 +7,7 @@ import {
   NotoSans_600SemiBold,
   NotoSans_700Bold,
 } from "@expo-google-fonts/noto-sans";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { AuthScreen } from "./screens/auth/AuthScreen";
 import { MapScreen } from "./screens/MapScreen";
@@ -34,6 +34,8 @@ import {
   hasAuthSession,
   restoreAuthSession,
 } from "./services/authSession";
+import { colors } from "./constants/colors";
+import { typography } from "./constants/typography";
 
 type ProfileSubScreen = "edit" | "settings" | "saved" | "mine" | null;
 const INITIAL_TAB: BottomNavItem["id"] = "map";
@@ -112,33 +114,13 @@ export default function App() {
   };
 
   if (!fontsLoaded) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#FFFFFF",
-        }}
-      >
-        <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
-          다로링크를 준비하고 있어요
-        </Text>
-      </View>
-    );
+    return <View style={styles.loadingScreen} />;
   }
 
   if (!authChecked) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#FFFFFF",
-        }}
-      >
-        <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
+      <View style={styles.loadingScreen}>
+        <Text style={styles.loadingText}>
           로그인 상태를 확인하고 있어요
         </Text>
       </View>
@@ -322,3 +304,18 @@ export default function App() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
+  loadingText: {
+    color: colors.black,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+  },
+});

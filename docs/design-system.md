@@ -31,7 +31,11 @@ global typography scale.
 Rules:
 
 - Do not use `fontWeight`.
+- Do not reference platform or system fonts such as `System`, `Helvetica`,
+  `Menlo`, or `monospace`.
 - Do not add raw `fontSize` numbers in screens.
+- Do not render visible text before Expo has loaded the bundled Noto Sans
+  fonts.
 - Page titles use `ScreenTitle`, which maps to bold `title`.
 - Section headings use `AppText` with a section/title variant instead of custom
   font objects.
