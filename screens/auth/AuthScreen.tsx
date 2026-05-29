@@ -1272,9 +1272,9 @@ const styles = StyleSheet.create({
   },
   authHeaderTitle: {
     color: colors.black,
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.lg,
-    lineHeight: typography.lineHeight.lg,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.xxl,
+    lineHeight: typography.lineHeight.xxl,
   },
   signupContent: {
     paddingHorizontal: 27,
@@ -1376,7 +1376,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     color: colors.black,
-    fontFamily: typography.family.semibold,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xxl,
     lineHeight: typography.lineHeight.xxl,
   },
@@ -1429,7 +1429,7 @@ const styles = StyleSheet.create({
   },
   cameraTitle: {
     color: colors.black,
-    fontFamily: typography.family.medium,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xxl,
     lineHeight: typography.lineHeight.xxl,
   },

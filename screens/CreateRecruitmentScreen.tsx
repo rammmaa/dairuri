@@ -1512,7 +1512,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.black,
-    fontFamily: typography.family.medium,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xxl,
     lineHeight: typography.lineHeight.xxl,
   },

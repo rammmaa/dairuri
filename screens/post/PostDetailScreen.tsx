@@ -438,8 +438,8 @@ const styles = StyleSheet.create({
   title: {
     color: colors.black,
     fontFamily: typography.family.bold,
-    fontSize: typography.size.lg,
-    lineHeight: typography.lineHeight.lg,
+    fontSize: typography.size.xxl,
+    lineHeight: typography.lineHeight.xxl,
   },
   metaList: {
     padding: 16,

@@ -1185,9 +1185,9 @@ const styles = StyleSheet.create({
   },
   roomTitle: {
     color: colors.black,
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.display,
-    lineHeight: typography.lineHeight.display,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.xxl,
+    lineHeight: typography.lineHeight.xxl,
     textAlign: "center",
   },
   roomMeta: {
