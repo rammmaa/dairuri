@@ -88,9 +88,8 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
 });

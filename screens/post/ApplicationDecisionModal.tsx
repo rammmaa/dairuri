@@ -189,15 +189,13 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   description: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   actionColumn: {

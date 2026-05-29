@@ -462,10 +462,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   readonlyField: {
     minHeight: 52,
@@ -480,10 +479,9 @@ const styles = StyleSheet.create({
   readonlyText: {
     flex: 1,
     color: colors.gray300,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   emailRow: {
     flexDirection: "row",
@@ -497,10 +495,9 @@ const styles = StyleSheet.create({
   },
   subsectionLabel: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   verifiedText: {
     alignSelf: "flex-start",
@@ -509,10 +506,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.mintLight,
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: 24,
-    fontWeight: typography.weight.bold,
   },
   unverifiedText: {
     alignSelf: "flex-start",
@@ -521,10 +517,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.gray100,
     color: colors.gray400,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: 24,
-    fontWeight: typography.weight.bold,
   },
   vehicleImages: {
     gap: 8,
@@ -537,17 +532,15 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: colors.mutedText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   errorText: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   menuRow: {
     minHeight: 58,
@@ -571,10 +564,9 @@ const styles = StyleSheet.create({
   menuLabel: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   menuLabelDanger: {
     color: colors.red,
@@ -612,10 +604,9 @@ const styles = StyleSheet.create({
   },
   passwordTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   passwordField: {
@@ -623,10 +614,9 @@ const styles = StyleSheet.create({
   },
   passwordFieldLabel: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   passwordInputBox: {
     minHeight: 52,
@@ -642,17 +632,15 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingVertical: 0,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   passwordFieldError: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   passwordActions: {
     flexDirection: "row",

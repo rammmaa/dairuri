@@ -351,10 +351,9 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   scrollContent: {
     paddingBottom: 104,
@@ -401,10 +400,9 @@ const styles = StyleSheet.create({
   },
   avatarInitial: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   authorTextBox: {
     flex: 1,
@@ -412,17 +410,15 @@ const styles = StyleSheet.create({
   },
   authorName: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   authorSub: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   temperatureBadge: {
     minWidth: 54,
@@ -435,17 +431,15 @@ const styles = StyleSheet.create({
   },
   temperature: {
     color: colors.yellowText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   title: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   metaList: {
     padding: 16,
@@ -460,35 +454,31 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     width: 82,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   metaValue: {
     flex: 1,
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   bodySection: {
     gap: 8,
   },
   sectionTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   body: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 22,
-    fontWeight: typography.weight.regular,
   },
   footer: {
     position: "absolute",
@@ -530,10 +520,9 @@ const styles = StyleSheet.create({
   },
   footerHint: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
 });

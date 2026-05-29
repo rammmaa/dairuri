@@ -291,10 +291,9 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   driverRow: {
     flexDirection: "row",
@@ -318,17 +317,15 @@ const styles = StyleSheet.create({
   },
   driverOptionText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   errorText: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   pressed: {
     opacity: 0.78,

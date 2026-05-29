@@ -303,10 +303,9 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   profileCard: {
@@ -331,7 +330,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   profileRows: {
     flex: 1,
@@ -345,10 +343,9 @@ const styles = StyleSheet.create({
   profileInfoLabel: {
     minWidth: 58,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   profileInfoValue: {
     flex: 1,
@@ -356,7 +353,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   section: {
     gap: 10,
@@ -366,7 +362,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   linkedPostCard: {
     padding: 16,
@@ -381,14 +376,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   linkedPostTitle: {
     color: colors.black,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   introCard: {
     minHeight: 180,
@@ -398,17 +391,15 @@ const styles = StyleSheet.create({
   },
   introText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.regular,
   },
   errorText: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   footer: {
     position: "absolute",

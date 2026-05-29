@@ -765,10 +765,9 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   header: {
     minHeight: 78,
@@ -787,10 +786,9 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     color: colors.black,
-    fontFamily: typography.family.body,
-    fontSize: 30,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.display,
     lineHeight: 34,
-    fontWeight: typography.weight.regular,
   },
   headerText: {
     flex: 1,
@@ -799,18 +797,16 @@ const styles = StyleSheet.create({
   },
   roomTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   roomSubtitle: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   headerActions: {
@@ -851,17 +847,15 @@ const styles = StyleSheet.create({
     minWidth: 0,
     padding: 0,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   roomSearchResult: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   messagesContent: {
     paddingHorizontal: spacing.screenX,
@@ -879,10 +873,9 @@ const styles = StyleSheet.create({
   },
   systemText: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   messageRow: {
@@ -911,10 +904,9 @@ const styles = StyleSheet.create({
   },
   messageText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   messageImageButton: {
     borderRadius: 10,
@@ -930,19 +922,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenX,
     paddingTop: 8,
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   roomStatusText: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 8,
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   attachmentPreview: {
     paddingHorizontal: spacing.screenX,
@@ -961,10 +951,9 @@ const styles = StyleSheet.create({
   },
   attachmentPreviewText: {
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   composer: {
     minHeight: 58,
@@ -994,10 +983,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: colors.gray100,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   imagePreviewOverlay: {
     flex: 1,
@@ -1035,10 +1023,9 @@ const styles = StyleSheet.create({
   },
   moreItemText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   moreSpacer: {
     height: 48,
@@ -1053,10 +1040,9 @@ const styles = StyleSheet.create({
   },
   moreCloseText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.regular,
   },
   dangerText: {
     color: colors.red,
@@ -1079,26 +1065,23 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   actionDescription: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   actionSuccessText: {
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   ratingList: {
@@ -1119,10 +1102,9 @@ const styles = StyleSheet.create({
   },
   ratingButtonText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   infoList: {
     borderRadius: 14,
@@ -1140,18 +1122,16 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   infoValue: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
     textAlign: "right",
   },
   inviteLink: {
@@ -1160,10 +1140,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.mintLight,
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   actionConfirmButton: {
@@ -1175,9 +1154,8 @@ const styles = StyleSheet.create({
   },
   actionConfirmText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
 });
