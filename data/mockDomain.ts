@@ -100,7 +100,6 @@ export const mockPosts: Post[] = [
     days: ["화", "목"],
     startTime: "16:00",
     endTime: "17:00",
-    price: 3000,
     seats: 3,
   },
 ];

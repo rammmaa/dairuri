@@ -314,24 +314,11 @@ function MetaList({ post }: { post: Post }) {
 }
 
 function getMetaItems(post: Post): MetaItem[] {
-  const days = post.days.join(", ");
-
   if (post.type === "job") {
-    if (post.profileMode === "resource") {
-      return getResourceMetaItems(post, days);
-    }
-
-    return [
-      { label: "알바장소", value: post.placeName },
-      { label: "시급", value: formatWage(post.wageType, post.wageAmount) },
-      {
-        label: "근로시간",
-        value: `${days} ${post.startTime} - ${post.endTime}`,
-      },
-      { label: "카테고리", value: post.jobCategory ?? "학원/교육" },
-    ];
+    return [getJobPayMetaItem(post)];
   }
 
+  const days = post.days.join(", ");
   return [
     { label: "출발장소", value: post.departure },
     { label: "도착장소", value: post.destination },
@@ -339,27 +326,15 @@ function getMetaItems(post: Post): MetaItem[] {
       label: "출발시간",
       value: `${days} ${post.startTime}${post.endTime ? ` - ${post.endTime}` : ""}`,
     },
-    { label: "비용", value: post.price ? `${post.price.toLocaleString()}원` : "협의" },
     { label: "모집인원", value: post.seats ? `${post.seats}명` : "협의" },
   ];
 }
 
-function getResourceMetaItems(post: JobPost, days: string): MetaItem[] {
-  return [
-    { label: "알바장소", value: post.placeName },
-    {
-      label: "시급",
-      value: post.preferredPay ?? formatWage(post.wageType, post.wageAmount),
-    },
-    {
-      label: "근로시간",
-      value: `${days} ${post.startTime} - ${post.endTime}`,
-    },
-    {
-      label: "카테고리",
-      value: post.availableTasks?.join(" · ") ?? post.jobCategory ?? "인적 자원",
-    },
-  ];
+function getJobPayMetaItem(post: JobPost): MetaItem {
+  return {
+    label: "시급",
+    value: post.preferredPay ?? formatWage(post.wageType, post.wageAmount),
+  };
 }
 
 function formatWage(type: "hourly" | "monthly", amount: number) {

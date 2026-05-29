@@ -730,7 +730,7 @@ export function normalizeCreatePostInput(
     preferredPay: null,
     availabilityNote: null,
     contactNote: null,
-    price: optionalNumber(input.price, "price"),
+    price: null,
     seats: optionalNumber(input.seats, "seats"),
   };
 }

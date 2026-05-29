@@ -20,7 +20,7 @@ describe("PostDetailScreen", () => {
     });
   });
 
-  it("renders a resource profile detail with seeker-specific metadata", () => {
+  it("renders a resource profile detail with pay-only metadata", () => {
     render(<PostDetailScreen postId="job-1" />);
 
     expect(screen.getByText("알바")).toBeTruthy();
@@ -29,14 +29,14 @@ describe("PostDetailScreen", () => {
     expect(
       screen.getByText("농촌 일손과 카페 보조 도울 수 있어요"),
     ).toBeTruthy();
-    expect(screen.getByText("알바장소")).toBeTruthy();
-    expect(screen.getByText("다로리 카페 인근")).toBeTruthy();
     expect(screen.getByText("시급")).toBeTruthy();
     expect(screen.getByText("시급 12,000원부터")).toBeTruthy();
-    expect(screen.getByText("근로시간")).toBeTruthy();
-    expect(screen.getByText("화, 목 09:00 - 15:00")).toBeTruthy();
-    expect(screen.getByText("카테고리")).toBeTruthy();
-    expect(screen.getByText("카페 보조 · 농번기 일손 · 아이 등하원 동행")).toBeTruthy();
+    expect(screen.queryByText("알바장소")).toBeNull();
+    expect(screen.queryByText("다로리 카페 인근")).toBeNull();
+    expect(screen.queryByText("근로시간")).toBeNull();
+    expect(screen.queryByText("화, 목 09:00 - 15:00")).toBeNull();
+    expect(screen.queryByText("카테고리")).toBeNull();
+    expect(screen.queryByText("카페 보조 · 농번기 일손 · 아이 등하원 동행")).toBeNull();
   });
 
   it("renders a carpool detail with carpool-specific metadata", () => {
@@ -49,8 +49,8 @@ describe("PostDetailScreen", () => {
     expect(screen.getByText("청도명어학원")).toBeTruthy();
     expect(screen.getByText("출발시간")).toBeTruthy();
     expect(screen.getByText("화, 목 16:00 - 17:00")).toBeTruthy();
-    expect(screen.getByText("비용")).toBeTruthy();
-    expect(screen.getByText("3,000원")).toBeTruthy();
+    expect(screen.queryByText("비용")).toBeNull();
+    expect(screen.queryByText("3,000원")).toBeNull();
     expect(screen.getByText("모집인원")).toBeTruthy();
     expect(screen.getByText("3명")).toBeTruthy();
   });
