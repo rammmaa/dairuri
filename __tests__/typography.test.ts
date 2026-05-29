@@ -34,14 +34,25 @@ function listSourceFiles(root: string): string[] {
 const forbiddenFontPattern = new RegExp(`\\b${forbiddenFontName}\\b`);
 
 describe("typography tokens", () => {
-  it("uses Noto Sans for every app text family", () => {
-    expect(typography.family.body).toContain("NotoSans");
-    expect(typography.family.nav).toBe(typography.family.body);
+  it("uses Noto Sans for every weight family", () => {
+    for (const family of Object.values(typography.family)) {
+      expect(family).toContain("NotoSans");
+    }
+  });
 
+  it("keeps the forbidden typeface out of every app source file", () => {
     for (const filePath of appSourceRoots.flatMap(listSourceFiles)) {
       const source = readFileSync(path.join(process.cwd(), filePath), "utf8");
 
       expect(source).not.toMatch(forbiddenFontPattern);
+    }
+  });
+
+  it("expresses weight through fontFamily, never fontWeight", () => {
+    for (const filePath of appSourceRoots.flatMap(listSourceFiles)) {
+      const source = readFileSync(path.join(process.cwd(), filePath), "utf8");
+
+      expect(source).not.toMatch(/fontWeight\s*:/);
     }
   });
 });
