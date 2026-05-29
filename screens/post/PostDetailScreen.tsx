@@ -1,4 +1,4 @@
-import { Heart, Share2 } from "lucide-react-native";
+import { ChevronLeft, Clock3, Heart, Share2, UserRound } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   Image,
@@ -11,8 +11,8 @@ import {
 
 import { AppButton } from "../../components/AppButton";
 import { Header } from "../../components/Header";
-import { ScreenTitle } from "../../components/ScreenTitle";
 import { colors } from "../../constants/colors";
+import { screenTopInset } from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { formatMannerTemperature } from "../../data/mannerTemperature";
@@ -36,6 +36,9 @@ type MetaItem = {
 
 const fallbackImage =
   "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=720";
+const DETAIL_HEADER_HEIGHT = 88 + screenTopInset;
+const HERO_HEIGHT = 300;
+const FOOTER_HEIGHT = 76;
 
 export function PostDetailScreen({
   postId,
@@ -115,18 +118,15 @@ export function PostDetailScreen({
     );
   }
 
-  const isResourceProfile = post.type === "job" && post.profileMode === "resource";
-  const title = post.type === "job" ? "인재 풀 등록" : "정기 라이딩";
+  const title = post.type === "job" ? "알바" : "라이딩";
   const themeColor = post.type === "job" ? colors.yellowText : colors.mintDark;
   const heroImage = post.imageUrls[0] ?? fallbackImage;
   const isOwnPost = currentUser?.id === post.author.id;
   const primaryActionDisabled = !currentUserChecked || !currentUser || isOwnPost;
   const primaryActionLabel = !currentUserChecked
-    ? "확인 중"
-    : isOwnPost
-      ? "내 모집글"
-      : isResourceProfile
-        ? "연락하기"
+      ? "확인 중"
+      : isOwnPost
+        ? "내 모집글"
         : "지원하기";
 
   const toggleLike = () => {
@@ -144,11 +144,11 @@ export function PostDetailScreen({
 
   return (
     <View style={styles.safeArea}>
-      <Header
-        showBack
+      <DetailHeader
         title={title}
+        liked={post.liked}
         onBack={onBack}
-        right={<HeaderActions liked={post.liked} onLike={toggleLike} />}
+        onLike={toggleLike}
       />
 
       <ScrollView
@@ -158,10 +158,21 @@ export function PostDetailScreen({
         <Image source={{ uri: heroImage }} style={styles.heroImage} />
         <View style={styles.content}>
           <AuthorRow post={post} themeColor={themeColor} />
-          <ScreenTitle>{post.title}</ScreenTitle>
-          <MetaList post={post} themeColor={themeColor} />
-          <View style={styles.bodySection}>
-            <Text style={styles.sectionTitle}>상세 설명</Text>
+          <View style={styles.divider} />
+          <View style={styles.postSection}>
+            <Text style={styles.postTitle}>{post.title}</Text>
+            <View style={styles.postFacts}>
+              <View style={styles.factItem}>
+                <Clock3 size={14} color={colors.slate} strokeWidth={2.1} />
+                <Text style={styles.factText}>{formatElapsedLabel(post.createdAt)}</Text>
+              </View>
+              <View style={styles.factItem}>
+                <UserRound size={14} color={colors.slate} strokeWidth={2.1} />
+                <Text style={styles.factText}>{getAvailabilityLabel(post)}</Text>
+              </View>
+            </View>
+            <MetaList post={post} />
+            <View style={styles.divider} />
             <Text style={styles.body}>{post.body}</Text>
           </View>
         </View>
@@ -195,7 +206,7 @@ export function PostDetailScreen({
             label={primaryActionLabel}
             disabled={primaryActionDisabled}
             onPress={() => setApplyVisible(true)}
-            variant={post.type === "job" ? "yellow" : "primary"}
+            variant="primary"
             size="medium"
             style={styles.applyButton}
           />
@@ -213,34 +224,48 @@ export function PostDetailScreen({
   );
 }
 
-function HeaderActions({
+function DetailHeader({
+  title,
   liked,
+  onBack,
   onLike,
 }: {
+  title: string;
   liked: boolean;
+  onBack?: () => void;
   onLike: () => void;
 }) {
   return (
-    <View style={styles.headerActions}>
+    <View style={styles.detailHeader}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="뒤로 가기"
+        hitSlop={10}
+        onPress={onBack}
+        style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+      >
+        <ChevronLeft size={24} color={colors.black} strokeWidth={2.3} />
+      </Pressable>
+      <Text style={styles.headerTitle}>{title}</Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="공유하기"
         hitSlop={10}
-        style={({ pressed }) => [styles.headerIconButton, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
       >
-        <Share2 size={19} color={colors.grayIcon} strokeWidth={2.2} />
+        <Share2 size={24} color={colors.black} strokeWidth={2.1} />
       </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={liked ? "찜 취소" : "찜하기"}
         hitSlop={10}
         onPress={onLike}
-        style={({ pressed }) => [styles.headerIconButton, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.headerHeartButton, pressed && styles.pressed]}
       >
         <Heart
-          size={20}
-          color={liked ? colors.mintDark : colors.grayIcon}
-          fill={liked ? colors.mint : "transparent"}
+          size={24}
+          color={liked ? colors.red : colors.black}
+          fill={liked ? colors.red : "transparent"}
           strokeWidth={2.2}
         />
       </Pressable>
@@ -254,29 +279,33 @@ function AuthorRow({ post, themeColor }: { post: Post; themeColor: string }) {
   return (
     <View style={styles.authorRow}>
       <View style={[styles.avatar, { borderColor: themeColor }]}>
-        <Text style={styles.avatarInitial}>{post.author.nickname.slice(0, 1)}</Text>
+        {post.author.avatarUrl ? (
+          <Image
+            source={{ uri: post.author.avatarUrl }}
+            style={styles.avatarImage}
+            accessibilityLabel={`${post.author.nickname} 프로필 이미지`}
+          />
+        ) : (
+          <Text style={styles.avatarInitial}>{post.author.nickname.slice(0, 1)}</Text>
+        )}
       </View>
       <View style={styles.authorTextBox}>
         <Text style={styles.authorName}>{post.author.nickname}</Text>
-        <Text style={styles.authorSub}>
-          {post.author.area ?? "프로필 보기"} · {post.createdAt.slice(0, 10)}
-        </Text>
+        <Text style={styles.authorSub}>프로필 보기</Text>
       </View>
-      <View style={styles.temperatureBadge}>
-        <Text style={styles.temperature}>{temperature.value}</Text>
-      </View>
+      <Text style={styles.temperature}>{temperature.value}</Text>
     </View>
   );
 }
 
-function MetaList({ post, themeColor }: { post: Post; themeColor: string }) {
+function MetaList({ post }: { post: Post }) {
   const items = getMetaItems(post);
 
   return (
     <View style={styles.metaList}>
       {items.map((item) => (
         <View key={item.label} style={styles.metaRow}>
-          <Text style={[styles.metaLabel, { color: themeColor }]}>{item.label}</Text>
+          <Text style={styles.metaLabel}>{item.label}</Text>
           <Text style={styles.metaValue}>{item.value}</Text>
         </View>
       ))}
@@ -293,13 +322,13 @@ function getMetaItems(post: Post): MetaItem[] {
     }
 
     return [
-      { label: "활동 가능 지역", value: post.placeName },
-      { label: "희망 급여", value: formatWage(post.wageType, post.wageAmount) },
+      { label: "알바장소", value: post.placeName },
+      { label: "시급", value: formatWage(post.wageType, post.wageAmount) },
       {
-        label: "가능 시간",
+        label: "근로시간",
         value: `${days} ${post.startTime} - ${post.endTime}`,
       },
-      { label: "가능 업무", value: post.jobCategory ?? "인적 자원" },
+      { label: "카테고리", value: post.jobCategory ?? "학원/교육" },
     ];
   }
 
@@ -317,17 +346,17 @@ function getMetaItems(post: Post): MetaItem[] {
 
 function getResourceMetaItems(post: JobPost, days: string): MetaItem[] {
   return [
-    { label: "활동 가능 지역", value: post.placeName },
+    { label: "알바장소", value: post.placeName },
     {
-      label: "희망 급여",
+      label: "시급",
       value: post.preferredPay ?? formatWage(post.wageType, post.wageAmount),
     },
     {
-      label: "가능 시간",
+      label: "근로시간",
       value: `${days} ${post.startTime} - ${post.endTime}`,
     },
     {
-      label: "가능 업무",
+      label: "카테고리",
       value: post.availableTasks?.join(" · ") ?? post.jobCategory ?? "인적 자원",
     },
   ];
@@ -337,6 +366,32 @@ function formatWage(type: "hourly" | "monthly", amount: number) {
   const prefix = type === "hourly" ? "" : "월 ";
 
   return `${prefix}${amount.toLocaleString()}원`;
+}
+
+function getAvailabilityLabel(post: Post) {
+  if (post.type === "carpool") {
+    return post.seats ? `${post.seats}명 지원가능` : "지원가능";
+  }
+
+  return "1명 지원가능";
+}
+
+function formatElapsedLabel(createdAt: string) {
+  const createdTime = new Date(createdAt).getTime();
+  const now = Date.now();
+  const diffMinutes = Math.max(1, Math.floor((now - createdTime) / 60_000));
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}분 전`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours}시간 전`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}일 전`;
 }
 
 const styles = StyleSheet.create({
@@ -357,28 +412,56 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.sm,
   },
   scrollContent: {
-    paddingBottom: 104,
+    paddingTop: DETAIL_HEADER_HEIGHT - 25,
+    paddingBottom: FOOTER_HEIGHT + 44,
     backgroundColor: colors.surface,
   },
   heroImage: {
     width: "100%",
-    height: 238,
+    height: HERO_HEIGHT,
     backgroundColor: colors.gray100,
   },
   content: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 18,
-    gap: 18,
+    gap: 22,
   },
-  headerActions: {
+  detailHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    height: DETAIL_HEADER_HEIGHT,
+    paddingTop: screenTopInset + 39,
+    paddingHorizontal: 18,
+    backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
   },
-  headerIconButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  backButton: {
+    width: 32,
+    height: 32,
+    marginRight: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    flex: 1,
+    color: colors.black,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
+  },
+  shareButton: {
+    width: 40,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerHeartButton: {
+    width: 44,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -388,121 +471,132 @@ const styles = StyleSheet.create({
   authorRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 9,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     borderWidth: 1.5,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.lineStrong,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
   avatarInitial: {
     color: colors.black,
     fontFamily: typography.family.bold,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
   },
   authorTextBox: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   authorName: {
     color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
   },
   authorSub: {
-    color: colors.grayText,
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-  },
-  temperatureBadge: {
-    minWidth: 54,
-    minHeight: 28,
-    paddingHorizontal: 9,
-    borderRadius: 14,
-    backgroundColor: colors.yellowLight,
-    alignItems: "center",
-    justifyContent: "center",
+    color: colors.slate,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    textDecorationLine: "underline",
   },
   temperature: {
     color: colors.yellowText,
     fontFamily: typography.family.bold,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
   },
-  metaList: {
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: colors.gray50,
-    gap: 10,
+  divider: {
+    height: 1,
+    backgroundColor: colors.lineStrong,
   },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
+  postSection: {
+    gap: 19,
   },
-  metaLabel: {
-    width: 82,
+  postTitle: {
+    color: colors.black,
     fontFamily: typography.family.bold,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
+    fontSize: typography.size.title,
+    lineHeight: typography.lineHeight.title,
   },
-  metaValue: {
-    flex: 1,
-    color: colors.grayIcon,
+  postFacts: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 18,
+  },
+  factItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  factText: {
+    color: colors.slate,
     fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
   },
-  bodySection: {
-    gap: 8,
+  metaList: {
+    gap: 17,
   },
-  sectionTitle: {
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 21,
+  },
+  metaLabel: {
+    width: 59,
+    color: colors.grayText,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+  },
+  metaValue: {
+    flex: 1,
     color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
   },
   body: {
-    color: colors.grayIcon,
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.sm,
-    lineHeight: 22,
+    color: colors.black,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.title,
   },
   footer: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    minHeight: 76,
-    paddingHorizontal: spacing.screenX,
-    paddingTop: 12,
-    paddingBottom: 16,
+    minHeight: FOOTER_HEIGHT,
+    paddingHorizontal: 22,
+    paddingTop: 15,
+    paddingBottom: 14,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: colors.gray300,
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 22,
   },
   footerHeart: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.surface,
+    width: 39,
+    height: 39,
+    borderRadius: 19.5,
     alignItems: "center",
     justifyContent: "center",
   },
   footerHeartActive: {
-    borderColor: colors.mint,
     backgroundColor: colors.mintLight,
   },
   applyButton: {

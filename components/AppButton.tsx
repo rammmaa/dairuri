@@ -61,7 +61,7 @@ export function AppButton({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 12,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -72,13 +72,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   medium: {
-    minHeight: 44,
+    minHeight: 43,
     paddingHorizontal: 14,
   },
   small: {
     minHeight: 36,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   primary: {
     backgroundColor: colors.mint,
@@ -97,8 +97,8 @@ const styles = StyleSheet.create({
     borderColor: colors.mint,
   },
   disabled: {
-    backgroundColor: colors.gray100,
-    borderColor: colors.gray100,
+    backgroundColor: colors.lineStrong,
+    borderColor: colors.lineStrong,
   },
   pressed: {
     opacity: 0.82,

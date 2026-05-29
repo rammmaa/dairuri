@@ -116,17 +116,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     borderRadius: spacing.chipHeight / 2,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.lineStrong,
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   compact: {
     minHeight: 30,
@@ -134,7 +129,7 @@ const styles = StyleSheet.create({
   },
   selected: {
     borderColor: colors.mint,
-    backgroundColor: colors.mintLight,
+    backgroundColor: colors.surface,
   },
   disabled: {
     opacity: 0.7,

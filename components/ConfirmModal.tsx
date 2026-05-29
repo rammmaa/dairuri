@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 360,
     padding: spacing.screenX,
-    borderRadius: 18,
+    borderRadius: 8,
     backgroundColor: colors.surface,
     alignItems: "center",
     gap: 14,

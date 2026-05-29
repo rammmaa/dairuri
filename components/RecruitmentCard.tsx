@@ -69,11 +69,12 @@ function MetaRow({ color, icon: Icon, label }: MetaRowProps) {
 const styles = StyleSheet.create({
   card: {
     width: "100%",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: spacing.cardRadius,
+    paddingHorizontal: spacing.screenX,
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineStrong,
     backgroundColor: colors.surface,
-    gap: 10,
+    gap: 12,
   },
   pressed: {
     opacity: 0.86,
@@ -89,19 +90,19 @@ const styles = StyleSheet.create({
   },
   titleCopy: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   author: {
-    color: colors.black,
+    color: colors.slate,
     fontFamily: typography.family.regular,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   title: {
     color: colors.black,
     fontFamily: typography.family.bold,
-    fontSize: typography.size.base,
-    lineHeight: typography.lineHeight.base,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
   },
   metaBlock: {
     gap: 3,
@@ -127,15 +128,15 @@ const styles = StyleSheet.create({
   },
   originLabel: {
     color: colors.yellowText,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   originName: {
-    color: colors.grayIcon,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
+    color: colors.black,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   createdAgo: {
     color: colors.mutedText,

@@ -6,6 +6,10 @@ This app keeps the design system intentionally small. Prefer reusing the
 tokens and components below instead of adding near-duplicate colors, font
 sizes, or one-off text styles.
 
+The visual baseline is the post detail screen: white mobile canvas, image-led
+content where relevant, left-aligned headers, thin separators, spacious text
+rows, and a fixed bottom action bar for primary actions.
+
 ## Typography
 
 Font weight is controlled by `fontFamily`, not `fontWeight`.
@@ -61,11 +65,25 @@ Mapping guidance:
 - `#34D399` and `#2DD4BF` collapse into `mint`.
 - `#DC2626` collapses into `red`.
 - `#E5E7EB` collapses into `lineStrong`.
-- `#F4F4F5` collapses into `sheet`.
+- `#F4F4F5` should generally collapse into `surface`; use `sheet` only as an
+  alias for the same white canvas.
 - Avoid adding new hex values unless the color represents a genuinely new
   semantic role.
 
 ## Components
+
+## Layout Language
+
+- Use a white canvas (`colors.surface`) as the default screen background.
+- Prefer full-width sections separated by `colors.lineStrong` over floating
+  cards.
+- When a card is necessary for repeated list items, keep the radius small and
+  let typography/spacing carry hierarchy.
+- Top bars are 88px-class mobile headers: back control on the left, title next
+  to it, actions on the right.
+- Primary CTAs live in a fixed bottom bar when they complete the current screen.
+- Detail pages use the order: header, image/media, profile row, divider, title,
+  metadata rows, divider, body, fixed action bar.
 
 ### `AppText`
 

@@ -52,8 +52,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenX,
     paddingTop: 12,
     paddingBottom: 26,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
     backgroundColor: colors.surface,
     gap: 14,
   },
@@ -69,6 +69,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    textAlign: "center",
+    textAlign: "left",
   },
 });

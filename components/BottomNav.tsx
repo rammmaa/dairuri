@@ -108,18 +108,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: spacing.navHeight,
     paddingHorizontal: 8,
-    paddingTop: 7,
+    paddingTop: 9,
     paddingBottom: 8,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: colors.gray300,
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "stretch",
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 8,
   },
   item: {
     flex: 1,
@@ -143,7 +138,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mintLight,
   },
   postIconFrame: {
-    backgroundColor: colors.mintDark,
+    backgroundColor: colors.mint,
   },
   label: {
     width: "100%",
@@ -154,7 +149,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   selectedLabel: {
-    color: colors.mintDark,
+    color: colors.black,
     fontFamily: typography.family.bold,
   },
   postLabel: {

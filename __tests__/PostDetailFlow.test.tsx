@@ -23,26 +23,26 @@ describe("PostDetailScreen", () => {
   it("renders a resource profile detail with seeker-specific metadata", () => {
     render(<PostDetailScreen postId="job-1" />);
 
-    expect(screen.getByText("인재 풀 등록")).toBeTruthy();
+    expect(screen.getByText("알바")).toBeTruthy();
     expect(screen.getByText("우리마이사랑해")).toBeTruthy();
     expect(screen.getByText("80.0°C")).toBeTruthy();
     expect(
       screen.getByText("농촌 일손과 카페 보조 도울 수 있어요"),
     ).toBeTruthy();
-    expect(screen.getByText("활동 가능 지역")).toBeTruthy();
+    expect(screen.getByText("알바장소")).toBeTruthy();
     expect(screen.getByText("다로리 카페 인근")).toBeTruthy();
-    expect(screen.getByText("희망 급여")).toBeTruthy();
+    expect(screen.getByText("시급")).toBeTruthy();
     expect(screen.getByText("시급 12,000원부터")).toBeTruthy();
-    expect(screen.getByText("가능 시간")).toBeTruthy();
+    expect(screen.getByText("근로시간")).toBeTruthy();
     expect(screen.getByText("화, 목 09:00 - 15:00")).toBeTruthy();
-    expect(screen.getByText("가능 업무")).toBeTruthy();
+    expect(screen.getByText("카테고리")).toBeTruthy();
     expect(screen.getByText("카페 보조 · 농번기 일손 · 아이 등하원 동행")).toBeTruthy();
   });
 
   it("renders a carpool detail with carpool-specific metadata", () => {
     render(<PostDetailScreen postId="carpool-1" />);
 
-    expect(screen.getByText("정기 라이딩")).toBeTruthy();
+    expect(screen.getByText("라이딩")).toBeTruthy();
     expect(screen.getByText("출발장소")).toBeTruthy();
     expect(screen.getByText("다로리 카페")).toBeTruthy();
     expect(screen.getByText("도착장소")).toBeTruthy();
@@ -60,7 +60,7 @@ describe("PostDetailScreen", () => {
 
     render(<PostDetailScreen postId="job-1" onSubmitted={onSubmitted} />);
 
-    fireEvent.press(screen.getByText("연락하기"));
+    fireEvent.press(screen.getByText("지원하기"));
 
     expect(screen.getByText("연락 내용을 작성해주세요")).toBeTruthy();
     expect(screen.getByTestId("apply-next-button").props.accessibilityState.disabled).toBe(
@@ -117,7 +117,7 @@ describe("PostDetailScreen", () => {
 
     render(<PostDetailScreen postId="job-1" />);
 
-    fireEvent.press(screen.getByText("연락하기"));
+    fireEvent.press(screen.getByText("지원하기"));
     fireEvent.changeText(
       screen.getByTestId("apply-intro-input"),
       "꼼꼼하게 시간 맞춰 참여할 수 있습니다.",
