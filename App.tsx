@@ -8,6 +8,10 @@ import {
   NotoSans_700Bold,
 } from "@expo-google-fonts/noto-sans";
 import { StyleSheet, Text, View } from "react-native";
+import {
+  initialWindowMetrics,
+  SafeAreaProvider,
+} from "react-native-safe-area-context";
 
 import { AuthScreen } from "./screens/auth/AuthScreen";
 import { MapScreen } from "./screens/MapScreen";
@@ -39,8 +43,22 @@ import { typography } from "./constants/typography";
 
 type ProfileSubScreen = "edit" | "settings" | "saved" | "mine" | null;
 const INITIAL_TAB: BottomNavItem["id"] = "map";
+const fallbackInitialWindowMetrics = {
+  frame: { x: 0, y: 0, width: 0, height: 0 },
+  insets: { top: 0, right: 0, bottom: 0, left: 0 },
+};
 
 export default function App() {
+  return (
+    <SafeAreaProvider
+      initialMetrics={initialWindowMetrics ?? fallbackInitialWindowMetrics}
+    >
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
   const [fontsLoaded] = useFonts({
     NotoSans_400Regular,
     NotoSans_500Medium,

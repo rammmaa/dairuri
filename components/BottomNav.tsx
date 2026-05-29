@@ -16,7 +16,10 @@ import {
 } from "react-native";
 
 import { colors } from "../constants/colors";
-import { screenBottomInset } from "../constants/safeArea";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import type { BottomNavItem } from "../data/mapHome";
@@ -44,11 +47,20 @@ export function BottomNav({
   style,
   testID,
 }: BottomNavProps) {
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
+
   return (
     <View
       accessibilityRole="tablist"
       testID={testID}
-      style={[styles.container, style]}
+      style={[
+        styles.container,
+        {
+          height: spacing.navHeight + bottomInset,
+          paddingBottom: 8 + bottomInset,
+        },
+        style,
+      ]}
     >
       {items.map((item) => {
         const Icon = navIcons[item.id];
@@ -107,10 +119,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: spacing.navHeight + screenBottomInset,
     paddingHorizontal: 8,
     paddingTop: 9,
-    paddingBottom: 8 + screenBottomInset,
     borderTopWidth: 1,
     borderTopColor: colors.gray300,
     backgroundColor: colors.surface,

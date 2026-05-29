@@ -23,7 +23,10 @@ import {
 import { BottomNav } from "../components/BottomNav";
 import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
-import { screenTopInset } from "../constants/safeArea";
+import {
+  getSafeAreaTopInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
@@ -122,6 +125,7 @@ export function MyPageScreen({
   const pendingApplications = receivedApplications.filter(
     (detail) => detail.application.status === "pending",
   );
+  const topInset = getSafeAreaTopInset(useRuntimeSafeAreaInsets());
 
   return (
     <View style={styles.safeArea}>
@@ -131,7 +135,9 @@ export function MyPageScreen({
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <ScreenTitle style={styles.headerTitle}>프로필</ScreenTitle>
+          <ScreenTitle style={[styles.headerTitle, { paddingTop: 52 + topInset }]}>
+            프로필
+          </ScreenTitle>
 
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
@@ -340,7 +346,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     marginHorizontal: -spacing.screenX,
     paddingHorizontal: spacing.screenX,
-    paddingTop: 52 + screenTopInset,
     paddingBottom: 12,
     backgroundColor: colors.surface,
   },

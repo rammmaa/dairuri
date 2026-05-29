@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react-native";
+import { View } from "react-native";
 
 jest.mock("expo-font", () => ({
   useFonts: () => [false],
@@ -23,8 +24,6 @@ describe("App loading state", () => {
     render(<App />);
 
     expect(screen.queryByText("다로링크를 준비하고 있어요")).toBeNull();
-    expect(screen.toJSON()).toMatchObject({
-      type: "View",
-    });
+    expect(screen.UNSAFE_getByType(View)).toBeTruthy();
   });
 });

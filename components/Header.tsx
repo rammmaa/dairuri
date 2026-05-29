@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../constants/colors";
-import { screenTopInset } from "../constants/safeArea";
+import {
+  getSafeAreaTopInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { typography } from "../constants/typography";
 
 export type HeaderProps = {
@@ -23,8 +26,19 @@ export function Header({
   right,
   border = true,
 }: HeaderProps) {
+  const topInset = getSafeAreaTopInset(useRuntimeSafeAreaInsets());
+
   return (
-    <View style={[styles.root, border && styles.border]}>
+    <View
+      style={[
+        styles.root,
+        {
+          minHeight: 88 + topInset,
+          paddingTop: topInset + 36,
+        },
+        border && styles.border,
+      ]}
+    >
       {showBack ? (
         <Pressable
           accessibilityRole="button"
@@ -49,9 +63,7 @@ export function Header({
 
 const styles = StyleSheet.create({
   root: {
-    minHeight: 88 + screenTopInset,
     paddingHorizontal: 18,
-    paddingTop: screenTopInset + 36,
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",

@@ -12,7 +12,11 @@ import {
 import { AppButton } from "../../components/AppButton";
 import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
-import { screenBottomInset, screenTopInset } from "../../constants/safeArea";
+import {
+  getSafeAreaBottomInset,
+  getSafeAreaTopInset,
+  useRuntimeSafeAreaInsets,
+} from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { formatMannerTemperature } from "../../data/mannerTemperature";
@@ -36,7 +40,6 @@ type MetaItem = {
 
 const fallbackImage =
   "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=720";
-const DETAIL_HEADER_HEIGHT = 88 + screenTopInset;
 const HERO_HEIGHT = 300;
 const FOOTER_HEIGHT = 76;
 
@@ -61,6 +64,10 @@ export function PostDetailScreen({
     process.env.NODE_ENV === "test" || Boolean(getSessionUser()),
   );
   const [applyVisible, setApplyVisible] = useState(false);
+  const insets = useRuntimeSafeAreaInsets();
+  const topInset = getSafeAreaTopInset(insets);
+  const bottomInset = getSafeAreaBottomInset(insets);
+  const detailHeaderHeight = 88 + topInset;
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -149,10 +156,17 @@ export function PostDetailScreen({
         liked={post.liked}
         onBack={onBack}
         onLike={toggleLike}
+        topInset={topInset}
       />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: detailHeaderHeight - 25,
+            paddingBottom: FOOTER_HEIGHT + bottomInset + 44,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Image source={{ uri: heroImage }} style={styles.heroImage} />
@@ -178,7 +192,16 @@ export function PostDetailScreen({
         </View>
       </ScrollView>
 
-      <View style={styles.footer} testID="post-detail-footer">
+      <View
+        style={[
+          styles.footer,
+          {
+            minHeight: FOOTER_HEIGHT + bottomInset,
+            paddingBottom: 14 + bottomInset,
+          },
+        ]}
+        testID="post-detail-footer"
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={post.liked ? "찜 취소" : "찜하기"}
@@ -229,14 +252,24 @@ function DetailHeader({
   liked,
   onBack,
   onLike,
+  topInset,
 }: {
   title: string;
   liked: boolean;
   onBack?: () => void;
   onLike: () => void;
+  topInset: number;
 }) {
   return (
-    <View style={styles.detailHeader}>
+    <View
+      style={[
+        styles.detailHeader,
+        {
+          height: 88 + topInset,
+          paddingTop: topInset + 39,
+        },
+      ]}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="뒤로 가기"
@@ -387,8 +420,6 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.sm,
   },
   scrollContent: {
-    paddingTop: DETAIL_HEADER_HEIGHT - 25,
-    paddingBottom: FOOTER_HEIGHT + screenBottomInset + 44,
     backgroundColor: colors.surface,
   },
   heroImage: {
@@ -407,8 +438,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    height: DETAIL_HEADER_HEIGHT,
-    paddingTop: screenTopInset + 39,
     paddingHorizontal: 18,
     backgroundColor: colors.surface,
     flexDirection: "row",
@@ -553,10 +582,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    minHeight: FOOTER_HEIGHT + screenBottomInset,
     paddingHorizontal: 22,
     paddingTop: 15,
-    paddingBottom: 14 + screenBottomInset,
     borderTopWidth: 1,
     borderTopColor: colors.gray300,
     backgroundColor: colors.surface,

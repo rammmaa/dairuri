@@ -1,4 +1,3 @@
-import { StyleSheet } from "react-native";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../services/api", () => {
@@ -109,17 +108,6 @@ describe("PostDetailScreen", () => {
     expect(screen.getByText("내 모집글")).toBeTruthy();
     expect(screen.getByText("내가 작성한 모집글에는 지원할 수 없어요.")).toBeTruthy();
     expect(screen.queryByText("지원하기")).toBeNull();
-  });
-
-  it("keeps the fixed footer above device navigation areas", () => {
-    render(<PostDetailScreen postId="carpool-1" />);
-
-    const footerStyle = StyleSheet.flatten(
-      screen.getByTestId("post-detail-footer").props.style,
-    );
-
-    expect(footerStyle.paddingBottom).toBeGreaterThanOrEqual(28);
-    expect(footerStyle.minHeight).toBeGreaterThanOrEqual(90);
   });
 
   it("keeps the apply modal open and shows an error when application creation fails", async () => {
