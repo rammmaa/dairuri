@@ -1,6 +1,7 @@
 export const colors = {
   bg: "#FFFFFF",
   surface: "#FFFFFF",
+  homeListBackground: "#F1F2F4",
   gray50: "#FFFFFF",
   gray100: "#F3F4F6",
   gray300: "#D1D5DB",

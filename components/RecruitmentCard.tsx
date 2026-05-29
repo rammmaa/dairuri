@@ -9,14 +9,16 @@ import type { MapHomePost } from "../data/mapHome";
 export type RecruitmentCardProps = {
   post: MapHomePost;
   onPress?: (post: MapHomePost) => void;
+  testID?: string;
 };
 
-export function RecruitmentCard({ post, onPress }: RecruitmentCardProps) {
+export function RecruitmentCard({ post, onPress, testID }: RecruitmentCardProps) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${post.title} 상세보기`}
       onPress={onPress ? () => onPress(post) : undefined}
+      testID={testID}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.mainBlock}>
@@ -69,12 +71,11 @@ function MetaRow({ color, icon: Icon, label }: MetaRowProps) {
 const styles = StyleSheet.create({
   card: {
     width: "100%",
-    paddingHorizontal: spacing.screenX,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lineStrong,
+    paddingHorizontal: spacing.homeCardPaddingX,
+    paddingVertical: spacing.homeCardPaddingY,
+    borderRadius: spacing.homeCardRadius,
     backgroundColor: colors.surface,
-    gap: 12,
+    gap: spacing.homeCardContentGap,
   },
   pressed: {
     opacity: 0.86,

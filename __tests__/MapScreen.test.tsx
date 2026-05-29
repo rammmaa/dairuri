@@ -8,6 +8,8 @@ import {
 import * as Location from "expo-location";
 import { StyleSheet } from "react-native";
 
+import { colors } from "../constants/colors";
+import { spacing } from "../constants/spacing";
 import { MapScreen } from "../screens/MapScreen";
 
 jest.mock("expo-location", () => ({
@@ -71,6 +73,36 @@ describe("MapScreen", () => {
     for (const label of ["지도", "버스", "모집글", "채팅", "프로필"]) {
       expect(bottomNav.getByText(label)).toBeTruthy();
     }
+  });
+
+  it("uses the gray rounded-card home list design", () => {
+    render(<MapScreen />);
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId("map-home-bottom-sheet").props.style)
+        .backgroundColor,
+    ).toBe(colors.homeListBackground);
+    expect(
+      StyleSheet.flatten(screen.getByTestId("map-home-sheet-scroll").props.style)
+        .backgroundColor,
+    ).toBe(colors.homeListBackground);
+    expect(
+      StyleSheet.flatten(screen.getByTestId("map-home-card-list").props.style).gap,
+    ).toBe(spacing.homeListGap);
+
+    const firstCardStyleProp = screen.getByTestId("recruitment-card-post-1").props
+      .style;
+    const firstCardStyle = StyleSheet.flatten(
+      typeof firstCardStyleProp === "function"
+        ? firstCardStyleProp({ pressed: false })
+        : firstCardStyleProp,
+    );
+
+    expect(firstCardStyle.backgroundColor).toBe(colors.surface);
+    expect(firstCardStyle.borderRadius).toBe(spacing.homeCardRadius);
+    expect(firstCardStyle.paddingHorizontal).toBe(spacing.homeCardPaddingX);
+    expect(firstCardStyle.paddingVertical).toBe(spacing.homeCardPaddingY);
+    expect(firstCardStyle.borderBottomWidth).toBeUndefined();
   });
 
   it("uses the current-location icon for the top category chips", () => {

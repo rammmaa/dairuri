@@ -619,6 +619,7 @@ export function MapScreen({
                 style={styles.sheetScroll}
                 contentContainerStyle={styles.sheetContent}
                 showsVerticalScrollIndicator={false}
+                testID="map-home-sheet-scroll"
               >
                 <View style={styles.listHeader}>
                   <View style={styles.countRow}>
@@ -643,12 +644,13 @@ export function MapScreen({
                   />
                 </View>
 
-                <View style={styles.cardList}>
+                <View style={styles.cardList} testID="map-home-card-list">
                   {visiblePosts.length > 0 ? visiblePosts.map((post) => (
                     <RecruitmentCard
                       key={post.id}
                       post={post}
                       onPress={() => onOpenPost?.(post.detailPostId)}
+                      testID={`recruitment-card-${post.id}`}
                     />
                   )) : (
                     <View style={styles.emptyState}>
@@ -829,7 +831,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    backgroundColor: colors.sheet,
+    backgroundColor: colors.homeListBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: colors.black,
@@ -870,11 +872,12 @@ const styles = StyleSheet.create({
   },
   sheetScroll: {
     flex: 1,
+    backgroundColor: colors.homeListBackground,
   },
   sheetContent: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 14,
-    paddingBottom: 22,
+    paddingTop: spacing.homeListPaddingTop,
+    paddingBottom: spacing.homeListPaddingBottom,
   },
   busArchiveSheet: {
     flex: 1,
@@ -1001,7 +1004,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
   },
   cardList: {
-    gap: 8,
+    gap: spacing.homeListGap,
   },
   emptyState: {
     minHeight: 120,
