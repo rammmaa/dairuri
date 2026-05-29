@@ -241,7 +241,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             </Pressable>
 
             <View style={styles.headerTitleBlock}>
-              <ScreenTitle style={styles.roomTitle}>
+              <ScreenTitle style={styles.roomTitle} numberOfLines={1}>
                 {selectedRoom?.title ?? "채팅"}
               </ScreenTitle>
             </View>

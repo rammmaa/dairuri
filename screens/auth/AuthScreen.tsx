@@ -855,7 +855,9 @@ function AuthHeader({ title, onBack }: AuthHeaderProps) {
       <Pressable accessibilityRole="button" onPress={onBack}>
         <ChevronLeft size={20} color={colors.black} strokeWidth={2.3} />
       </Pressable>
-      <ScreenTitle>{title}</ScreenTitle>
+      <ScreenTitle style={styles.authHeaderTitle} numberOfLines={1}>
+        {title}
+      </ScreenTitle>
     </View>
   );
 }
@@ -1270,6 +1272,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+  },
+  authHeaderTitle: {
+    flex: 1,
+    minWidth: 0,
   },
   signupContent: {
     paddingHorizontal: 27,

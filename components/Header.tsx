@@ -53,7 +53,13 @@ export function Header({
       ) : (
         <View style={styles.backSpacer} />
       )}
-      <Text style={styles.title} numberOfLines={1}>
+      <Text
+        style={styles.title}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.82}
+        maxFontSizeMultiplier={1.08}
+      >
         {title}
       </Text>
       <View style={styles.right}>{right}</View>
@@ -93,6 +99,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
+    minWidth: 0,
     color: colors.black,
     fontFamily: typography.family.regular,
     fontSize: typography.size.lg,

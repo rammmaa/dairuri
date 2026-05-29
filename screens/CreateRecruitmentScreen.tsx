@@ -591,8 +591,24 @@ function TypeCard({
         />
       </View>
       <View style={styles.typeCopy}>
-        <Text style={styles.typeTitle}>{title}</Text>
-        <Text style={styles.typeDescription}>{description}</Text>
+        <Text
+          style={styles.typeTitle}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.82}
+          maxFontSizeMultiplier={1.08}
+        >
+          {title}
+        </Text>
+        <Text
+          style={styles.typeDescription}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.86}
+          maxFontSizeMultiplier={1.08}
+        >
+          {description}
+        </Text>
       </View>
     </Pressable>
   );
@@ -1324,6 +1340,10 @@ function DaySelector({ selectedDays, accent, onToggleDay }: DaySelectorProps) {
                   styles.dayLabel,
                   selected && styles.dayLabelSelected,
                 ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+                maxFontSizeMultiplier={1}
               >
                 {day}
               </Text>
@@ -1643,6 +1663,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   typeCopy: {
+    minWidth: 0,
     gap: 6,
   },
   typeTitle: {
@@ -1745,12 +1766,14 @@ const styles = StyleSheet.create({
   dayRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 5,
+    justifyContent: "center",
+    gap: 4,
   },
   dayCircle: {
-    width: 44,
-    height: 44,
+    flex: 1,
+    minWidth: 0,
+    maxWidth: 44,
+    aspectRatio: 1,
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
