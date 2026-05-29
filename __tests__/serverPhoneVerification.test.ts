@@ -68,8 +68,8 @@ describe("server phone verification", () => {
       expect.stringContaining("insert into phone_verifications"),
       [
         "phone-verification-1",
-        "010-1234-5678",
-        createPhoneVerificationCodeHash("010-1234-5678", "654321"),
+        "01012345678",
+        createPhoneVerificationCodeHash("01012345678", "654321"),
         "2026-05-27T00:10:00.000Z",
       ],
     );
@@ -81,7 +81,7 @@ describe("server phone verification", () => {
           apiSecret: "test-solapi-secret",
           from: "010-1234-5678",
         },
-        to: "010-1234-5678",
+        to: "01012345678",
         text: "[다이루리] 인증번호는 654321입니다.",
       }),
     );
@@ -135,11 +135,8 @@ describe("server phone verification", () => {
       .mockResolvedValueOnce({
         rows: [
           {
-            phone: "010-1234-5678",
-            code_hash: createPhoneVerificationCodeHash(
-              "010-1234-5678",
-              "123456",
-            ),
+            phone: "01012345678",
+            code_hash: createPhoneVerificationCodeHash("01012345678", "123456"),
             attempts: 0,
             expires_at: new Date("2026-05-27T00:10:00.000Z"),
             verified_at: null,
@@ -160,7 +157,7 @@ describe("server phone verification", () => {
       ),
     ).resolves.toEqual({
       verificationId: "phone-verification-1",
-      phone: "010-1234-5678",
+      phone: "01012345678",
       verifiedAt: "2026-05-27T00:05:00.000Z",
       verifiedToken: "verified-phone-token",
     });

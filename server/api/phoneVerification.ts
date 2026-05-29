@@ -263,8 +263,8 @@ async function deliverPhoneVerificationCode(phone: string, code: string) {
 }
 
 function normalizePhoneNumber(value: string | undefined) {
-  const phone = requiredText(value, "phone").replace(/\s+/g, "");
-  if (!/^01[016789]-?\d{3,4}-?\d{4}$/.test(phone)) {
+  const phone = requiredText(value, "phone").replace(/\D/g, "");
+  if (!/^01[016789]\d{7,8}$/.test(phone)) {
     throw new PhoneVerificationInputError("valid phone is required");
   }
   return phone;
