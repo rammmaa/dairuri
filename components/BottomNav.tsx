@@ -148,15 +148,14 @@ const styles = StyleSheet.create({
   label: {
     width: "100%",
     color: colors.grayText,
-    fontFamily: typography.family.nav,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   selectedLabel: {
     color: colors.mintDark,
-    fontWeight: typography.weight.bold,
+    fontFamily: typography.family.bold,
   },
   postLabel: {
     color: colors.black,

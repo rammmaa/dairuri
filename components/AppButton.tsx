@@ -105,10 +105,9 @@ const styles = StyleSheet.create({
   },
   text: {
     color: colors.surface,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   outlineText: {

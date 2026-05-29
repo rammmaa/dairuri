@@ -150,10 +150,9 @@ const styles = StyleSheet.create({
   },
   label: {
     flexShrink: 1,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   compactLabel: {

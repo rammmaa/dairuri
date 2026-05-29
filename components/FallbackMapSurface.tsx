@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { colors } from "../constants/colors";
+import { typography } from "../constants/typography";
 import type { MapPreviewCamera, MapPreviewMarker } from "./mapPreviewData";
 
 type FallbackMapSurfaceProps = {
@@ -343,8 +344,9 @@ const styles = StyleSheet.create({
   roadLabel: {
     position: "absolute",
     color: colors.grayText,
-    fontSize: 11,
-    lineHeight: 14,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
     opacity: 0.58,
   },
   currentLocation: {

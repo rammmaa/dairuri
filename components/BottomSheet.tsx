@@ -66,10 +66,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
 });

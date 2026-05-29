@@ -61,10 +61,9 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   input: {
     minHeight: 52,
@@ -72,10 +71,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.gray50,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   textarea: {
     minHeight: 130,
@@ -83,9 +81,8 @@ const styles = StyleSheet.create({
   },
   error: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
 });

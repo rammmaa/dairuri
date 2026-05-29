@@ -81,10 +81,9 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
 });

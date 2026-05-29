@@ -93,17 +93,15 @@ const styles = StyleSheet.create({
   },
   author: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   title: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   metaBlock: {
     gap: 3,
@@ -115,10 +113,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   metaLabel: {
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   originBlock: {
     gap: 3,
@@ -130,23 +127,20 @@ const styles = StyleSheet.create({
   },
   originLabel: {
     color: colors.yellowText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   originName: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   createdAgo: {
     color: colors.mutedText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
 });
