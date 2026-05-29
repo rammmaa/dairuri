@@ -21,6 +21,7 @@ import {
   UserRound,
 } from "lucide-react-native";
 
+import { ScreenTitle } from "../../components/ScreenTitle";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
@@ -682,9 +683,9 @@ function LicenseCameraScreen({ onBack, onManual }: LicenseCameraScreenProps) {
     <KeyboardAwareAuthShell>
       <AuthHeader title="회원가입" onBack={onBack} />
       <View style={styles.cameraContent}>
-        <Text style={styles.cameraTitle}>
+        <ScreenTitle>
           점선 내에 운전면허증이 보이도록{"\n"}카메라를 옮겨주세요.
-        </Text>
+        </ScreenTitle>
         <View style={styles.licenseFrame} />
         <Text style={styles.cameraHint}>
           빛 반사가 생기면 인식이 어려워요!{"\n"}평지에 놓고 찍는 것을 권장드려요.
@@ -854,7 +855,7 @@ function AuthHeader({ title, onBack }: AuthHeaderProps) {
       <Pressable accessibilityRole="button" onPress={onBack}>
         <ChevronLeft size={20} color={colors.black} strokeWidth={2.3} />
       </Pressable>
-      <Text style={styles.authHeaderTitle}>{title}</Text>
+      <ScreenTitle>{title}</ScreenTitle>
     </View>
   );
 }
@@ -1024,7 +1025,7 @@ function CameraAccessModal({ onAllow, onDeny }: CameraAccessModalProps) {
         <View style={styles.cameraIconFrame}>
           <Camera size={26} color={colors.mint} strokeWidth={2.4} />
         </View>
-        <Text style={styles.modalTitle}>카메라 액세스</Text>
+        <ScreenTitle>카메라 액세스</ScreenTitle>
         <Text style={styles.modalCopy}>
           운전 면허증 등록을 위해{"\n"}액세스를 요청합니다.
         </Text>
@@ -1270,12 +1271,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  authHeaderTitle: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
-  },
   signupContent: {
     paddingHorizontal: 27,
     paddingTop: 38,
@@ -1374,12 +1369,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  modalTitle: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
-  },
   modalCopy: {
     marginTop: 24,
     color: colors.black,
@@ -1426,12 +1415,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 36,
     gap: 44,
-  },
-  cameraTitle: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
   },
   licenseFrame: {
     height: 176,

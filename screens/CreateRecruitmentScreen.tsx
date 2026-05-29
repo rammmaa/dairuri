@@ -20,6 +20,7 @@ import {
 import type { LucideIcon } from "lucide-react-native";
 
 import { MapPreview } from "../components/MapPreview";
+import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
@@ -508,7 +509,7 @@ type TypeSelectionStepProps = {
 function TypeSelectionStep({ selectedType, onSelect }: TypeSelectionStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>어떤 모집을 시작할까요?</Text>
+      <ScreenTitle>어떤 모집을 시작할까요?</ScreenTitle>
 
       <View style={styles.typeList}>
         <TypeCard
@@ -612,7 +613,7 @@ function RideRouteStep({
 }: RideRouteStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>어디로 떠나시나요?</Text>
+      <ScreenTitle>어디로 떠나시나요?</ScreenTitle>
       <PlaceSelectField
         label="출발지"
         placeholder="출발지 선택"
@@ -658,7 +659,7 @@ function RideScheduleStep({
 }: RideScheduleStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>언제 출발하시나요?</Text>
+      <ScreenTitle>언제 출발하시나요?</ScreenTitle>
       <DaySelector
         selectedDays={selectedDays}
         accent={accent}
@@ -703,7 +704,7 @@ function RideTitleStep({
 }: RideTitleStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>모집글의 제목을 정해주세요.</Text>
+      <ScreenTitle>모집글의 제목을 정해주세요.</ScreenTitle>
       <FieldInput
         label="모집글 제목"
         placeholder="제목 입력"
@@ -747,7 +748,7 @@ function WorkBasicsStep({
 }: WorkBasicsStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>어떤 일을 할 수 있나요?</Text>
+      <ScreenTitle>어떤 일을 할 수 있나요?</ScreenTitle>
       <FieldInput
         label="소개 제목"
         placeholder="나를 소개하는 제목"
@@ -829,7 +830,7 @@ function WorkScheduleStep({
 }: WorkScheduleStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>가능한 시간대를 알려주세요.</Text>
+      <ScreenTitle>가능한 시간대를 알려주세요.</ScreenTitle>
       <DaySelector
         selectedDays={selectedDays}
         accent={accent}
@@ -903,11 +904,11 @@ function DetailsStep({
 }: DetailsStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>
+      <ScreenTitle>
         {type === "ride"
           ? "어떤 라이드를 원하시나요?"
           : "가능 업무와 연락 전 참고사항을 알려주세요."}
-      </Text>
+      </ScreenTitle>
 
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>상세 설명</Text>
@@ -997,7 +998,7 @@ function ReviewStep({
 }: ReviewStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>마지막으로 확인해주세요.</Text>
+      <ScreenTitle>마지막으로 확인해주세요.</ScreenTitle>
 
       <View style={[styles.reviewCard, { borderColor: accent }]}>
         <View style={styles.reviewHeader}>
@@ -1510,12 +1511,6 @@ const styles = StyleSheet.create({
   stepBlock: {
     gap: 28,
   },
-  title: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
-  },
   placeHeader: {
     paddingHorizontal: 20,
     paddingTop: 28,
@@ -1528,8 +1523,8 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.black,
     fontFamily: typography.family.medium,
-    fontSize: typography.size.xl,
-    lineHeight: typography.lineHeight.xl,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
   },
   placeSearchRow: {
     height: 56,

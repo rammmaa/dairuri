@@ -51,6 +51,8 @@ shade differences.
 | Soft brand background | `colors.mintLight` |
 | Danger actions | `colors.red` |
 | Modal backdrop | `colors.overlay` or `colors.overlayStrong` |
+| White overlay on dark surfaces | `colors.overlayInverse` |
+| Translucent white map labels | `colors.surfaceTranslucent` |
 
 Mapping guidance:
 

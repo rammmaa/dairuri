@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    backgroundColor: "rgba(255,255,255,0.86)",
+    backgroundColor: colors.surfaceTranslucent,
     paddingHorizontal: 4,
     borderRadius: 4,
   },

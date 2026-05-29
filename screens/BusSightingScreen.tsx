@@ -72,6 +72,8 @@ const CLOCK_TICK_MS = 1_000;
 const MAP_HORIZONTAL_PADDING = spacing.screenX * 2;
 const CONFIRMATION_MAP_HEIGHT = 160;
 const STOP_SELECT_MAP_HEIGHT = 260;
+const STATUS_BUS_NUMBER_FONT_SIZE = 56;
+const STATUS_BUS_NUMBER_LINE_HEIGHT = 64;
 
 export function BusSightingScreen({
   onBack,
@@ -996,8 +998,8 @@ const styles = StyleSheet.create({
         android: "monospace",
         default: typography.family.bold,
       }) ?? typography.family.bold,
-    fontSize: typography.size.giant,
-    lineHeight: typography.lineHeight.giant,
+    fontSize: STATUS_BUS_NUMBER_FONT_SIZE,
+    lineHeight: STATUS_BUS_NUMBER_LINE_HEIGHT,
     letterSpacing: 1.5,
   },
   locationChip: {

@@ -21,6 +21,7 @@ import {
 } from "react-native";
 
 import { BottomNav } from "../components/BottomNav";
+import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
 import { screenTopInset } from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
@@ -130,7 +131,7 @@ export function MyPageScreen({
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.headerTitle}>프로필</Text>
+          <ScreenTitle style={styles.headerTitle}>프로필</ScreenTitle>
 
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
@@ -342,10 +343,6 @@ const styles = StyleSheet.create({
     paddingTop: 52 + screenTopInset,
     paddingBottom: 12,
     backgroundColor: colors.surface,
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
   },
   profileCard: {
     width: "100%",

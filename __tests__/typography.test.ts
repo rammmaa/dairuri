@@ -40,6 +40,11 @@ describe("typography tokens", () => {
     }
   });
 
+  it("keeps the UI text scale compact", () => {
+    expect(Object.keys(typography.size)).toEqual(["xs", "sm", "base", "lg", "title"]);
+    expect(Object.keys(typography.lineHeight)).toEqual(["xs", "sm", "base", "lg", "title"]);
+  });
+
   it("keeps the forbidden typeface out of every app source file", () => {
     for (const filePath of appSourceRoots.flatMap(listSourceFiles)) {
       const source = readFileSync(path.join(process.cwd(), filePath), "utf8");
@@ -53,6 +58,14 @@ describe("typography tokens", () => {
       const source = readFileSync(path.join(process.cwd(), filePath), "utf8");
 
       expect(source).not.toMatch(/fontWeight\s*:/);
+    }
+  });
+
+  it("does not hardcode text font sizes in style objects", () => {
+    for (const filePath of appSourceRoots.flatMap(listSourceFiles)) {
+      const source = readFileSync(path.join(process.cwd(), filePath), "utf8");
+
+      expect(source).not.toMatch(/fontSize\s*:\s*\d+/);
     }
   });
 });

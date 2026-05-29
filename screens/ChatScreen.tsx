@@ -26,6 +26,7 @@ import {
 import type { LucideIcon } from "lucide-react-native";
 
 import { BottomNav } from "../components/BottomNav";
+import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
@@ -240,9 +241,9 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             </Pressable>
 
             <View style={styles.headerTitleBlock}>
-              <Text style={styles.roomTitle}>
+              <ScreenTitle style={styles.roomTitle}>
                 {selectedRoom?.title ?? "채팅"}
-              </Text>
+              </ScreenTitle>
             </View>
 
             <View style={styles.headerActions}>
@@ -380,7 +381,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
           <TextInput
             accessibilityLabel="메시지 입력"
             placeholder="메시지 보내기"
-            placeholderTextColor="#52525B"
+            placeholderTextColor={colors.grayIcon}
             style={styles.messageInput}
           />
           <Pressable
@@ -577,7 +578,7 @@ function ChatListScreen({
         <View style={styles.listHeader}>
           <View style={styles.listTitleRow}>
             <View>
-              <Text style={styles.listTitle}>채팅</Text>
+              <ScreenTitle>채팅</ScreenTitle>
               <Text style={styles.listSubtitle}>지금 함께 이동할 대화를 확인하세요</Text>
             </View>
             <View style={styles.listHeaderIconFrame}>
@@ -798,7 +799,7 @@ function MenuAction({ icon: Icon, label, onPress }: MenuActionProps) {
         pressed && styles.pressed,
       ]}
     >
-      <Icon size={24} color="#374151" strokeWidth={2.2} />
+      <Icon size={24} color={colors.grayIcon} strokeWidth={2.2} />
       <Text style={styles.menuActionText}>{label}</Text>
     </Pressable>
   );
@@ -920,12 +921,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 16,
-  },
-  listTitle: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
   },
   listSubtitle: {
     marginTop: 3,
@@ -1158,7 +1153,7 @@ const styles = StyleSheet.create({
     height: 176,
     paddingTop: 10,
     backgroundColor: colors.surface,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -1184,10 +1179,6 @@ const styles = StyleSheet.create({
     paddingRight: 7,
   },
   roomTitle: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
     textAlign: "center",
   },
   roomMeta: {
@@ -1210,8 +1201,8 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 5,
     borderWidth: 2,
-    borderColor: "#1F2937",
-    backgroundColor: "rgba(100, 116, 139, 0.25)",
+    borderColor: colors.slate,
+    backgroundColor: colors.overlay,
   },
   participantRow: {
     marginTop: 12,
@@ -1313,7 +1304,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: colors.black,
     overflow: "hidden",
-    backgroundColor: "#34D399",
+    backgroundColor: colors.mint,
   },
   systemCardTop: {
     minHeight: 66,
@@ -1354,7 +1345,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: "#2DD4BF",
+    borderColor: colors.mint,
     backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
@@ -1468,14 +1459,14 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 10,
     borderRadius: 20,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.lineStrong,
     gap: 22,
   },
   menuSection: {
     paddingHorizontal: 24,
     paddingVertical: 24,
     borderRadius: 20,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.lineStrong,
     gap: 24,
   },
   menuAction: {
@@ -1495,7 +1486,7 @@ const styles = StyleSheet.create({
   closePill: {
     height: 56,
     borderRadius: 10,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.lineStrong,
   },
   closeTextButton: {
     alignSelf: "center",
@@ -1512,7 +1503,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(82, 82, 91, 0.6)",
+    backgroundColor: colors.overlayStrong,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 6,
@@ -1523,10 +1514,10 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     paddingHorizontal: 21,
     borderRadius: 16,
-    backgroundColor: "rgba(38, 38, 38, 0.85)",
+    backgroundColor: colors.overlayStrong,
   },
   confirmText: {
-    color: "#F4F4F5",
+    color: colors.sheet,
     fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 23,
@@ -1550,7 +1541,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 56,
     borderRadius: 24,
-    backgroundColor: "#DC2626",
+    backgroundColor: colors.red,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 14,
@@ -1564,7 +1555,7 @@ const styles = StyleSheet.create({
   },
   actionOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(82, 82, 91, 0.6)",
+    backgroundColor: colors.overlayStrong,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,

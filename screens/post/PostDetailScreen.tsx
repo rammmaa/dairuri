@@ -11,6 +11,7 @@ import {
 
 import { AppButton } from "../../components/AppButton";
 import { Header } from "../../components/Header";
+import { ScreenTitle } from "../../components/ScreenTitle";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
@@ -157,7 +158,7 @@ export function PostDetailScreen({
         <Image source={{ uri: heroImage }} style={styles.heroImage} />
         <View style={styles.content}>
           <AuthorRow post={post} themeColor={themeColor} />
-          <Text style={styles.title}>{post.title}</Text>
+          <ScreenTitle>{post.title}</ScreenTitle>
           <MetaList post={post} themeColor={themeColor} />
           <View style={styles.bodySection}>
             <Text style={styles.sectionTitle}>상세 설명</Text>
@@ -434,12 +435,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-  },
-  title: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
   },
   metaList: {
     padding: 16,

@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
   backIcon: {
     color: colors.black,
     fontFamily: typography.family.regular,
-    fontSize: typography.size.display,
+    fontSize: typography.size.title,
     lineHeight: 34,
   },
   headerText: {
@@ -989,7 +989,7 @@ const styles = StyleSheet.create({
   },
   imagePreviewOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.94)",
+    backgroundColor: colors.overlayStrong,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1004,7 +1004,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    backgroundColor: colors.overlayInverse,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -54,6 +54,8 @@ const SHEET_COLLAPSED_TOP = 560;
 const POST_PAGE_SIZE = 2;
 const BUS_ARCHIVE_UNKNOWN_LOCATION_LABEL = "확인 중";
 const BUS_ARCHIVE_CURRENT_LOCATION_LABEL = "현재 위치";
+const BUS_ARCHIVE_ROUTE_FONT_SIZE = 48;
+const BUS_ARCHIVE_ROUTE_LINE_HEIGHT = 56;
 type DateFilter = MapHomePost["dateFilter"] | null;
 type TimeFilter = MapHomePost["timeFilter"] | null;
 type DepartureFilter = MapHomePost["departurePlace"] | null;
@@ -706,7 +708,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -726,7 +728,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: 10,
     gap: 8,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -809,7 +811,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surface,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -823,7 +825,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sheet,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -884,16 +886,16 @@ const styles = StyleSheet.create({
   busArchiveTitle: {
     color: colors.blue,
     fontFamily: typography.family.regular,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
+    fontSize: typography.size.title,
+    lineHeight: typography.lineHeight.title,
     textAlign: "center",
   },
   busArchiveTime: {
     marginTop: 12,
-    color: "#000000",
+    color: colors.black,
     fontFamily: typography.family.bold,
-    fontSize: typography.size.hero,
-    lineHeight: typography.lineHeight.hero,
+    fontSize: BUS_ARCHIVE_ROUTE_FONT_SIZE,
+    lineHeight: BUS_ARCHIVE_ROUTE_LINE_HEIGHT,
     textAlign: "center",
   },
   busLocationPill: {
@@ -931,7 +933,7 @@ const styles = StyleSheet.create({
     height: 112,
     marginTop: 28,
     borderRadius: 28,
-    backgroundColor: "#9D9D9D",
+    backgroundColor: colors.grayText,
     alignItems: "center",
     justifyContent: "center",
   },

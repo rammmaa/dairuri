@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "stretch",
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,

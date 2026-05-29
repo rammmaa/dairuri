@@ -12,6 +12,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { BottomNav } from "../components/BottomNav";
 import { FilterChip } from "../components/FilterChip";
+import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
@@ -206,7 +207,7 @@ export function RouteScreen({
       <View style={styles.screen}>
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>버스</Text>
+            <ScreenTitle>버스</ScreenTitle>
             {onOpenBusSighting ? (
               <Pressable
                 accessibilityRole="button"
@@ -486,12 +487,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-  },
-  title: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xxl,
-    lineHeight: typography.lineHeight.xxl,
   },
   recordSightingButton: {
     minHeight: 36,
