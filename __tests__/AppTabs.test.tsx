@@ -1,3 +1,4 @@
+import { StyleSheet } from "react-native";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import App from "../App";
@@ -25,6 +26,12 @@ describe("App tabs", () => {
     await waitFor(() => {
       expect(screen.getByText("여기서 검색")).toBeTruthy();
     });
+
+    const bottomNavStyle = StyleSheet.flatten(
+      screen.getByTestId("map-home-bottom-nav").props.style,
+    );
+    expect(bottomNavStyle.height).toBeGreaterThanOrEqual(92);
+    expect(bottomNavStyle.paddingBottom).toBeGreaterThanOrEqual(24);
 
     fireEvent.press(screen.getByTestId("map-home-bottom-nav-bus"));
     expect(await screen.findByText("추천 경로")).toBeTruthy();

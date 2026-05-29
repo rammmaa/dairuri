@@ -12,7 +12,7 @@ import {
 import { AppButton } from "../../components/AppButton";
 import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
-import { screenTopInset } from "../../constants/safeArea";
+import { screenBottomInset, screenTopInset } from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { formatMannerTemperature } from "../../data/mannerTemperature";
@@ -178,7 +178,7 @@ export function PostDetailScreen({
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={styles.footer} testID="post-detail-footer">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={post.liked ? "찜 취소" : "찜하기"}
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: DETAIL_HEADER_HEIGHT - 25,
-    paddingBottom: FOOTER_HEIGHT + 44,
+    paddingBottom: FOOTER_HEIGHT + screenBottomInset + 44,
     backgroundColor: colors.surface,
   },
   heroImage: {
@@ -553,10 +553,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    minHeight: FOOTER_HEIGHT,
+    minHeight: FOOTER_HEIGHT + screenBottomInset,
     paddingHorizontal: 22,
     paddingTop: 15,
-    paddingBottom: 14,
+    paddingBottom: 14 + screenBottomInset,
     borderTopWidth: 1,
     borderTopColor: colors.gray300,
     backgroundColor: colors.surface,
