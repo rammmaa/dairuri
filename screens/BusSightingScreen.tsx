@@ -972,9 +972,8 @@ const styles = StyleSheet.create({
   },
   pagerText: {
     color: colors.gray400,
-    fontFamily: typography.family.medium,
+    fontFamily: typography.family.semibold,
     fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
   },
   pagerTextActive: {
     color: colors.black,
@@ -984,10 +983,9 @@ const styles = StyleSheet.create({
   headline: {
     marginTop: 18,
     color: colors.blue,
-    fontFamily: typography.family.medium,
+    fontFamily: typography.family.semibold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.semibold,
   },
   clock: {
     marginTop: 16,
@@ -998,10 +996,9 @@ const styles = StyleSheet.create({
         android: "monospace",
         default: typography.family.bold,
       }) ?? typography.family.bold,
-    fontSize: 56,
-    lineHeight: 64,
+    fontSize: typography.size.giant,
+    lineHeight: typography.lineHeight.giant,
     letterSpacing: 1.5,
-    fontWeight: typography.weight.bold,
   },
   locationChip: {
     marginTop: 14,
@@ -1023,7 +1020,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
   },
@@ -1046,10 +1043,9 @@ const styles = StyleSheet.create({
   arrivalEntryLabel: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.semibold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.semibold,
   },
   busButton: {
     marginTop: 32,
@@ -1071,7 +1067,7 @@ const styles = StyleSheet.create({
   helpText: {
     marginTop: 18,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     textAlign: "center",
@@ -1085,13 +1081,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   confirmRouteName: {
     marginTop: 8,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
   },
   stopCard: {
@@ -1110,7 +1105,6 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
   mapWrapper: {
     marginTop: 16,
@@ -1120,7 +1114,7 @@ const styles = StyleSheet.create({
   stopSelectionHint: {
     marginTop: 10,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
     textAlign: "center",
@@ -1128,7 +1122,7 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 12,
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     textAlign: "center",
   },
@@ -1159,7 +1153,6 @@ const styles = StyleSheet.create({
     color: colors.grayIcon,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
   acceptButton: {
     backgroundColor: colors.yellow,
@@ -1171,7 +1164,6 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
   buttonDisabled: {
     opacity: 0.55,
@@ -1215,12 +1207,11 @@ const styles = StyleSheet.create({
     color: colors.mintDark,
     fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
-    fontWeight: typography.weight.bold,
   },
   routeTileName: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
   },
 
@@ -1240,7 +1231,6 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
 
   // confirmed
@@ -1258,12 +1248,11 @@ const styles = StyleSheet.create({
     color: colors.mintDark,
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
   },
   confirmedSubtext: {
     marginTop: 4,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
   },
   recentRecord: {
@@ -1279,7 +1268,6 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontFamily: typography.family.semibold,
     fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
   },
   recentRecordRow: {
     marginTop: 6,
@@ -1289,14 +1277,14 @@ const styles = StyleSheet.create({
   },
   recentRecordText: {
     color: colors.slate,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
   },
   recentRecordHint: {
     marginTop: 4,
     color: colors.mutedText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
   },
   restartButton: {
@@ -1317,6 +1305,5 @@ const styles = StyleSheet.create({
     color: colors.mintDark,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
 });

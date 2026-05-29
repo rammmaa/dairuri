@@ -489,10 +489,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.black,
-    fontFamily: typography.family.body,
-    fontSize: 24,
-    lineHeight: 31,
-    fontWeight: typography.weight.bold,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.xxl,
+    lineHeight: typography.lineHeight.xxl,
   },
   recordSightingButton: {
     minHeight: 36,
@@ -509,10 +508,9 @@ const styles = StyleSheet.create({
   },
   recordSightingText: {
     color: colors.surface,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   searchBar: {
     height: 52,
@@ -526,10 +524,9 @@ const styles = StyleSheet.create({
   searchPlaceholder: {
     flex: 1,
     color: colors.mutedText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.regular,
   },
   filterRow: {
     paddingHorizontal: spacing.screenX,
@@ -589,17 +586,15 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   summaryTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   summaryBadge: {
     minHeight: 28,
@@ -611,10 +606,9 @@ const styles = StyleSheet.create({
   },
   summaryBadgeText: {
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   entryGroup: {
     width: "100%",
@@ -642,10 +636,9 @@ const styles = StyleSheet.create({
   entryRowLabel: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.semibold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.semibold,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -654,17 +647,15 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   sectionMeta: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   cardList: {
     gap: 10,
@@ -700,10 +691,9 @@ const styles = StyleSheet.create({
   },
   routeNumber: {
     color: colors.surface,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   routeTitleBlock: {
     flex: 1,
@@ -712,17 +702,15 @@ const styles = StyleSheet.create({
   },
   routeName: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   routeMeta: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   statusBadge: {
     minHeight: 28,
@@ -732,10 +720,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   statusText: {
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   statusLive: {
     backgroundColor: colors.mintLight,
@@ -792,10 +779,9 @@ const styles = StyleSheet.create({
   stopLabel: {
     width: 34,
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   activeStopLabel: {
     color: colors.mintDark,
@@ -804,10 +790,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   timeRow: {
     minHeight: 28,
@@ -824,17 +809,15 @@ const styles = StyleSheet.create({
   },
   timeText: {
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   durationText: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   sightingBadge: {
     alignSelf: "flex-start",
@@ -848,9 +831,8 @@ const styles = StyleSheet.create({
   },
   sightingBadgeText: {
     color: colors.blue,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
 });

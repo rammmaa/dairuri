@@ -781,7 +781,7 @@ function WorkBasicsStep({
                 <Text
                   style={[
                     styles.categoryLabel,
-                    selected && { color: accentDark, fontWeight: typography.weight.bold },
+                    selected && { color: accentDark, fontFamily: typography.family.bold },
                   ]}
                   numberOfLines={1}
                   adjustsFontSizeToFit
@@ -1481,10 +1481,9 @@ const styles = StyleSheet.create({
   },
   submitError: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
     textAlign: "center",
   },
   header: {
@@ -1514,9 +1513,8 @@ const styles = StyleSheet.create({
   title: {
     color: colors.black,
     fontFamily: typography.family.medium,
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: typography.weight.medium,
+    fontSize: typography.size.xxl,
+    lineHeight: typography.lineHeight.xxl,
   },
   placeHeader: {
     paddingHorizontal: 20,
@@ -1530,9 +1528,8 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.black,
     fontFamily: typography.family.medium,
-    fontSize: 20,
-    lineHeight: 28,
-    fontWeight: typography.weight.medium,
+    fontSize: typography.size.xl,
+    lineHeight: typography.lineHeight.xl,
   },
   placeSearchRow: {
     height: 56,
@@ -1553,7 +1550,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   placeMapFrame: {
     height: 270,
@@ -1596,7 +1592,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   placeListScroll: {
     flex: 1,
@@ -1660,14 +1655,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.medium,
   },
   typeDescription: {
     color: colors.gray400,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   fieldBlock: {
     gap: 8,
@@ -1677,7 +1670,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
     letterSpacing: 0.4,
   },
   inputRow: {
@@ -1700,7 +1692,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   inputActiveText: {
     color: colors.black,
@@ -1712,49 +1703,42 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   placeResultName: {
     color: colors.black,
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   placeResultAddress: {
     color: colors.gray400,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   placeSearchError: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   placeSearchHelper: {
     color: colors.gray400,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   prefixText: {
     color: colors.gray300,
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   suffixText: {
     color: colors.slate,
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   helperText: {
     marginTop: -18,
@@ -1762,7 +1746,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   dayRow: {
     flexDirection: "row",
@@ -1780,10 +1763,9 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   dayLabelSelected: {
@@ -1808,9 +1790,8 @@ const styles = StyleSheet.create({
   categoryLabel: {
     color: colors.grayIcon,
     fontFamily: typography.family.medium,
-    fontSize: 10,
+    fontSize: typography.size.xs,
     lineHeight: 14,
-    fontWeight: typography.weight.medium,
     textAlign: "center",
   },
   timeInput: {
@@ -1825,7 +1806,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
     textAlign: "center",
   },
   rangeText: {
@@ -1833,7 +1813,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   textArea: {
     minHeight: 170,
@@ -1846,7 +1825,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   agreementList: {
     marginTop: 22,
@@ -1874,7 +1852,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   reviewCard: {
     width: "100%",
@@ -1896,7 +1873,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   reviewBadge: {
     minWidth: 42,
@@ -1909,9 +1885,8 @@ const styles = StyleSheet.create({
   reviewBadgeText: {
     color: colors.surface,
     fontFamily: typography.family.bold,
-    fontSize: 10,
+    fontSize: typography.size.xs,
     lineHeight: 14,
-    fontWeight: typography.weight.bold,
   },
   reviewRow: {
     minHeight: 24,
@@ -1933,7 +1908,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   footer: {
     position: "absolute",
@@ -1955,7 +1929,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
     textAlign: "center",
   },
   footerButtonTextActive: {
