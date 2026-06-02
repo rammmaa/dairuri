@@ -18,6 +18,10 @@ import { MapPreview } from "../components/MapPreview";
 import type { MapPreviewCamera } from "../components/mapPreviewData";
 import { RecruitmentCard } from "../components/RecruitmentCard";
 import { colors } from "../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import {
@@ -54,6 +58,8 @@ const SHEET_COLLAPSED_TOP = 560;
 const POST_PAGE_SIZE = 2;
 const BUS_ARCHIVE_UNKNOWN_LOCATION_LABEL = "확인 중";
 const BUS_ARCHIVE_CURRENT_LOCATION_LABEL = "현재 위치";
+const BUS_ARCHIVE_ROUTE_FONT_SIZE = 48;
+const BUS_ARCHIVE_ROUTE_LINE_HEIGHT = 56;
 type DateFilter = MapHomePost["dateFilter"] | null;
 type TimeFilter = MapHomePost["timeFilter"] | null;
 type DepartureFilter = MapHomePost["departurePlace"] | null;
@@ -101,6 +107,7 @@ export function MapScreen({
   const [busArchiveLocationLabel, setBusArchiveLocationLabel] = useState(
     BUS_ARCHIVE_UNKNOWN_LOCATION_LABEL,
   );
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
   const [recruitmentPosts, setRecruitmentPosts] = useState<MapHomePost[]>(() =>
     process.env.NODE_ENV === "test" ? mapHomePosts : [],
   );
@@ -498,7 +505,10 @@ export function MapScreen({
 
         <View
           testID="map-home-bottom-sheet"
-          style={[styles.bottomSheet, { top: sheetTop }]}
+          style={[
+            styles.bottomSheet,
+            { top: sheetTop, bottom: spacing.navHeight + bottomInset },
+          ]}
         >
           {isBusArchiveMode ? (
             <View
@@ -609,6 +619,7 @@ export function MapScreen({
                 style={styles.sheetScroll}
                 contentContainerStyle={styles.sheetContent}
                 showsVerticalScrollIndicator={false}
+                testID="map-home-sheet-scroll"
               >
                 <View style={styles.listHeader}>
                   <View style={styles.countRow}>
@@ -633,12 +644,13 @@ export function MapScreen({
                   />
                 </View>
 
-                <View style={styles.cardList}>
+                <View style={styles.cardList} testID="map-home-card-list">
                   {visiblePosts.length > 0 ? visiblePosts.map((post) => (
                     <RecruitmentCard
                       key={post.id}
                       post={post}
                       onPress={() => onOpenPost?.(post.detailPostId)}
+                      testID={`recruitment-card-${post.id}`}
                     />
                   )) : (
                     <View style={styles.emptyState}>
@@ -706,7 +718,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -719,14 +731,14 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.regular,
+    fontFamily: typography.family.regular,
   },
   searchPanel: {
     borderRadius: 24,
     backgroundColor: colors.surface,
     padding: 10,
     gap: 8,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -745,27 +757,24 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.regular,
     paddingVertical: 0,
   },
   searchHelperText: {
     paddingHorizontal: 12,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   searchErrorText: {
     paddingHorizontal: 12,
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   searchResultRow: {
     minHeight: 48,
@@ -786,17 +795,15 @@ const styles = StyleSheet.create({
   },
   searchResultName: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   searchResultAddress: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   categoryRow: {
     flexDirection: "row",
@@ -814,7 +821,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surface,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -824,11 +831,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: spacing.navHeight,
-    backgroundColor: colors.sheet,
+    backgroundColor: colors.homeListBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -866,11 +872,12 @@ const styles = StyleSheet.create({
   },
   sheetScroll: {
     flex: 1,
+    backgroundColor: colors.homeListBackground,
   },
   sheetContent: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 14,
-    paddingBottom: 22,
+    paddingTop: spacing.homeListPaddingTop,
+    paddingBottom: spacing.homeListPaddingBottom,
   },
   busArchiveSheet: {
     flex: 1,
@@ -888,19 +895,17 @@ const styles = StyleSheet.create({
   },
   busArchiveTitle: {
     color: colors.blue,
-    fontFamily: typography.family.body,
-    fontSize: 24,
-    lineHeight: 31,
-    fontWeight: typography.weight.regular,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.title,
+    lineHeight: typography.lineHeight.title,
     textAlign: "center",
   },
   busArchiveTime: {
     marginTop: 12,
-    color: "#000000",
-    fontFamily: typography.family.body,
-    fontSize: 48,
-    lineHeight: 58,
-    fontWeight: typography.weight.bold,
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: BUS_ARCHIVE_ROUTE_FONT_SIZE,
+    lineHeight: BUS_ARCHIVE_ROUTE_LINE_HEIGHT,
     textAlign: "center",
   },
   busLocationPill: {
@@ -928,10 +933,9 @@ const styles = StyleSheet.create({
   },
   busLocationText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.regular,
   },
   busSaveButton: {
     width: "100%",
@@ -939,7 +943,7 @@ const styles = StyleSheet.create({
     height: 112,
     marginTop: 28,
     borderRadius: 28,
-    backgroundColor: "#9D9D9D",
+    backgroundColor: colors.grayText,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -949,10 +953,9 @@ const styles = StyleSheet.create({
   busArchiveHint: {
     marginTop: 20,
     color: colors.gray400,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 24,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   busSightingsList: {
@@ -966,18 +969,16 @@ const styles = StyleSheet.create({
   },
   busSightingsTitle: {
     color: colors.slate,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   busSightingItem: {
     marginTop: 4,
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   listHeader: {
     flexDirection: "row",
@@ -994,16 +995,16 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.regular,
+    fontFamily: typography.family.regular,
   },
   countNumber: {
     color: colors.mintDark,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.regular,
+    fontFamily: typography.family.regular,
   },
   cardList: {
-    gap: 8,
+    gap: spacing.homeListGap,
   },
   emptyState: {
     minHeight: 120,
@@ -1014,10 +1015,9 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   loadMoreButton: {
     minHeight: 42,
@@ -1033,9 +1033,8 @@ const styles = StyleSheet.create({
   },
   loadMoreText: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
 });

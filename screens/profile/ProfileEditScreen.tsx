@@ -1,4 +1,5 @@
 import { Camera, CarFront, UserRound, UserRoundCheck } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
   Image,
@@ -13,6 +14,10 @@ import { AppButton } from "../../components/AppButton";
 import { Header } from "../../components/Header";
 import { TextInputField } from "../../components/TextInputField";
 import { colors } from "../../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockMe } from "../../data/mockDomain";
@@ -27,6 +32,7 @@ export type ProfileEditScreenProps = {
 
 export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
   const initialProfile = process.env.NODE_ENV === "test" ? mockMe : undefined;
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
   const [nickname, setNickname] = useState(initialProfile?.nickname ?? "");
   const [driverType, setDriverType] = useState<DriverType>(
     initialProfile?.driverType ?? "nonDriver",
@@ -108,6 +114,67 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
     }
   };
 
+  const applyPickedAvatar = (asset: ImagePicker.ImagePickerAsset | undefined) => {
+    if (!asset) {
+      setErrorMessage("사진을 선택하지 못했어요.");
+      return;
+    }
+
+    setAvatarUrl(getAvatarPayload(asset));
+    setAvatarChanged(true);
+    setErrorMessage(null);
+  };
+
+  const handleOpenCamera = async () => {
+    setImageSheetVisible(false);
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      setErrorMessage("카메라 권한이 필요해요.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.72,
+      base64: true,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (result.canceled) {
+      setErrorMessage("사진 선택을 취소했어요.");
+      return;
+    }
+
+    applyPickedAvatar(result.assets[0]);
+  };
+
+  const handleOpenLibrary = async () => {
+    setImageSheetVisible(false);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setErrorMessage("사진 접근 권한이 필요해요.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.72,
+      base64: true,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (result.canceled) {
+      setErrorMessage("사진 선택을 취소했어요.");
+      return;
+    }
+
+    applyPickedAvatar(result.assets[0]);
+  };
+
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen}>
@@ -115,13 +182,21 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 120 + bottomInset },
+          ]}
           showsVerticalScrollIndicator={false}
+          testID="profile-edit-scroll"
         >
           <View style={styles.avatarBlock}>
             <View style={styles.avatarFrame}>
               {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.avatarImage}
+                  testID="profile-avatar-image"
+                />
               ) : (
                 <UserRound size={54} color={colors.mintDark} strokeWidth={2.1} />
               )}
@@ -176,7 +251,10 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View
+          style={[styles.footer, { paddingBottom: 24 + bottomInset }]}
+          testID="profile-edit-footer"
+        >
           <AppButton
             label={saving ? "저장 중" : "수정"}
             onPress={handleSave}
@@ -191,14 +269,25 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
           onRemove={() => {
             setAvatarUrl(undefined);
             setAvatarChanged(true);
+            setErrorMessage(null);
             setImageSheetVisible(false);
           }}
-          onOpenCamera={() => setImageSheetVisible(false)}
-          onOpenLibrary={() => setImageSheetVisible(false)}
+          onOpenCamera={() => {
+            void handleOpenCamera();
+          }}
+          onOpenLibrary={() => {
+            void handleOpenLibrary();
+          }}
         />
       </View>
     </View>
   );
+}
+
+function getAvatarPayload(asset: ImagePicker.ImagePickerAsset) {
+  return asset.base64
+    ? `data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}`
+    : asset.uri;
 }
 
 type DriverOptionProps = {
@@ -248,7 +337,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 24,
-    paddingBottom: 120,
     gap: 24,
   },
   avatarBlock: {
@@ -291,10 +379,9 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   driverRow: {
     flexDirection: "row",
@@ -318,17 +405,15 @@ const styles = StyleSheet.create({
   },
   driverOptionText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   errorText: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   pressed: {
     opacity: 0.78,
@@ -340,7 +425,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: spacing.screenX,
     paddingTop: 12,
-    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.surface,

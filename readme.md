@@ -1,123 +1,133 @@
-📌 Overview
+# 다이루리 (Dairuri)
 
-테크포임팩트 프로젝트
+> 우리 동네에서 같이 이동하고, 같이 일하고, 같이 살아가기 위한 지도 기반 커뮤니티 앱
 
-지역 기반 이동/인력 연결 커뮤니티 앱입니다. 지도에서 가까운 라이드, 인적 자원, 버스 관련 글을 확인하고, 이동 모집, 가능 업무 등록, 연락, 채팅, 프로필 관리를 한 흐름으로 연결합니다. Expo React Native 기반으로 모바일 앱과 웹 배포를 함께 지원하며, 웹은 Vercel에서 Expo web export 방식으로 배포합니다.
+지역의 일상 속 작은 문제들을 이웃끼리 직접 연결해서 해결할 수 있도록 돕는 서비스입니다.
 
-앱은 `EXPO_PUBLIC_DARORI_API_BASE_URL`을 통해 Darori API 서버를 호출합니다. 프로덕션에서는 mock API로 자동 fallback하지 않으며, mock은 테스트 또는 명시적인 로컬 opt-in에서만 사용합니다.
+## 문제 정의
 
-🎯 Goal
+작은 지역에서는 도시와 다르게 다음과 같은 어려움이 있습니다.
 
-이 프로젝트는 지역 안에서 흩어져 있는 이동, 인적 자원, 버스 관련 정보를 지도 중심으로 모아 사용자가 지금 필요한 이동과 지역 네트워크 연결을 빠르게 찾도록 돕는 것을 목표로 합니다.
+① **이동 수단 부족** — 시내 한 번 나가려 해도 버스는 자주 없고 택시는 부르기 어렵습니다.
+② **버스 정보 불확실성** — 도착 정보가 정확하지 않거나 아예 제공되지 않는 정류장이 많습니다.
+③ **소소한 일손/일자리 단절** — 가벼운 도움이 필요한 사장님과, 짧게라도 일하고 싶은 주민·정착민이 서로를 찾지 못합니다.
+④ **정착민의 진입 장벽** — 새로 이사 온 사람이 동네에 자신을 알리고 자리잡을 통로가 부족합니다.
 
-사용자는 주변 위치를 기준으로 라이드와 인적 자원 글을 탐색하고, 신규 정착민은 가능한 업무, 시간대, 희망 조건을 등록해 지역 주민과 사장님들에게 스스로를 알릴 수 있습니다. 버스 정보는 지도 위 경로와 함께 확인하고, 최근 버스 목격 시각과 위치를 빠르게 기록해 이후 이용자가 참고할 수 있는 형태로 확장하는 방향을 둡니다.
+결과적으로 **이동권 제약, 지역 경제의 비효율, 새 주민의 고립** 같은 문제가 발생합니다.
 
-⚙️ 주요 기능 (Key Features)
+## 해결책
 
-- 지도 홈: Naver Maps 기반 지도, 현재 위치 이동, 카테고리 필터, 모집글 바텀시트
-- 인적 자원 맵: 구직자가 가능한 업무, 시간대, 관심 분야를 등록하고 지역 네트워크에 노출
-- 글 탐색: 라이드, 인적 자원, 버스 관련 글 목록 및 상세 화면
-- 모집글 작성: 출발/도착 장소, 날짜, 시간, 모집 인원, 상세 설명 입력
-- 지원 및 승인: 모집글 지원, 지원서 검토, 승인/거절 플로우
-- 채팅: 채팅 목록, 채팅방, 더보기 액션, 신고 플로우
-- 프로필: 내 정보, 설정, 내가 쓴 글, 찜한 글 확인
-- 버스 목격 아카이빙: 지도 홈의 버스 칩에서 현재 시각과 위치를 즉시 저장하는 패널
-- 로컬 API 서버: posts, applications, chat, auth header, rate limit, Naver geocoding API route
+**다이루리**는 지도 한 장 위에 동네의 이동, 일손, 버스 정보를 모아서 이웃끼리 직접 연결될 수 있게 합니다.
 
-🛠 Architecture
+- 🗺️ **지도 중심 탐색** — 내 주변에서 일어나는 모든 일을 지도 한 화면에서 본다.
+- 🚗 **이동 같이하기** — 시내 가는 사람과 가야 하는 사람을 연결한다.
+- 👋 **사람-일 연결** — 동네에서 일할 수 있는 사람과 일손이 필요한 곳을 잇는다.
+- 💬 **승인 후 자동 채팅** — 모집글에 지원하고 승인되면 바로 대화방이 열린다.
+- 🚌 **버스 목격담 공유** — 사용자가 직접 본 버스 정보로 부족한 공식 정보를 보완한다.
 
-| Category | Stack / Tool |
+## 이런 분들에게 필요해요
+
+- 차가 없어서 시내 가기 막막한, **같이 갈 사람을 찾고 싶은 주민**
+- 마침 시내 나가는데 **빈 자리에 같이 태우고 싶은 운전자**
+- 잠깐 일손이 필요한 **동네 사장님**
+- 짧게라도 일하고 싶은 **새 정착민이나 주민**
+- 버스가 언제 지나갔는지 **이웃의 기록이라도 알고 싶은 분**
+
+## 주요 기능
+
+### 1. 지도 중심 동네 탐색
+
+앱을 열면 가장 먼저 **내 주변 지도**가 나옵니다. 그 위에 동네에서 일어나는 일들이 표시됩니다.
+
+- 같이 갈 사람을 찾는 **이동 모집글**
+- 일손을 구하거나 일할 수 있는 사람을 알리는 **인적 자원 글**
+- 정류장별 **최근 버스 목격 기록**
+
+카테고리 칩으로 보고 싶은 종류만 골라볼 수 있고, 현재 위치 버튼 한 번이면 바로 내 동네로 돌아옵니다. 지도 하단의 바텀시트로 지도 맥락을 잃지 않고 상세 목록까지 자연스럽게 이어집니다.
+
+### 2. 같이 이동할 사람 찾기 (라이드/카풀)
+
+시내에 같이 갈 사람을 모집글로 만들어 올릴 수 있고, 다른 사람이 올린 모집글에 지원할 수 있습니다.
+
+- 출발지·도착지, 날짜·시간, 모집 인원, 가격, 상세 설명을 입력해 글을 작성합니다.
+- 마음에 드는 모집글에 **자기소개와 함께 지원**할 수 있습니다.
+- 모집자는 지원자 목록을 보고 **승인 또는 거절**할 수 있습니다.
+- 승인되면 **자동으로 채팅방이 열려** 바로 약속을 잡을 수 있습니다.
+
+### 3. 동네에서 일할 사람 / 일자리 찾기
+
+정식 구인구직 플랫폼에 올리기엔 너무 작은, 그러나 동네에는 꼭 필요한 일들을 연결합니다.
+
+- 할 수 있는 일, 가능한 시간대, 희망 보수, 연락 메모를 등록합니다.
+- 새 정착민이 자기를 소개하고 동네에 노출시키는 통로가 됩니다.
+- 도움이 필요한 사람은 지도에서 **가까이 있는 사람을 먼저** 발견하고 연락할 수 있습니다.
+
+### 4. 실시간 채팅과 신뢰 기능
+
+- 승인된 사람끼리 **텍스트와 사진**으로 대화합니다.
+- 불쾌한 사용자는 **신고**할 수 있습니다.
+- 운전자는 **차량 정보**를 등록해 신뢰감을 높일 수 있습니다.
+- 사용자 온도와 매너 평가로 동네 안의 신뢰가 쌓입니다.
+
+### 5. 버스 목격담 아카이브
+
+작은 지역의 정류장은 도착 정보가 부정확하거나 아예 없는 경우가 많습니다. 다이루리는 **사용자가 직접 본 버스를 기록**하게 해서 이 빈 공간을 채웁니다.
+
+- 정류장에서 버스를 보면 **한 번의 탭으로 시각·위치를 기록**합니다.
+- 다른 사용자는 정류장별 최근 목격 시각을 보고 **"방금 갔구나"** 또는 **"한 시간째 안 오네"** 를 판단할 수 있습니다.
+- 공식 정보가 부족한 지역에서도 이웃의 기록이 모여 함께 도울 수 있는 정보가 됩니다.
+
+### 6. 안전한 인증과 내 활동 관리
+
+- **전화번호 인증**으로 가입합니다.
+- 내가 쓴 글, 찜한 글, 받은 지원 내역을 **한곳에서 확인**합니다.
+- 자기 글에는 스스로 지원할 수 없는 등 기본적인 안전장치가 들어 있습니다.
+
+## 어디에서 쓸 수 있나요?
+
+| 사용 환경 | 설명 |
 | --- | --- |
-| Frontend | Expo React Native, React Native Web, TypeScript |
-| Map | Naver Maps native SDK, Naver Web Dynamic Map |
-| Backend | Node.js, TypeScript API server |
-| Data | PostgreSQL, Redis, test/local fixtures |
-| Test | Jest, `@testing-library/react-native` |
-| Deployment | Vercel, Expo web export, Docker Compose for local infra |
+| 📱 **Android APK** | 휴대폰에 설치해서 사용 |
+| 🌐 **웹 브라우저** | 별도 설치 없이 웹에서 그대로 사용 |
 
-📁 Project Structure
+모바일과 웹은 같은 기능과 데이터를 공유합니다. 어디서 접속해도 끊김 없이 같은 경험으로 이어집니다.
 
-| Path | Role |
+## 서비스 흐름
+
+| 단계 | 사용자 행동 | 앱의 역할 |
+| --- | --- | --- |
+| ① 둘러보기 | 지도에서 내 주변 정보를 본다 | 위치 기반으로 모집글·인적자원·버스 정보를 표시 |
+| ② 글 작성 | 같이 갈 사람 / 일자리 / 사람을 모집 | 출발지·시간·조건 같은 필요한 정보를 받아 저장 |
+| ③ 지원 | 마음에 드는 글에 지원 | 자기소개와 함께 작성자에게 지원 전달 |
+| ④ 승인 | 작성자가 지원자를 승인 또는 거절 | 승인 시 자동으로 채팅방 생성 |
+| ⑤ 대화 | 채팅으로 약속을 정한다 | 텍스트·사진 메시지, 신고 기능 제공 |
+| ⑥ 기록 | 버스 정류장에서 본 버스를 기록 | 정류장별 최근 목격 시각을 다른 사용자에게 공유 |
+
+## 이 앱이 추구하는 가치
+
+다이루리는 단순한 "카풀 앱"이나 "구인구직 앱"이 아닙니다. **작은 동네에서도 이웃끼리 직접 도움을 주고받는 작은 연결을 만드는 것**이 가장 큰 목표입니다.
+
+- 누군가의 출근길이 다른 사람의 시내 외출이 되고,
+- 잠시 비는 시간이 누군가에게 꼭 필요한 일손이 되고,
+- 내가 본 버스 한 대가 다음 사람의 기다림을 줄여줄 수 있도록.
+
+지역의 일상을 더 편하고, 더 따뜻하게 만드는 것 — 그것이 다이루리가 하고 싶은 일입니다.
+
+## 기대 효과
+
+| 영역 | 기대 효과 |
 | --- | --- |
-| `App.tsx` | 인증 상태와 루트 탭/화면 흐름 관리 |
-| `screens/` | 지도, 버스, 모집글, 채팅, 프로필, 작성 플로우 화면 |
-| `components/` | 공통 UI 컨트롤, 카드, 하단 내비게이션, 지도 표면 |
-| `services/` | live API client, 테스트용 mock API, 장소 검색 |
-| `data/` | 로컬 fixture, 필터링/정렬 helper |
-| `server/` | 로컬 API 서버, auth, rate limit, repository, DB scripts |
-| `docs/` | 화면 명세, 구현 계획, 아키텍처 참고 문서 |
+| 🚗 이동권 | 대중교통이 약한 지역에서 이웃 카풀로 이동 격차 해소 |
+| 💼 지역 경제 | 짧고 작은 일자리도 연결되어 지역 안에서 순환 |
+| 🏡 정착 지원 | 새 정착민이 자연스럽게 동네에 자기를 알릴 통로 확보 |
+| 🚌 정보 격차 | 공식 정보가 부족한 정류장도 이웃 기록으로 보완 |
+| 🤝 커뮤니티 신뢰 | 인증·신고·매너 평가로 안전한 동네 네트워크 형성 |
 
-🚀 Local Development
+## 더 알아보기
 
-```bash
-npm install
-npm run web
-```
+기술적 구조, 실행 방법, API 명세, 배포 절차는 별도 문서에서 다룹니다.
 
-웹 앱은 Expo 개발 서버를 통해 실행되며, 일반적으로 `http://localhost:8081`에서 열립니다.
-
-검증 명령:
-
-```bash
-npm run typecheck
-npm test
-```
-
-로컬 API와 인프라 실행:
-
-```bash
-docker compose up -d
-npm run db:check
-npm run db:migrate
-npm run db:seed
-npm run api:start
-```
-
-로컬 앱은 `.env`의 `EXPO_PUBLIC_DARORI_API_BASE_URL=http://localhost:8787`을 사용합니다. 프로덕션 웹과 APK는 `EXPO_PUBLIC_DARORI_API_BASE_URL=https://api.dairuri.harammm.me`를 사용합니다.
-
-🔐 Environment
-
-`.env.example`을 복사해 `.env`를 만들고 필요한 값을 채웁니다.
-
-| Variable | Description |
-| --- | --- |
-| `NAVER_MAP_NCP_KEY_ID` | Android/iOS 네이티브 Dynamic Map SDK key |
-| `EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID` | Expo build에서 사용하는 public Dynamic Map key fallback |
-| `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID` | 웹 지도 표면에서 사용하는 public Web Dynamic Map key |
-| `NAVER_MAP_API_KEY` | Directions, Geocoding 같은 서버 사이드 REST API key |
-| `SOLAPI_API_KEY` | 전화번호 인증 SMS 발송용 SOLAPI API key |
-| `SOLAPI_API_SECRET` | SOLAPI HMAC-SHA256 서명용 API secret |
-| `SOLAPI_FROM` | SOLAPI에 등록된 발신번호 |
-| `PHONE_VERIFICATION_HASH_SECRET` | 전화번호 인증 코드/토큰 해시 salt |
-| `EXPO_PUBLIC_DARORI_API_BASE_URL` | 앱 API 서버 base URL. 로컬은 `http://localhost:8787`, 프로덕션 웹/APK는 `https://api.dairuri.harammm.me` |
-| `EXPO_PUBLIC_DARORI_USER_ID` | 개발용 write user header |
-| `EXPO_PUBLIC_DARORI_USE_MOCK_API` | 테스트/로컬 전용 mock opt-in. 프로덕션에서는 unset |
-| `DATABASE_URL` | 서버 사이드 PostgreSQL connection string |
-| `REDIS_URL` | 서버 사이드 Redis connection string |
-| `NAVER_SEARCH_CLIENT_ID` | 서버 사이드 네이버 검색 API 지역 검색 Client ID. 장소명/상호 검색 정확도 개선용 |
-| `NAVER_SEARCH_CLIENT_SECRET` | 서버 사이드 네이버 검색 API 지역 검색 Client Secret |
-
-`DATABASE_URL`, `REDIS_URL`, `NAVER_MAP_API_KEY`, `NAVER_SEARCH_CLIENT_*`, `SOLAPI_*`, `PHONE_VERIFICATION_HASH_SECRET`는 모바일 앱 번들에 포함되면 안 되는 서버 전용 값입니다.
-
-🌐 Deployment
-
-Vercel은 웹 앱을 다음 방식으로 빌드하고, `api/[...path].ts`를 통해 `/api/posts`, `/api/chat/rooms` 같은 API Function도 함께 노출합니다.
-
-```bash
-npx expo export --platform web --output-dir dist
-```
-
-프로덕션에서 Naver Maps가 정상 렌더링되려면 Vercel 환경변수에 `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID`를 설정하고, Naver Cloud Platform Maps Application 설정에 실제 배포 도메인을 Web 서비스 URL로 등록해야 합니다.
-
-💡 Potential Plans
-
-- 브랜딩 확정 후 README, 앱 설정, mock 데이터 명칭 정리
-- 버스 목격 아카이빙을 사용자별 기록, 최근 목격 내역, 지도 마커와 연결
-- Naver Directions/Geocoding 기반 장소 검색과 경로 안내 고도화
-- 팀원, 역할, 어드바이저 정보가 확정되면 README에 별도 섹션 추가
-
-📚 Reference
-
-- Frontend screen spec: `docs/reference/darori_codex_spec/DARORI_FRONTEND_CODEX_SPEC.md`
-- Current architecture notes: `docs/current-architecture.md`
-- Backend/API reference: `docs/backend-api-reference.md`
+- 개발과 운영 가이드: [docs/development-and-operations.md](docs/development-and-operations.md)
+- 현재 아키텍처 노트: [docs/current-architecture.md](docs/current-architecture.md)
+- 백엔드/API 레퍼런스: [docs/backend-api-reference.md](docs/backend-api-reference.md)
+- AWS EC2 배포 가이드: [docs/aws-ec2-deployment.md](docs/aws-ec2-deployment.md)

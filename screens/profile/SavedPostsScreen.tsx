@@ -211,10 +211,9 @@ const styles = StyleSheet.create({
   },
   countText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   cardList: {
     gap: 10,
@@ -262,10 +261,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.yellowLight,
   },
   typeBadgeText: {
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   jobText: {
     color: colors.mintDark,
@@ -275,17 +273,15 @@ const styles = StyleSheet.create({
   },
   postTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   postBody: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   metaBlock: {
     gap: 3,
@@ -298,10 +294,9 @@ const styles = StyleSheet.create({
   metaText: {
     flex: 1,
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   emptyCard: {
     minHeight: 188,
@@ -314,18 +309,16 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   emptyDescription: {
     color: colors.mutedText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
 });

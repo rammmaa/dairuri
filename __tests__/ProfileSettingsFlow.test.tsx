@@ -1,17 +1,42 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+jest.mock("expo-image-picker", () => ({
+  requestCameraPermissionsAsync: jest.fn(),
+  requestMediaLibraryPermissionsAsync: jest.fn(),
+  launchCameraAsync: jest.fn(),
+  launchImageLibraryAsync: jest.fn(),
+}));
+
 import * as api from "../services/api";
+import * as ImagePicker from "expo-image-picker";
 import { ProfileEditScreen } from "../screens/profile/ProfileEditScreen";
 import { SettingsScreen } from "../screens/profile/SettingsScreen";
 import { SavedPostsScreen } from "../screens/profile/SavedPostsScreen";
 import { MyPostsScreen } from "../screens/profile/MyPostsScreen";
 import { MyPageScreen } from "../screens/MyPageScreen";
+import { mockMe } from "../data/mockDomain";
 import { connectMockDatabase, resetMockDatabase } from "../services/mockDb";
 import { updateMe } from "../services/mockApi";
 
+const defaultMockMeAvatarUrl =
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=420";
+
 describe("Profile settings flow", () => {
   beforeEach(() => {
+    mockMe.nickname = "다로리인";
+    mockMe.avatarUrl = defaultMockMeAvatarUrl;
+    mockMe.driverType = "driver";
+    mockMe.driverVerification = {
+      licenseVerified: true,
+      insuranceVerified: true,
+      verifiedAt: "2026-05-14T00:00:00.000Z",
+    };
     resetMockDatabase();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("renders the profile home dashboard and opens profile actions", () => {
@@ -28,9 +53,18 @@ describe("Profile settings flow", () => {
     expect(screen.getByText("FAQ")).toBeTruthy();
     expect(screen.getByText("어플 정보")).toBeTruthy();
     expect(screen.getByText("약관 및 정책")).toBeTruthy();
-    expect(screen.getByTestId("profile-menu-notice").props.accessibilityState).toMatchObject({
-      disabled: true,
-    });
+
+    fireEvent.press(screen.getByText("공지사항"));
+    expect(onOpenProfileScreen).toHaveBeenCalledWith("notice");
+
+    fireEvent.press(screen.getByText("FAQ"));
+    expect(onOpenProfileScreen).toHaveBeenCalledWith("faq");
+
+    fireEvent.press(screen.getByText("어플 정보"));
+    expect(onOpenProfileScreen).toHaveBeenCalledWith("appInfo");
+
+    fireEvent.press(screen.getByText("약관 및 정책"));
+    expect(onOpenProfileScreen).toHaveBeenCalledWith("terms");
 
     fireEvent.press(screen.getByTestId("profile-edit-button"));
     expect(onOpenProfileScreen).toHaveBeenCalledWith("edit");
@@ -88,6 +122,66 @@ describe("Profile settings flow", () => {
       nickname: "새 다로리",
       driverType: "nonDriver",
     });
+  });
+
+  it("picks a library image, previews the base64 avatar, and saves it", async () => {
+    const onSaved = jest.fn();
+    const updateSpy = jest.spyOn(api, "updateMe");
+    jest.mocked(ImagePicker.requestMediaLibraryPermissionsAsync).mockResolvedValueOnce({
+      granted: true,
+    } as never);
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValueOnce({
+      canceled: false,
+      assets: [
+        {
+          uri: "file:///avatar.jpg",
+          base64: "picked-avatar",
+          mimeType: "image/jpeg",
+        },
+      ],
+    } as never);
+
+    render(<ProfileEditScreen onSaved={onSaved} />);
+
+    fireEvent.press(screen.getByTestId("profile-avatar-edit"));
+    fireEvent.press(screen.getByTestId("profile-image-open-library"));
+
+    const avatarPayload = "data:image/jpeg;base64,picked-avatar";
+    await waitFor(() => {
+      expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ base64: true }),
+      );
+      expect(screen.getByTestId("profile-avatar-image").props.source).toEqual({
+        uri: avatarPayload,
+      });
+    });
+
+    fireEvent.press(screen.getByTestId("profile-save"));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalledTimes(1);
+    });
+    expect(updateSpy).toHaveBeenCalledWith({
+      nickname: "다로리인",
+      driverType: "driver",
+      avatarUrl: avatarPayload,
+    });
+  });
+
+  it("shows status when camera permission is denied", async () => {
+    jest.mocked(ImagePicker.requestCameraPermissionsAsync).mockResolvedValueOnce({
+      granted: false,
+    } as never);
+
+    render(<ProfileEditScreen />);
+
+    fireEvent.press(screen.getByTestId("profile-avatar-edit"));
+    fireEvent.press(screen.getByTestId("profile-image-open-camera"));
+
+    await waitFor(() => {
+      expect(screen.getByText("카메라 권한이 필요해요.")).toBeTruthy();
+    });
+    expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
   });
 
   it("renders account and vehicle data and confirms logout", () => {

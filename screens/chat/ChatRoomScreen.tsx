@@ -19,9 +19,11 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -37,6 +39,7 @@ import { mockChatRooms, mockMessages } from "../../data/mockDomain";
 import {
   getChatMessages,
   getChatRooms,
+  leaveChatRoom,
   sendImageMessage,
   sendMessage,
   submitMannerRating,
@@ -78,6 +81,7 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
   const [attachedPhotoUri, setAttachedPhotoUri] = useState<string | null>(null);
   const [attachedPhotoPayload, setAttachedPhotoPayload] = useState<string | null>(null);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const currentUserId = getSessionUser()?.id ?? "me";
 
   useEffect(() => {
@@ -170,6 +174,76 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
     setLeaveVisible(true);
   };
 
+  const handleCall = async () => {
+    const otherParticipant =
+      room.participants.find((participant) => participant.id !== currentUserId) ??
+      room.participants[0];
+    const phone = otherParticipant?.phone?.trim();
+
+    if (!phone) {
+      setStatusMessage("상대방 전화번호가 등록되어 있지 않아요.");
+      return;
+    }
+
+    try {
+      await Linking.openURL(`tel:${phone.replace(/\s+/g, "")}`);
+      setStatusMessage(null);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "전화 연결을 열지 못했어요.",
+      );
+    }
+  };
+
+  const shareInvite = async (inviteLink: string) => {
+    try {
+      const result = await Share.share({
+        title: room.title,
+        message: `${room.title}\n${inviteLink}`,
+        url: inviteLink,
+      });
+      setStatusMessage(
+        result.action === Share.dismissedAction
+          ? "초대 공유를 취소했어요."
+          : "초대 링크를 공유했어요.",
+      );
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "초대 링크를 공유하지 못했어요.",
+      );
+    }
+  };
+
+  const handleInvite = () => {
+    const inviteLink = `darori.chat/${room.id}`;
+    setMoreVisible(false);
+    setMannerSaved(false);
+    setActionModal("invite");
+    void shareInvite(inviteLink);
+  };
+
+  const confirmLeave = async () => {
+    if (leaving) {
+      return;
+    }
+
+    setLeaving(true);
+    setStatusMessage(null);
+
+    try {
+      await leaveChatRoom(room.id);
+      setLeaveVisible(false);
+      onBack?.();
+    } catch (error) {
+      setLeaveVisible(false);
+      setStatusMessage(
+        error instanceof Error ? error.message : "채팅방을 나가지 못했어요.",
+      );
+    } finally {
+      setLeaving(false);
+    }
+  };
+
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const visibleMessages = normalizedSearchQuery
     ? messages.filter((message) =>
@@ -252,6 +326,9 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
       <ChatHeader
         room={room}
         onBack={onBack}
+        onCall={() => {
+          void handleCall();
+        }}
         onMore={() => setMoreVisible(true)}
       />
       {searchOpen ? (
@@ -307,7 +384,7 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
         onClose={() => setMoreVisible(false)}
         onOpenManner={() => openActionModal("manner")}
         onOpenCredentials={() => openActionModal("credentials")}
-        onInvite={() => openActionModal("invite")}
+        onInvite={handleInvite}
         onSearch={openSearch}
         onToggleMute={toggleMute}
         onReport={handleReport}
@@ -334,8 +411,7 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
         confirmVariant="danger"
         onCancel={() => setLeaveVisible(false)}
         onConfirm={() => {
-          setLeaveVisible(false);
-          onBack?.();
+          void confirmLeave();
         }}
         testID="chat-leave-confirm"
       />
@@ -350,10 +426,12 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
 function ChatHeader({
   room,
   onBack,
+  onCall,
   onMore,
 }: {
   room: ChatRoom;
   onBack?: () => void;
+  onCall: () => void;
   onMore: () => void;
 }) {
   return (
@@ -376,6 +454,8 @@ function ChatHeader({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="전화하기"
+          onPress={onCall}
+          testID="chat-room-phone-button"
           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
         >
           <Phone size={21} color={colors.black} strokeWidth={2.2} />
@@ -765,10 +845,9 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   header: {
     minHeight: 78,
@@ -787,10 +866,9 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     color: colors.black,
-    fontFamily: typography.family.body,
-    fontSize: 30,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.title,
     lineHeight: 34,
-    fontWeight: typography.weight.regular,
   },
   headerText: {
     flex: 1,
@@ -799,18 +877,16 @@ const styles = StyleSheet.create({
   },
   roomTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   roomSubtitle: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   headerActions: {
@@ -851,17 +927,15 @@ const styles = StyleSheet.create({
     minWidth: 0,
     padding: 0,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   roomSearchResult: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   messagesContent: {
     paddingHorizontal: spacing.screenX,
@@ -879,10 +953,9 @@ const styles = StyleSheet.create({
   },
   systemText: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   messageRow: {
@@ -911,10 +984,9 @@ const styles = StyleSheet.create({
   },
   messageText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   messageImageButton: {
     borderRadius: 10,
@@ -930,19 +1002,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenX,
     paddingTop: 8,
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   roomStatusText: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 8,
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   attachmentPreview: {
     paddingHorizontal: spacing.screenX,
@@ -961,10 +1031,9 @@ const styles = StyleSheet.create({
   },
   attachmentPreviewText: {
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   composer: {
     minHeight: 58,
@@ -994,14 +1063,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: colors.gray100,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   imagePreviewOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.94)",
+    backgroundColor: colors.overlayStrong,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1016,7 +1084,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    backgroundColor: colors.overlayInverse,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1035,10 +1103,9 @@ const styles = StyleSheet.create({
   },
   moreItemText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   moreSpacer: {
     height: 48,
@@ -1053,10 +1120,9 @@ const styles = StyleSheet.create({
   },
   moreCloseText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.regular,
   },
   dangerText: {
     color: colors.red,
@@ -1079,26 +1145,23 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   actionDescription: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   actionSuccessText: {
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   ratingList: {
@@ -1119,10 +1182,9 @@ const styles = StyleSheet.create({
   },
   ratingButtonText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   infoList: {
     borderRadius: 14,
@@ -1140,18 +1202,16 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   infoValue: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
     textAlign: "right",
   },
   inviteLink: {
@@ -1160,10 +1220,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.mintLight,
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   actionConfirmButton: {
@@ -1175,9 +1234,8 @@ const styles = StyleSheet.create({
   },
   actionConfirmText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
 });

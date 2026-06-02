@@ -26,7 +26,12 @@ import {
 import type { LucideIcon } from "lucide-react-native";
 
 import { BottomNav } from "../components/BottomNav";
+import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
@@ -132,6 +137,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
   const [rooms, setRooms] = useState<ChatListRoom[]>(() =>
     process.env.NODE_ENV === "test" ? chatRooms : [],
   );
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -240,9 +246,9 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             </Pressable>
 
             <View style={styles.headerTitleBlock}>
-              <Text style={styles.roomTitle}>
+              <ScreenTitle style={styles.roomTitle} numberOfLines={1}>
                 {selectedRoom?.title ?? "채팅"}
-              </Text>
+              </ScreenTitle>
             </View>
 
             <View style={styles.headerActions}>
@@ -303,7 +309,10 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
 
         <ScrollView
           style={styles.messagesScroll}
-          contentContainerStyle={styles.messagesContent}
+          contentContainerStyle={[
+            styles.messagesContent,
+            { paddingBottom: 80 + bottomInset },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.dateText}>2026년 5월 5일</Text>
@@ -361,10 +370,20 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
         </ScrollView>
 
         {inlineStatusMessage ? (
-          <Text style={styles.inlineStatusText}>{inlineStatusMessage}</Text>
+          <Text
+            style={[
+              styles.inlineStatusText,
+              { paddingBottom: 80 + bottomInset },
+            ]}
+          >
+            {inlineStatusMessage}
+          </Text>
         ) : null}
 
-        <View style={styles.inputBar}>
+        <View
+          style={[styles.inputBar, { bottom: 36 + bottomInset }]}
+          testID="chat-room-input-bar"
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="사진 첨부"
@@ -380,7 +399,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
           <TextInput
             accessibilityLabel="메시지 입력"
             placeholder="메시지 보내기"
-            placeholderTextColor="#52525B"
+            placeholderTextColor={colors.grayIcon}
             style={styles.messageInput}
           />
           <Pressable
@@ -403,7 +422,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
               onPress={() => setMenuOpen(false)}
               style={styles.menuBackdrop}
             />
-            <View style={styles.menuPanel}>
+            <View style={[styles.menuPanel, { bottom: 22 + bottomInset }]}>
               <View style={styles.menuSectionLarge}>
                 <MenuAction
                   icon={ThumbsUp}
@@ -577,7 +596,7 @@ function ChatListScreen({
         <View style={styles.listHeader}>
           <View style={styles.listTitleRow}>
             <View>
-              <Text style={styles.listTitle}>채팅</Text>
+              <ScreenTitle>채팅</ScreenTitle>
               <Text style={styles.listSubtitle}>지금 함께 이동할 대화를 확인하세요</Text>
             </View>
             <View style={styles.listHeaderIconFrame}>
@@ -798,7 +817,7 @@ function MenuAction({ icon: Icon, label, onPress }: MenuActionProps) {
         pressed && styles.pressed,
       ]}
     >
-      <Icon size={24} color="#374151" strokeWidth={2.2} />
+      <Icon size={24} color={colors.grayIcon} strokeWidth={2.2} />
       <Text style={styles.menuActionText}>{label}</Text>
     </Pressable>
   );
@@ -921,20 +940,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 16,
   },
-  listTitle: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: typography.weight.bold,
-  },
   listSubtitle: {
     marginTop: 3,
     color: colors.grayText,
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   listHeaderIconFrame: {
     width: 44,
@@ -970,7 +981,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     padding: 0,
   },
   filterButton: {
@@ -1008,10 +1018,9 @@ const styles = StyleSheet.create({
   },
   chatCount: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   emptyChatCard: {
     minHeight: 140,
@@ -1022,10 +1031,9 @@ const styles = StyleSheet.create({
   },
   emptyChatText: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   filterTab: {
     flex: 1,
@@ -1045,7 +1053,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   filterTabLabelSelected: {
@@ -1086,7 +1093,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   chatCopy: {
     flex: 1,
@@ -1105,18 +1111,16 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   timeText: {
     color: colors.grayText,
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   unreadTime: {
     color: colors.mintDark,
-    fontWeight: typography.weight.bold,
+    fontFamily: typography.family.bold,
   },
   chatMetaRow: {
     minHeight: 20,
@@ -1129,7 +1133,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   metaDot: {
     width: 3,
@@ -1144,7 +1147,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   unreadMessageText: {
     color: colors.grayIcon,
@@ -1163,14 +1165,13 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   header: {
     height: 176,
     paddingTop: 10,
     backgroundColor: colors.surface,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -1196,11 +1197,6 @@ const styles = StyleSheet.create({
     paddingRight: 7,
   },
   roomTitle: {
-    color: colors.black,
-    fontFamily: typography.family.regular,
-    fontSize: 30,
-    lineHeight: 38,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   roomMeta: {
@@ -1209,7 +1205,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.lg,
     lineHeight: 26,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   headerActions: {
@@ -1224,8 +1219,8 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 5,
     borderWidth: 2,
-    borderColor: "#1F2937",
-    backgroundColor: "rgba(100, 116, 139, 0.25)",
+    borderColor: colors.slate,
+    backgroundColor: colors.overlay,
   },
   participantRow: {
     marginTop: 12,
@@ -1245,7 +1240,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 20,
-    fontWeight: typography.weight.regular,
   },
   inlineSearchPanel: {
     paddingHorizontal: 24,
@@ -1274,14 +1268,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   inlineSearchResult: {
     color: colors.grayIcon,
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   messagesScroll: {
     flex: 1,
@@ -1298,7 +1290,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 20,
-    fontWeight: typography.weight.regular,
   },
   systemRow: {
     marginTop: 13,
@@ -1324,7 +1315,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 16,
-    fontWeight: typography.weight.regular,
   },
   systemCard: {
     width: 144,
@@ -1332,7 +1322,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: colors.black,
     overflow: "hidden",
-    backgroundColor: "#34D399",
+    backgroundColor: colors.mint,
   },
   systemCardTop: {
     minHeight: 66,
@@ -1348,7 +1338,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 20,
-    fontWeight: typography.weight.regular,
   },
   systemCardBody: {
     minHeight: 114,
@@ -1364,7 +1353,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 15,
-    fontWeight: typography.weight.regular,
     letterSpacing: -0.2,
   },
   recheckButton: {
@@ -1375,7 +1363,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: "#2DD4BF",
+    borderColor: colors.mint,
     backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
@@ -1385,7 +1373,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 16,
-    fontWeight: typography.weight.regular,
     letterSpacing: -0.2,
   },
   receivedRow: {
@@ -1431,16 +1418,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 16,
-    fontWeight: typography.weight.regular,
   },
   inlineStatusText: {
     paddingHorizontal: 30,
     paddingBottom: 80,
     color: colors.mintDark,
-    fontFamily: typography.family.regular,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   inputBar: {
     position: "absolute",
@@ -1470,7 +1455,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 18,
-    fontWeight: typography.weight.regular,
   },
   menuOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1493,14 +1477,14 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 10,
     borderRadius: 20,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.lineStrong,
     gap: 22,
   },
   menuSection: {
     paddingHorizontal: 24,
     paddingVertical: 24,
     borderRadius: 20,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.lineStrong,
     gap: 24,
   },
   menuAction: {
@@ -1516,12 +1500,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 22,
-    fontWeight: typography.weight.regular,
   },
   closePill: {
     height: 56,
     borderRadius: 10,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.lineStrong,
   },
   closeTextButton: {
     alignSelf: "center",
@@ -1535,11 +1518,10 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 22,
-    fontWeight: typography.weight.regular,
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(82, 82, 91, 0.6)",
+    backgroundColor: colors.overlayStrong,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 6,
@@ -1550,14 +1532,13 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     paddingHorizontal: 21,
     borderRadius: 16,
-    backgroundColor: "rgba(38, 38, 38, 0.85)",
+    backgroundColor: colors.overlayStrong,
   },
   confirmText: {
-    color: "#F4F4F5",
+    color: colors.sheet,
     fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 23,
-    fontWeight: typography.weight.regular,
   },
   confirmActions: {
     marginTop: 16,
@@ -1578,7 +1559,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 56,
     borderRadius: 24,
-    backgroundColor: "#DC2626",
+    backgroundColor: colors.red,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 14,
@@ -1588,12 +1569,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 22,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   actionOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(82, 82, 91, 0.6)",
+    backgroundColor: colors.overlayStrong,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
@@ -1612,7 +1592,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   actionDescription: {
@@ -1620,7 +1599,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   actionSuccessText: {
@@ -1628,7 +1606,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   ratingList: {
@@ -1652,7 +1629,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   actionInfoList: {
     borderRadius: 14,
@@ -1673,7 +1649,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   actionInfoValue: {
     flex: 1,
@@ -1681,7 +1656,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
     textAlign: "right",
   },
   inviteLink: {
@@ -1693,7 +1667,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   actionConfirmButton: {
@@ -1708,7 +1681,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   pressed: {
     opacity: 0.78,

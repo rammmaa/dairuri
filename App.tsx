@@ -7,7 +7,11 @@ import {
   NotoSans_600SemiBold,
   NotoSans_700Bold,
 } from "@expo-google-fonts/noto-sans";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import {
+  initialWindowMetrics,
+  SafeAreaProvider,
+} from "react-native-safe-area-context";
 
 import { AuthScreen } from "./screens/auth/AuthScreen";
 import { MapScreen } from "./screens/MapScreen";
@@ -27,6 +31,10 @@ import { MyPostsScreen } from "./screens/profile/MyPostsScreen";
 import { ProfileEditScreen } from "./screens/profile/ProfileEditScreen";
 import { SavedPostsScreen } from "./screens/profile/SavedPostsScreen";
 import { SettingsScreen } from "./screens/profile/SettingsScreen";
+import {
+  ProfileInfoScreen,
+  type ProfileInfoScreenKind,
+} from "./screens/profile/ProfileInfoScreen";
 import { resolveInitialAuthenticated } from "./data/appAuthGate";
 import type { BottomNavItem } from "./data/mapHome";
 import {
@@ -34,11 +42,36 @@ import {
   hasAuthSession,
   restoreAuthSession,
 } from "./services/authSession";
+import { colors } from "./constants/colors";
+import { typography } from "./constants/typography";
+import { configureDefaultFontScaling } from "./utils/fontScaling";
 
-type ProfileSubScreen = "edit" | "settings" | "saved" | "mine" | null;
+configureDefaultFontScaling();
+
+type ProfileSubScreen =
+  | "edit"
+  | "settings"
+  | "saved"
+  | "mine"
+  | ProfileInfoScreenKind
+  | null;
 const INITIAL_TAB: BottomNavItem["id"] = "map";
+const fallbackInitialWindowMetrics = {
+  frame: { x: 0, y: 0, width: 0, height: 0 },
+  insets: { top: 0, right: 0, bottom: 0, left: 0 },
+};
 
 export default function App() {
+  return (
+    <SafeAreaProvider
+      initialMetrics={initialWindowMetrics ?? fallbackInitialWindowMetrics}
+    >
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
   const [fontsLoaded] = useFonts({
     NotoSans_400Regular,
     NotoSans_500Medium,
@@ -112,33 +145,13 @@ export default function App() {
   };
 
   if (!fontsLoaded) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#FFFFFF",
-        }}
-      >
-        <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
-          다로링크를 준비하고 있어요
-        </Text>
-      </View>
-    );
+    return <View style={styles.loadingScreen} />;
   }
 
   if (!authChecked) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#FFFFFF",
-        }}
-      >
-        <Text style={{ color: "#111827", fontSize: 16, fontWeight: "600" }}>
+      <View style={styles.loadingScreen}>
+        <Text style={styles.loadingText}>
           로그인 상태를 확인하고 있어요
         </Text>
       </View>
@@ -304,6 +317,11 @@ export default function App() {
           onBack={() => setProfileSubScreen(null)}
           onSaved={() => setProfileSubScreen(null)}
         />
+      ) : profileSubScreen !== null ? (
+        <ProfileInfoScreen
+          kind={profileSubScreen}
+          onBack={() => setProfileSubScreen(null)}
+        />
       ) : (
         <MyPageScreen
           onSelectTab={handleSelectTab}
@@ -322,3 +340,18 @@ export default function App() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
+  loadingText: {
+    color: colors.black,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+  },
+});

@@ -231,7 +231,7 @@ const AUTH_SESSION_TTL_DAYS = 30;
 export async function registerUser(input: SignupInput): Promise<AuthSession> {
   const loginId = validateLoginId(input.loginId);
   const nickname = requiredRepositoryText(input.nickname, "nickname");
-  const phone = requiredRepositoryText(input.phone, "phone");
+  const phone = normalizeRepositoryPhone(input.phone);
   const password = validatePassword(input.password);
   const driverType = toDatabaseDriverType(input.driverType);
   const email = optionalText(input.email);
@@ -246,6 +246,7 @@ export async function registerUser(input: SignupInput): Promise<AuthSession> {
 
   try {
     await client.query("begin");
+    await assertSignupIdentifiersAvailable(client, { phone, email, loginId });
     await consumePhoneVerificationProof(client, phone, input.phoneVerification);
     await client.query(
       `
@@ -290,7 +291,7 @@ export async function registerUser(input: SignupInput): Promise<AuthSession> {
   } catch (error) {
     await client.query("rollback");
     if (isUniqueViolation(error)) {
-      throw new RepositoryInputError("phone, email, or login id is already registered");
+      throw new RepositoryInputError(getUniqueViolationMessage(error));
     }
     throw error;
   } finally {
@@ -308,13 +309,19 @@ export async function registerUser(input: SignupInput): Promise<AuthSession> {
 export async function authenticateUser(input: LoginInput): Promise<AuthSession> {
   const identifier = requiredRepositoryText(input.identifier, "identifier");
   const password = requiredRepositoryText(input.password, "password");
+  const phoneIdentifier = getCanonicalPhoneIdentifier(identifier);
   const { rows } = await getPostgresPool().query<UserRow>(
     `
       ${userSelectSql()}
-      where u.phone = $1 or u.email = $1 or u.login_id = $1 or u.id = $1
+      where
+        u.phone = $1
+        or ($2::text is not null and regexp_replace(u.phone, '\\D', '', 'g') = $2)
+        or u.email = $1
+        or u.login_id = $1
+        or u.id = $1
       limit 1
     `,
-    [identifier],
+    [identifier, phoneIdentifier],
   );
   const row = rows[0];
 
@@ -338,6 +345,47 @@ export async function checkLoginIdAvailability(loginIdInput: string) {
   );
 
   return { available: !rows[0]?.exists };
+}
+
+async function assertSignupIdentifiersAvailable(
+  client: { query: <T>(sql: string, values?: unknown[]) => Promise<{ rows: T[] }> },
+  input: { phone: string; email: string | null; loginId: string },
+) {
+  const { rows } = await client.query<{
+    phone_exists: boolean;
+    email_exists: boolean;
+    login_id_exists: boolean;
+  }>(
+    `
+      select
+        exists(
+          select 1 from users
+          where regexp_replace(phone, '\\D', '', 'g') = $1
+        ) as phone_exists,
+        exists(
+          select 1 from users
+          where $2::text is not null and lower(email) = lower($2)
+        ) as email_exists,
+        exists(
+          select 1 from users
+          where login_id = $3 or id = $3
+        ) as login_id_exists
+    `,
+    [input.phone, input.email, input.loginId],
+  );
+  const conflicts = rows[0];
+
+  if (conflicts?.phone_exists) {
+    throw new RepositoryInputError("phone is already registered");
+  }
+
+  if (conflicts?.email_exists) {
+    throw new RepositoryInputError("email is already registered");
+  }
+
+  if (conflicts?.login_id_exists) {
+    throw new RepositoryInputError("login id is already registered");
+  }
 }
 
 export async function changeUserPassword(
@@ -730,7 +778,7 @@ export function normalizeCreatePostInput(
     preferredPay: null,
     availabilityNote: null,
     contactNote: null,
-    price: optionalNumber(input.price, "price"),
+    price: null,
     seats: optionalNumber(input.seats, "seats"),
   };
 }
@@ -1116,6 +1164,20 @@ export async function listChatMessages(
     imageUrl: message.image_url ?? undefined,
     createdAt: message.created_at.toISOString(),
   }));
+}
+
+export async function leaveChatRoom(
+  roomId: string,
+  userId: string,
+): Promise<void> {
+  await assertRoomParticipant(roomId, userId);
+  await getPostgresPool().query(
+    `
+      delete from chat_room_participants
+      where room_id = $1 and user_id = $2
+    `,
+    [roomId, userId],
+  );
 }
 
 export async function createChatMessage(
@@ -1745,6 +1807,20 @@ function validatePassword(value: string | undefined) {
   return password;
 }
 
+function normalizeRepositoryPhone(value: string | undefined) {
+  const phone = requiredRepositoryText(value, "phone").replace(/\D/g, "");
+  if (!/^01[016789]\d{7,8}$/.test(phone)) {
+    throw new RepositoryInputError("valid phone is required");
+  }
+
+  return phone;
+}
+
+function getCanonicalPhoneIdentifier(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return /^01[016789]\d{7,8}$/.test(digits) ? digits : null;
+}
+
 function validateLoginId(value: string | undefined) {
   const loginId = requiredRepositoryText(value, "loginId");
   if (!/^[A-Za-z0-9_]{4,20}$/.test(loginId)) {
@@ -1823,4 +1899,28 @@ function isUniqueViolation(error: unknown) {
     "code" in error &&
     (error as { code?: string }).code === "23505"
   );
+}
+
+function getUniqueViolationMessage(error: unknown) {
+  const constraint =
+    typeof error === "object" && error !== null && "constraint" in error
+      ? (error as { constraint?: string }).constraint
+      : undefined;
+
+  if (constraint === "users_phone_key") {
+    return "phone is already registered";
+  }
+
+  if (constraint === "users_email_key") {
+    return "email is already registered";
+  }
+
+  if (
+    constraint === "users_login_id_key" ||
+    constraint === "users_login_id_unique_idx"
+  ) {
+    return "login id is already registered";
+  }
+
+  return "account identifier is already registered";
 }

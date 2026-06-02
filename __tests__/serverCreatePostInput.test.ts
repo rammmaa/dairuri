@@ -29,6 +29,7 @@ describe("server create post input", () => {
       departure: "남성현역",
       destination: "청도명어학원",
       placeName: null,
+      price: null,
       wageAmount: null,
       createdAt: "2026-05-14T00:00:00.000Z",
     });

@@ -105,6 +105,10 @@ export const getChatMessages = (
   ...args: Parameters<typeof mockApi.getChatMessages>
 ) => activeApi().getChatMessages(...args);
 
+export const leaveChatRoom = (
+  ...args: Parameters<typeof mockApi.leaveChatRoom>
+) => activeApi().leaveChatRoom(...args);
+
 export const sendMessage = (...args: Parameters<typeof mockApi.sendMessage>) =>
   activeApi().sendMessage(...args);
 

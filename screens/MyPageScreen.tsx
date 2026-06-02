@@ -21,8 +21,12 @@ import {
 } from "react-native";
 
 import { BottomNav } from "../components/BottomNav";
+import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
-import { screenTopInset } from "../constants/safeArea";
+import {
+  getSafeAreaTopInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
@@ -33,10 +37,13 @@ import {
 import { mockMe } from "../data/mockDomain";
 import { getMe, getReceivedApplications } from "../services/api";
 import type { ApplicationDetail, ApplicationStatus, UserProfile } from "../types/domain";
+import type { ProfileInfoScreenKind } from "./profile/ProfileInfoScreen";
 
 export type MyPageScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
-  onOpenProfileScreen?: (screen: "edit" | "settings" | "saved" | "mine") => void;
+  onOpenProfileScreen?: (
+    screen: "edit" | "settings" | "saved" | "mine" | ProfileInfoScreenKind,
+  ) => void;
   onOpenApplicationReview?: (applicationId: string) => void;
 };
 
@@ -48,11 +55,11 @@ type ProfileMenuItem = {
 };
 
 const profileMenuItems: ProfileMenuItem[] = [
-  { id: "notice", label: "공지사항", icon: Megaphone },
+  { id: "notice", label: "공지사항", icon: Megaphone, implemented: true },
   { id: "settings", label: "설정", icon: Settings, implemented: true },
-  { id: "faq", label: "FAQ", icon: CircleHelp },
-  { id: "appInfo", label: "어플 정보", icon: Info },
-  { id: "terms", label: "약관 및 정책", icon: FileBadge },
+  { id: "faq", label: "FAQ", icon: CircleHelp, implemented: true },
+  { id: "appInfo", label: "어플 정보", icon: Info, implemented: true },
+  { id: "terms", label: "약관 및 정책", icon: FileBadge, implemented: true },
 ];
 
 export function MyPageScreen({
@@ -121,6 +128,7 @@ export function MyPageScreen({
   const pendingApplications = receivedApplications.filter(
     (detail) => detail.application.status === "pending",
   );
+  const topInset = getSafeAreaTopInset(useRuntimeSafeAreaInsets());
 
   return (
     <View style={styles.safeArea}>
@@ -130,7 +138,9 @@ export function MyPageScreen({
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.headerTitle}>프로필</Text>
+          <ScreenTitle style={[styles.headerTitle, { paddingTop: 52 + topInset }]}>
+            프로필
+          </ScreenTitle>
 
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
@@ -210,9 +220,9 @@ export function MyPageScreen({
                 key={item.id}
                 item={item}
                 onPress={() => {
-                  if (item.id === "settings") {
-                    onOpenProfileScreen?.("settings");
-                  }
+                  onOpenProfileScreen?.(
+                    item.id as "settings" | ProfileInfoScreenKind,
+                  );
                 }}
               />
             ))}
@@ -339,14 +349,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     marginHorizontal: -spacing.screenX,
     paddingHorizontal: spacing.screenX,
-    paddingTop: 52 + screenTopInset,
     paddingBottom: 12,
     backgroundColor: colors.surface,
-    color: colors.black,
-    fontFamily: typography.family.body,
-    fontSize: 24,
-    lineHeight: 31,
-    fontWeight: typography.weight.bold,
   },
   profileCard: {
     width: "100%",
@@ -379,17 +383,15 @@ const styles = StyleSheet.create({
   },
   profileName: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   profileStatus: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   editButton: {
     width: 32,
@@ -416,17 +418,15 @@ const styles = StyleSheet.create({
   temperatureTitle: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   temperatureValue: {
     color: colors.yellowText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   temperatureValueGroup: {
     flexDirection: "row",
@@ -439,10 +439,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.yellowLight,
     color: colors.yellowText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: 24,
-    fontWeight: typography.weight.bold,
   },
   temperatureTrack: {
     height: 14,
@@ -457,10 +456,9 @@ const styles = StyleSheet.create({
   },
   temperatureHint: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
     textAlign: "left",
   },
   menuList: {
@@ -502,17 +500,15 @@ const styles = StyleSheet.create({
   },
   applicationTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   applicationCount: {
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   applicationList: {
     gap: 8,
@@ -534,38 +530,33 @@ const styles = StyleSheet.create({
   },
   applicationPostTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   applicationApplicant: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   applicationStatus: {
     color: colors.mintDark,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   applicationEmpty: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   errorText: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   menuRow: {
     minHeight: 56,
@@ -589,9 +580,8 @@ const styles = StyleSheet.create({
   menuLabel: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
 });

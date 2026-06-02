@@ -42,6 +42,7 @@ import {
   getApplicationDetail,
   getPostById,
   getUserById,
+  leaveChatRoom,
   listApplicationsForPost,
   listChatMessages,
   listChatRooms,
@@ -74,6 +75,7 @@ const writeRateLimits = {
   createApplication: { limit: 10, windowSeconds: 60 },
   reviewApplication: { limit: 60, windowSeconds: 60 },
   sendChatMessage: { limit: 60, windowSeconds: 60 },
+  leaveChatRoom: { limit: 30, windowSeconds: 60 },
   submitReport: { limit: 10, windowSeconds: 60 },
   submitMannerRating: { limit: 30, windowSeconds: 60 },
   recordBusSighting: { limit: 30, windowSeconds: 60 },
@@ -453,6 +455,14 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse) 
         context.userId,
       ),
     );
+    return;
+  }
+
+  const leaveRoomMatch = pathname.match(/^\/chat\/rooms\/([^/]+)\/participants\/me$/);
+  if (leaveRoomMatch && method === "DELETE") {
+    const context = await requireWriteContext(request, "leaveChatRoom");
+    await leaveChatRoom(leaveRoomMatch[1], context.userId);
+    sendJson(response, 204);
     return;
   }
 

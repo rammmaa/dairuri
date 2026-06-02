@@ -287,6 +287,19 @@ export async function getChatMessages(roomId: string): Promise<ChatMessage[]> {
   );
 }
 
+export async function leaveChatRoom(roomId: string): Promise<void> {
+  await withWebTestFallback(
+    () =>
+      apiRequest<void>(
+        `/chat/rooms/${encodeURIComponent(roomId)}/participants/me`,
+        {
+          method: "DELETE",
+        },
+      ),
+    () => mockApi.leaveChatRoom(roomId),
+  );
+}
+
 export async function sendMessage(
   roomId: string,
   text: string,
