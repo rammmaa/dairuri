@@ -422,7 +422,9 @@ export async function getChatRooms(): Promise<ChatRoom[]> {
   await delay();
   const database = connectMockDatabase();
 
-  return [...database.chatRooms];
+  return database.chatRooms.filter((room) =>
+    room.participants.some((participant) => participant.id === "me"),
+  );
 }
 
 export async function getChatMessages(roomId: string): Promise<ChatMessage[]> {
@@ -430,6 +432,27 @@ export async function getChatMessages(roomId: string): Promise<ChatMessage[]> {
   const database = connectMockDatabase();
 
   return database.messages.filter((message) => message.roomId === roomId);
+}
+
+export async function leaveChatRoom(roomId: string): Promise<void> {
+  await delay(40);
+  const database = connectMockDatabase();
+  const room = database.chatRooms.find((item) => item.id === roomId);
+
+  if (!room) {
+    throw new Error(`Cannot leave missing room: ${roomId}`);
+  }
+
+  const nextParticipants = room.participants.filter(
+    (participant) => participant.id !== "me",
+  );
+
+  if (nextParticipants.length === room.participants.length) {
+    throw new Error("채팅방을 찾을 수 없어요.");
+  }
+
+  room.participants = nextParticipants;
+  assertDatabaseConsistency(database);
 }
 
 export async function sendMessage(

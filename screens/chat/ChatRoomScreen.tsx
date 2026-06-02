@@ -19,9 +19,11 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -37,6 +39,7 @@ import { mockChatRooms, mockMessages } from "../../data/mockDomain";
 import {
   getChatMessages,
   getChatRooms,
+  leaveChatRoom,
   sendImageMessage,
   sendMessage,
   submitMannerRating,
@@ -78,6 +81,7 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
   const [attachedPhotoUri, setAttachedPhotoUri] = useState<string | null>(null);
   const [attachedPhotoPayload, setAttachedPhotoPayload] = useState<string | null>(null);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const currentUserId = getSessionUser()?.id ?? "me";
 
   useEffect(() => {
@@ -170,6 +174,76 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
     setLeaveVisible(true);
   };
 
+  const handleCall = async () => {
+    const otherParticipant =
+      room.participants.find((participant) => participant.id !== currentUserId) ??
+      room.participants[0];
+    const phone = otherParticipant?.phone?.trim();
+
+    if (!phone) {
+      setStatusMessage("상대방 전화번호가 등록되어 있지 않아요.");
+      return;
+    }
+
+    try {
+      await Linking.openURL(`tel:${phone.replace(/\s+/g, "")}`);
+      setStatusMessage(null);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "전화 연결을 열지 못했어요.",
+      );
+    }
+  };
+
+  const shareInvite = async (inviteLink: string) => {
+    try {
+      const result = await Share.share({
+        title: room.title,
+        message: `${room.title}\n${inviteLink}`,
+        url: inviteLink,
+      });
+      setStatusMessage(
+        result.action === Share.dismissedAction
+          ? "초대 공유를 취소했어요."
+          : "초대 링크를 공유했어요.",
+      );
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "초대 링크를 공유하지 못했어요.",
+      );
+    }
+  };
+
+  const handleInvite = () => {
+    const inviteLink = `darori.chat/${room.id}`;
+    setMoreVisible(false);
+    setMannerSaved(false);
+    setActionModal("invite");
+    void shareInvite(inviteLink);
+  };
+
+  const confirmLeave = async () => {
+    if (leaving) {
+      return;
+    }
+
+    setLeaving(true);
+    setStatusMessage(null);
+
+    try {
+      await leaveChatRoom(room.id);
+      setLeaveVisible(false);
+      onBack?.();
+    } catch (error) {
+      setLeaveVisible(false);
+      setStatusMessage(
+        error instanceof Error ? error.message : "채팅방을 나가지 못했어요.",
+      );
+    } finally {
+      setLeaving(false);
+    }
+  };
+
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const visibleMessages = normalizedSearchQuery
     ? messages.filter((message) =>
@@ -252,6 +326,9 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
       <ChatHeader
         room={room}
         onBack={onBack}
+        onCall={() => {
+          void handleCall();
+        }}
         onMore={() => setMoreVisible(true)}
       />
       {searchOpen ? (
@@ -307,7 +384,7 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
         onClose={() => setMoreVisible(false)}
         onOpenManner={() => openActionModal("manner")}
         onOpenCredentials={() => openActionModal("credentials")}
-        onInvite={() => openActionModal("invite")}
+        onInvite={handleInvite}
         onSearch={openSearch}
         onToggleMute={toggleMute}
         onReport={handleReport}
@@ -334,8 +411,7 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
         confirmVariant="danger"
         onCancel={() => setLeaveVisible(false)}
         onConfirm={() => {
-          setLeaveVisible(false);
-          onBack?.();
+          void confirmLeave();
         }}
         testID="chat-leave-confirm"
       />
@@ -350,10 +426,12 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
 function ChatHeader({
   room,
   onBack,
+  onCall,
   onMore,
 }: {
   room: ChatRoom;
   onBack?: () => void;
+  onCall: () => void;
   onMore: () => void;
 }) {
   return (
@@ -376,6 +454,8 @@ function ChatHeader({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="전화하기"
+          onPress={onCall}
+          testID="chat-room-phone-button"
           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
         >
           <Phone size={21} color={colors.black} strokeWidth={2.2} />

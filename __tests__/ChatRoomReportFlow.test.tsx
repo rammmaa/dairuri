@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Linking, Share } from "react-native";
 
 jest.mock("expo-image-picker", () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(),
@@ -10,6 +11,7 @@ jest.mock("../services/api", () => {
 
   return {
     ...actual,
+    leaveChatRoom: jest.fn((...args) => actual.leaveChatRoom(...args)),
     sendImageMessage: jest.fn((...args) => actual.sendImageMessage(...args)),
     sendMessage: jest.fn((...args) => actual.sendMessage(...args)),
     submitReport: jest.fn(),
@@ -18,15 +20,32 @@ jest.mock("../services/api", () => {
 
 import * as ImagePicker from "expo-image-picker";
 import * as api from "../services/api";
+import { mockChatRooms } from "../data/mockDomain";
 import { ChatRoomScreen } from "../screens/chat/ChatRoomScreen";
 import { ReportScreen } from "../screens/chat/ReportScreen";
+import { resetMockDatabase } from "../services/mockDb";
 
 const mockedApi = api as typeof api & {
+  leaveChatRoom: jest.Mock;
   sendImageMessage: jest.Mock;
+  sendMessage: jest.Mock;
   submitReport: jest.Mock;
 };
 
 describe("Chat room and report flow", () => {
+  beforeEach(() => {
+    resetMockDatabase();
+    jest.restoreAllMocks();
+    mockedApi.leaveChatRoom.mockClear();
+    mockedApi.sendImageMessage.mockClear();
+    mockedApi.sendMessage.mockClear();
+    mockedApi.submitReport.mockClear();
+    jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
+    jest.spyOn(Share, "share").mockResolvedValue({
+      action: "sharedAction",
+    } as never);
+  });
+
   it("renders the chat room header, messages, and composer", async () => {
     render(<ChatRoomScreen roomId="room-1" />);
 
@@ -115,6 +134,39 @@ describe("Chat room and report flow", () => {
     );
   });
 
+  it("opens the other participant phone number from the header call button", async () => {
+    const openURL = jest.mocked(Linking.openURL);
+
+    render(<ChatRoomScreen roomId="room-1" />);
+
+    fireEvent.press(screen.getByLabelText("전화하기"));
+
+    await waitFor(() => {
+      expect(openURL).toHaveBeenCalledWith("tel:010-1234-4567");
+    });
+  });
+
+  it("shows phone call status when the other participant has no phone number", () => {
+    const openURL = jest.mocked(Linking.openURL);
+    openURL.mockClear();
+    const originalParticipants = mockChatRooms[0].participants;
+    mockChatRooms[0].participants = [
+      originalParticipants[0],
+      { ...originalParticipants[1], phone: "" },
+    ];
+
+    try {
+      render(<ChatRoomScreen roomId="room-1" />);
+
+      fireEvent.press(screen.getByLabelText("전화하기"));
+
+      expect(screen.getByText("상대방 전화번호가 등록되어 있지 않아요.")).toBeTruthy();
+      expect(openURL).not.toHaveBeenCalled();
+    } finally {
+      mockChatRooms[0].participants = originalParticipants;
+    }
+  });
+
   it("opens the more sheet and calls report with the current room id", () => {
     const onReport = jest.fn();
 
@@ -158,6 +210,9 @@ describe("Chat room and report flow", () => {
     fireEvent.press(screen.getByText("아는 사용자 초대하기"));
     expect(screen.getByText("초대 링크가 준비되었습니다.")).toBeTruthy();
     expect(screen.getByText("darori.chat/room-1")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("초대 링크를 공유했어요.")).toBeTruthy();
+    });
     fireEvent.press(screen.getByText("확인"));
 
     fireEvent.press(screen.getByTestId("chat-room-more-button"));
@@ -174,6 +229,31 @@ describe("Chat room and report flow", () => {
     expect(screen.getByText("알림켜기")).toBeTruthy();
   });
 
+  it("shares the invite link and keeps the invite confirmation visible", async () => {
+    const share = jest.mocked(Share.share);
+    share.mockClear();
+    share.mockResolvedValueOnce({
+      action: "sharedAction",
+    } as never);
+
+    render(<ChatRoomScreen roomId="room-1" />);
+
+    fireEvent.press(screen.getByTestId("chat-room-more-button"));
+    fireEvent.press(screen.getByText("아는 사용자 초대하기"));
+
+    await waitFor(() => {
+      expect(share).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("darori.chat/room-1"),
+          title: "‘청도감 학원’ 함께 다니실 사람 구해요",
+          url: "darori.chat/room-1",
+        }),
+      );
+    });
+    expect(screen.getByText("초대 링크를 공유했어요.")).toBeTruthy();
+    expect(screen.getByText("darori.chat/room-1")).toBeTruthy();
+  });
+
   it("opens the leave-room confirmation from the more sheet", () => {
     render(<ChatRoomScreen roomId="room-1" />);
 
@@ -183,6 +263,38 @@ describe("Chat room and report flow", () => {
     expect(screen.getByTestId("chat-leave-confirm")).toBeTruthy();
     expect(screen.getByText("채팅방을 나가시겠어요?")).toBeTruthy();
     expect(screen.getByText("채팅목록 및 대화 내용이 삭제되고 복구할 수 없어요.")).toBeTruthy();
+  });
+
+  it("leaves the room through the chat API before navigating back", async () => {
+    const onBack = jest.fn();
+    mockedApi.leaveChatRoom.mockResolvedValueOnce(undefined);
+
+    render(<ChatRoomScreen roomId="room-1" onBack={onBack} />);
+
+    fireEvent.press(screen.getByTestId("chat-room-more-button"));
+    fireEvent.press(screen.getByTestId("chat-more-leave"));
+    fireEvent.press(screen.getByText("네, 나갈래요"));
+
+    await waitFor(() => {
+      expect(mockedApi.leaveChatRoom).toHaveBeenCalledWith("room-1");
+    });
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the user in the room when leaving fails", async () => {
+    const onBack = jest.fn();
+    mockedApi.leaveChatRoom.mockRejectedValueOnce(new Error("leave failed"));
+
+    render(<ChatRoomScreen roomId="room-1" onBack={onBack} />);
+
+    fireEvent.press(screen.getByTestId("chat-room-more-button"));
+    fireEvent.press(screen.getByTestId("chat-more-leave"));
+    fireEvent.press(screen.getByText("네, 나갈래요"));
+
+    await waitFor(() => {
+      expect(screen.getByText("leave failed")).toBeTruthy();
+    });
+    expect(onBack).not.toHaveBeenCalled();
   });
 
   it("selects a report reason and submits the report", async () => {

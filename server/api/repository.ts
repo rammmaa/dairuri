@@ -1166,6 +1166,20 @@ export async function listChatMessages(
   }));
 }
 
+export async function leaveChatRoom(
+  roomId: string,
+  userId: string,
+): Promise<void> {
+  await assertRoomParticipant(roomId, userId);
+  await getPostgresPool().query(
+    `
+      delete from chat_room_participants
+      where room_id = $1 and user_id = $2
+    `,
+    [roomId, userId],
+  );
+}
+
 export async function createChatMessage(
   roomId: string,
   input: { text?: string; imageUrl?: string },

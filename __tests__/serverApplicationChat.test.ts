@@ -1,6 +1,7 @@
 import { getPostgresPool } from "../server/db/postgres";
 import {
   acceptApplicationAndCreateChatRoom,
+  leaveChatRoom,
   listChatRooms,
 } from "../server/api/repository";
 
@@ -178,5 +179,26 @@ describe("application acceptance chat creation", () => {
         participants: [{ id: "me" }],
       },
     ]);
+  });
+
+  it("removes the current user from chat room participants when leaving", async () => {
+    const poolQuery = jest
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [{ room_exists: true, participant_exists: true }],
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    jest.mocked(getPostgresPool).mockReturnValue({
+      query: poolQuery,
+    } as never);
+
+    await leaveChatRoom("room-1", "me");
+
+    expect(poolQuery).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("delete from chat_room_participants"),
+      ["room-1", "me"],
+    );
   });
 });
