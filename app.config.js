@@ -2,15 +2,32 @@ if (!process.env.JEST_WORKER_ID) {
   require("dotenv").config({ quiet: true });
 }
 
-const naverMapNcpKeyId =
-  process.env.NAVER_MAP_NCP_KEY_ID ??
-  process.env.EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID ??
-  "";
+function firstNonEmptyEnv(keys) {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+const splashConfig = {
+  image: "./assets/splash-icon.png",
+  resizeMode: "contain",
+  backgroundColor: "#ffffff",
+};
+const naverMapNcpKeyId = firstNonEmptyEnv([
+  "NAVER_MAP_NCP_KEY_ID",
+  "EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID",
+]);
 const naverMapWebNcpKeyId =
-  process.env.EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID ??
-  process.env.EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID ??
-  naverMapNcpKeyId ??
-  "";
+  firstNonEmptyEnv([
+    "EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID",
+    "EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID",
+  ]) || naverMapNcpKeyId;
 
 module.exports = {
   expo: {
@@ -21,10 +38,17 @@ module.exports = {
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
-    splash: {
-      image: "./assets/splash-icon.png",
-      resizeMode: "contain",
+    jsEngine: "hermes",
+    splash: splashConfig,
+    androidStatusBar: {
+      barStyle: "dark-content",
       backgroundColor: "#ffffff",
+      translucent: false,
+    },
+    androidNavigationBar: {
+      barStyle: "dark-content",
+      backgroundColor: "#ffffff",
+      enforceContrast: true,
     },
     ios: {
       supportsTablet: false,
@@ -36,6 +60,7 @@ module.exports = {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
+      splash: splashConfig,
       edgeToEdgeEnabled: false,
       predictiveBackGestureEnabled: false,
     },
