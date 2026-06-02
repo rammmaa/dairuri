@@ -31,6 +31,10 @@ import { MyPostsScreen } from "./screens/profile/MyPostsScreen";
 import { ProfileEditScreen } from "./screens/profile/ProfileEditScreen";
 import { SavedPostsScreen } from "./screens/profile/SavedPostsScreen";
 import { SettingsScreen } from "./screens/profile/SettingsScreen";
+import {
+  ProfileInfoScreen,
+  type ProfileInfoScreenKind,
+} from "./screens/profile/ProfileInfoScreen";
 import { resolveInitialAuthenticated } from "./data/appAuthGate";
 import type { BottomNavItem } from "./data/mapHome";
 import {
@@ -41,7 +45,13 @@ import {
 import { colors } from "./constants/colors";
 import { typography } from "./constants/typography";
 
-type ProfileSubScreen = "edit" | "settings" | "saved" | "mine" | null;
+type ProfileSubScreen =
+  | "edit"
+  | "settings"
+  | "saved"
+  | "mine"
+  | ProfileInfoScreenKind
+  | null;
 const INITIAL_TAB: BottomNavItem["id"] = "map";
 const fallbackInitialWindowMetrics = {
   frame: { x: 0, y: 0, width: 0, height: 0 },
@@ -303,6 +313,11 @@ function AppContent() {
         <ProfileEditScreen
           onBack={() => setProfileSubScreen(null)}
           onSaved={() => setProfileSubScreen(null)}
+        />
+      ) : profileSubScreen !== null ? (
+        <ProfileInfoScreen
+          kind={profileSubScreen}
+          onBack={() => setProfileSubScreen(null)}
         />
       ) : (
         <MyPageScreen

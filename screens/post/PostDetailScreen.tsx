@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Image,
   Pressable,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -64,6 +65,7 @@ export function PostDetailScreen({
     process.env.NODE_ENV === "test" || Boolean(getSessionUser()),
   );
   const [applyVisible, setApplyVisible] = useState(false);
+  const [shareErrorMessage, setShareErrorMessage] = useState<string | null>(null);
   const insets = useRuntimeSafeAreaInsets();
   const topInset = getSafeAreaTopInset(insets);
   const bottomInset = getSafeAreaBottomInset(insets);
@@ -149,6 +151,23 @@ export function PostDetailScreen({
       .catch(() => setPost(previousPost));
   };
 
+  const handleShare = async () => {
+    const shareUrl = `dairuri://posts/${post.id}`;
+    setShareErrorMessage(null);
+
+    try {
+      await Share.share({
+        title: post.title,
+        message: `${post.title}\n${getShareDescription(post)}\n${shareUrl}`,
+        url: shareUrl,
+      });
+    } catch (error) {
+      setShareErrorMessage(
+        error instanceof Error ? error.message : "공유하지 못했어요.",
+      );
+    }
+  };
+
   return (
     <View style={styles.safeArea}>
       <DetailHeader
@@ -156,6 +175,9 @@ export function PostDetailScreen({
         liked={post.liked}
         onBack={onBack}
         onLike={toggleLike}
+        onShare={() => {
+          void handleShare();
+        }}
         topInset={topInset}
       />
 
@@ -172,6 +194,9 @@ export function PostDetailScreen({
         <Image source={{ uri: heroImage }} style={styles.heroImage} />
         <View style={styles.content}>
           <AuthorRow post={post} themeColor={themeColor} />
+          {shareErrorMessage ? (
+            <Text style={styles.shareStatusText}>{shareErrorMessage}</Text>
+          ) : null}
           <View style={styles.divider} />
           <View style={styles.postSection}>
             <Text style={styles.postTitle}>{post.title}</Text>
@@ -252,12 +277,14 @@ function DetailHeader({
   liked,
   onBack,
   onLike,
+  onShare,
   topInset,
 }: {
   title: string;
   liked: boolean;
   onBack?: () => void;
   onLike: () => void;
+  onShare: () => void;
   topInset: number;
 }) {
   return (
@@ -284,6 +311,7 @@ function DetailHeader({
         accessibilityRole="button"
         accessibilityLabel="공유하기"
         hitSlop={10}
+        onPress={onShare}
         style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
       >
         <Share2 size={24} color={colors.black} strokeWidth={2.1} />
@@ -374,6 +402,14 @@ function formatWage(type: "hourly" | "monthly", amount: number) {
   const prefix = type === "hourly" ? "" : "월 ";
 
   return `${prefix}${amount.toLocaleString()}원`;
+}
+
+function getShareDescription(post: Post) {
+  if (post.type === "carpool") {
+    return `${post.departure}에서 ${post.destination}까지 ${post.days.join(", ")} ${post.startTime}`;
+  }
+
+  return post.preferredPay ?? formatWage(post.wageType, post.wageAmount);
 }
 
 function getAvailabilityLabel(post: Post) {
@@ -476,6 +512,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 9,
+  },
+  shareStatusText: {
+    color: colors.red,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   avatar: {
     width: 45,

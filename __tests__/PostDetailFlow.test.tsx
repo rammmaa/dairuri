@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Share } from "react-native";
 
 jest.mock("../services/api", () => {
   const actual = jest.requireActual("../services/api");
@@ -14,6 +15,7 @@ import * as api from "../services/api";
 
 describe("PostDetailScreen", () => {
   afterEach(() => {
+    jest.restoreAllMocks();
     jest.mocked(api.applyToPost).mockImplementation((...args) => {
       const actual = jest.requireActual("../services/api");
       return actual.applyToPost(...args);
@@ -108,6 +110,36 @@ describe("PostDetailScreen", () => {
     expect(screen.getByText("내 모집글")).toBeTruthy();
     expect(screen.getByText("내가 작성한 모집글에는 지원할 수 없어요.")).toBeTruthy();
     expect(screen.queryByText("지원하기")).toBeNull();
+  });
+
+  it("shares the current post with a useful title and message", async () => {
+    const shareSpy = jest.spyOn(Share, "share").mockResolvedValueOnce({
+      action: Share.sharedAction,
+    } as never);
+
+    render(<PostDetailScreen postId="job-1" />);
+
+    fireEvent.press(screen.getByLabelText("공유하기"));
+
+    await waitFor(() => {
+      expect(shareSpy).toHaveBeenCalledWith({
+        title: "농촌 일손과 카페 보조 도울 수 있어요",
+        message: expect.stringContaining("농촌 일손과 카페 보조 도울 수 있어요"),
+        url: "dairuri://posts/job-1",
+      });
+    });
+    expect(shareSpy.mock.calls[0][0].message).toContain("dairuri://posts/job-1");
+  });
+
+  it("shows non-blocking feedback when sharing fails", async () => {
+    jest.spyOn(Share, "share").mockRejectedValueOnce(new Error("share failed"));
+
+    render(<PostDetailScreen postId="job-1" />);
+
+    fireEvent.press(screen.getByLabelText("공유하기"));
+
+    expect(await screen.findByText("share failed")).toBeTruthy();
+    expect(screen.getByText("지원하기")).toBeTruthy();
   });
 
   it("keeps the apply modal open and shows an error when application creation fails", async () => {

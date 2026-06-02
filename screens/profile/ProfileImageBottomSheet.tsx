@@ -25,16 +25,19 @@ export function ProfileImageBottomSheet({
       label: "현재 프로필 지우기",
       icon: Trash2,
       onPress: onRemove,
+      testID: "profile-image-remove",
     },
     {
       label: "카메라 열기",
       icon: Camera,
       onPress: onOpenCamera,
+      testID: "profile-image-open-camera",
     },
     {
       label: "사진첩 열기",
       icon: ImageIcon,
       onPress: onOpenLibrary,
+      testID: "profile-image-open-library",
     },
   ];
 
@@ -50,6 +53,7 @@ export function ProfileImageBottomSheet({
               accessibilityRole="button"
               accessibilityLabel={action.label}
               onPress={action.onPress}
+              testID={action.testID}
               style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
             >
               <View style={styles.iconFrame}>

@@ -67,6 +67,12 @@ describe("App tabs", () => {
     fireEvent.press(screen.getByLabelText("뒤로가기"));
     expect(screen.getByText("매너온도")).toBeTruthy();
 
+    fireEvent.press(screen.getByText("공지사항"));
+    expect(screen.getByText("앱 업데이트와 운영 안내를 확인하세요.")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("뒤로가기"));
+    expect(screen.getByText("매너온도")).toBeTruthy();
+
     fireEvent.press(screen.getByTestId("profile-bottom-nav-map"));
     expect(screen.getByText("여기서 검색")).toBeTruthy();
   });

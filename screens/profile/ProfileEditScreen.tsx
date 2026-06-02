@@ -1,4 +1,5 @@
 import { Camera, CarFront, UserRound, UserRoundCheck } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
   Image,
@@ -113,6 +114,67 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
     }
   };
 
+  const applyPickedAvatar = (asset: ImagePicker.ImagePickerAsset | undefined) => {
+    if (!asset) {
+      setErrorMessage("사진을 선택하지 못했어요.");
+      return;
+    }
+
+    setAvatarUrl(getAvatarPayload(asset));
+    setAvatarChanged(true);
+    setErrorMessage(null);
+  };
+
+  const handleOpenCamera = async () => {
+    setImageSheetVisible(false);
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      setErrorMessage("카메라 권한이 필요해요.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.72,
+      base64: true,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (result.canceled) {
+      setErrorMessage("사진 선택을 취소했어요.");
+      return;
+    }
+
+    applyPickedAvatar(result.assets[0]);
+  };
+
+  const handleOpenLibrary = async () => {
+    setImageSheetVisible(false);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setErrorMessage("사진 접근 권한이 필요해요.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.72,
+      base64: true,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (result.canceled) {
+      setErrorMessage("사진 선택을 취소했어요.");
+      return;
+    }
+
+    applyPickedAvatar(result.assets[0]);
+  };
+
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen}>
@@ -130,7 +192,11 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
           <View style={styles.avatarBlock}>
             <View style={styles.avatarFrame}>
               {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.avatarImage}
+                  testID="profile-avatar-image"
+                />
               ) : (
                 <UserRound size={54} color={colors.mintDark} strokeWidth={2.1} />
               )}
@@ -203,14 +269,25 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
           onRemove={() => {
             setAvatarUrl(undefined);
             setAvatarChanged(true);
+            setErrorMessage(null);
             setImageSheetVisible(false);
           }}
-          onOpenCamera={() => setImageSheetVisible(false)}
-          onOpenLibrary={() => setImageSheetVisible(false)}
+          onOpenCamera={() => {
+            void handleOpenCamera();
+          }}
+          onOpenLibrary={() => {
+            void handleOpenLibrary();
+          }}
         />
       </View>
     </View>
   );
+}
+
+function getAvatarPayload(asset: ImagePicker.ImagePickerAsset) {
+  return asset.base64
+    ? `data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}`
+    : asset.uri;
 }
 
 type DriverOptionProps = {

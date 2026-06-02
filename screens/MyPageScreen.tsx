@@ -37,10 +37,13 @@ import {
 import { mockMe } from "../data/mockDomain";
 import { getMe, getReceivedApplications } from "../services/api";
 import type { ApplicationDetail, ApplicationStatus, UserProfile } from "../types/domain";
+import type { ProfileInfoScreenKind } from "./profile/ProfileInfoScreen";
 
 export type MyPageScreenProps = {
   onSelectTab?: (item: BottomNavItem) => void;
-  onOpenProfileScreen?: (screen: "edit" | "settings" | "saved" | "mine") => void;
+  onOpenProfileScreen?: (
+    screen: "edit" | "settings" | "saved" | "mine" | ProfileInfoScreenKind,
+  ) => void;
   onOpenApplicationReview?: (applicationId: string) => void;
 };
 
@@ -52,11 +55,11 @@ type ProfileMenuItem = {
 };
 
 const profileMenuItems: ProfileMenuItem[] = [
-  { id: "notice", label: "공지사항", icon: Megaphone },
+  { id: "notice", label: "공지사항", icon: Megaphone, implemented: true },
   { id: "settings", label: "설정", icon: Settings, implemented: true },
-  { id: "faq", label: "FAQ", icon: CircleHelp },
-  { id: "appInfo", label: "어플 정보", icon: Info },
-  { id: "terms", label: "약관 및 정책", icon: FileBadge },
+  { id: "faq", label: "FAQ", icon: CircleHelp, implemented: true },
+  { id: "appInfo", label: "어플 정보", icon: Info, implemented: true },
+  { id: "terms", label: "약관 및 정책", icon: FileBadge, implemented: true },
 ];
 
 export function MyPageScreen({
@@ -217,9 +220,9 @@ export function MyPageScreen({
                 key={item.id}
                 item={item}
                 onPress={() => {
-                  if (item.id === "settings") {
-                    onOpenProfileScreen?.("settings");
-                  }
+                  onOpenProfileScreen?.(
+                    item.id as "settings" | ProfileInfoScreenKind,
+                  );
                 }}
               />
             ))}
