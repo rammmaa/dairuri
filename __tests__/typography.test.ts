@@ -2,6 +2,10 @@ import { readdirSync, readFileSync, statSync } from "fs";
 import path from "path";
 
 import { typography } from "../constants/typography";
+import {
+  configureDefaultFontScaling,
+  setFontScalingDefault,
+} from "../utils/fontScaling";
 
 const appSourceRoots = ["components", "constants", "screens"];
 const appEntryFiles = ["App.tsx"];
@@ -82,5 +86,26 @@ describe("typography tokens", () => {
 
       expect(source).not.toMatch(/fontSize\s*:\s*\d+/);
     }
+  });
+
+  it("disables native font scaling by default for stable Android layouts", () => {
+    type TextDefaultsProbe = {
+      defaultProps?: Record<string, unknown>;
+    };
+    const textComponent = { defaultProps: { numberOfLines: 1 } };
+    const inputComponent: TextDefaultsProbe = {};
+
+    setFontScalingDefault(textComponent, false);
+    setFontScalingDefault(inputComponent, false);
+
+    expect(textComponent.defaultProps).toEqual({
+      numberOfLines: 1,
+      allowFontScaling: false,
+    });
+    expect(inputComponent.defaultProps).toEqual({
+      allowFontScaling: false,
+    });
+
+    expect(() => configureDefaultFontScaling()).not.toThrow();
   });
 });

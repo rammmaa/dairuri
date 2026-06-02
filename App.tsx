@@ -44,6 +44,9 @@ import {
 } from "./services/authSession";
 import { colors } from "./constants/colors";
 import { typography } from "./constants/typography";
+import { configureDefaultFontScaling } from "./utils/fontScaling";
+
+configureDefaultFontScaling();
 
 type ProfileSubScreen =
   | "edit"
