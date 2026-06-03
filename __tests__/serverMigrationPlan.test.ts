@@ -97,6 +97,19 @@ describe("server database migration plan", () => {
       ]),
     );
   });
+
+  it("ships a cleanup migration for mock login seed accounts", async () => {
+    const migrations = await readSchemaMigrations();
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "009_remove_mock_seed_accounts",
+          sql: expect.stringContaining("delete from users"),
+        }),
+      ]),
+    );
+  });
 });
 
 describe("readSchemaMigrations", () => {
