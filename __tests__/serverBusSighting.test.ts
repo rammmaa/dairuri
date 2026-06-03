@@ -14,13 +14,13 @@ describe("normalizeRecordSightingInput", () => {
     expect(
       normalizeRecordSightingInput({
         routeId: "  route-happy-1  ",
-        stopId: "  stop-koaru-bluepin  ",
+        stopId: "  stop-arae-gumi  ",
         latitude: 35.6474,
         longitude: 128.7338,
       }),
     ).toEqual({
       routeId: "route-happy-1",
-      stopId: "stop-koaru-bluepin",
+      stopId: "stop-arae-gumi",
       latitude: 35.6474,
       longitude: 128.7338,
     });

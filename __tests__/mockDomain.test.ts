@@ -64,12 +64,12 @@ describe("mock Happy Bus fixtures", () => {
 
   it("uses the six stop names sourced from the Figma frame", () => {
     expect(mockBusStops.map((stop) => stop.name)).toEqual([
-      "청도 코아루블루핀",
-      "청도군청",
-      "청도 버스 터미널",
-      "성조 아파트 앞",
-      "부민 아파트",
-      "어린이집",
+      "청도공용버스터미널",
+      "구미리",
+      "아랫구미",
+      "월곡2리(박월)",
+      "귀뚜라미보일러",
+      "농공단지 입구",
     ]);
   });
 

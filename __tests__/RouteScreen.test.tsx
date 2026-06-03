@@ -7,16 +7,16 @@ describe("RouteScreen sorting", () => {
     render(<RouteScreen />);
 
     // Fastest route by default (durationMinutes ascending): H4 at 10 minutes.
-    expect(screen.getByText("행복버스 4호선 · 10분")).toBeTruthy();
+    expect(screen.getByText("행복버스 4번 · 10분")).toBeTruthy();
 
     // Switching to departure-order surfaces H1 (06:10) as the first card.
     fireEvent.press(screen.getByTestId("route-sort-출발순"));
-    expect(screen.getByText("행복버스 1호선 · 12분")).toBeTruthy();
+    expect(screen.getByText("행복버스 1번 · 12분")).toBeTruthy();
 
     // The express filter only matches H2 in the seed.
     fireEvent.press(screen.getByTestId("route-filter-급행"));
     expect(screen.getByText("1개 노선")).toBeTruthy();
-    expect(screen.getByText("행복버스 2호선")).toBeTruthy();
+    expect(screen.getByText("행복버스 2번")).toBeTruthy();
 
     // The 운행중 filter keeps H1, H3, and H6 in the seed.
     fireEvent.press(screen.getByTestId("route-filter-운행중"));
@@ -24,7 +24,7 @@ describe("RouteScreen sorting", () => {
       selected: true,
     });
     expect(screen.getByText("3개 노선")).toBeTruthy();
-    expect(screen.getByText("행복버스 1호선")).toBeTruthy();
+    expect(screen.getByText("행복버스 1번")).toBeTruthy();
   });
 });
 

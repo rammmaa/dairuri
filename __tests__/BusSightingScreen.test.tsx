@@ -9,6 +9,7 @@ import {
 import * as Location from "expo-location";
 
 import { BusSightingScreen } from "../screens/BusSightingScreen";
+import { getStopSightings } from "../services/api";
 import { resetMockDatabase } from "../services/mockDb";
 
 // expo-location is a native module that cannot run inside jest without a
@@ -29,7 +30,7 @@ const mockedWatchPosition = Location.watchPositionAsync as jest.MockedFunction<
   typeof Location.watchPositionAsync
 >;
 
-// Coordinates of the Cheongdo Koaru-bluepin mock stop (id: stop-koaru-bluepin).
+// Coordinates of 청도공용버스터미널 (id: stop-cheongdo-public-terminal).
 // Inference picks the lowest-code route that visits this stop, which is H1.
 const NEAREST_STOP_COORDS = { latitude: 35.6474, longitude: 128.7338 };
 
@@ -60,6 +61,18 @@ function grantPermissionWithLocation(coords = NEAREST_STOP_COORDS) {
   });
 }
 
+async function enterConfirmation() {
+  await waitFor(() => {
+    expect(
+      screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
+    ).toMatchObject({ disabled: false });
+  });
+  await act(async () => {
+    fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
+  });
+  expect(await screen.findByText("이 정류장이 맞나요?")).toBeTruthy();
+}
+
 describe("BusSightingScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -87,106 +100,141 @@ describe("BusSightingScreen", () => {
     ).toMatchObject({ disabled: true });
   });
 
-  it("surfaces the inferred stop name on the recorder current-location chip", async () => {
+  it("drops the live clock and surfaces the inferred stop on the recorder chip", async () => {
     grantPermissionWithLocation();
 
     render(<BusSightingScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText(/현위치: 청도 코아루블루핀/)).toBeTruthy();
+      expect(screen.getByText(/현위치: 청도공용버스터미널/)).toBeTruthy();
     });
+    expect(screen.getByText("방금 버스 봤어요!")).toBeTruthy();
+    // No live HH:MM:SS clock in the realigned recorder.
+    expect(screen.queryByText(/^\d{2}:\d{2}:\d{2}$/)).toBeNull();
   });
 
-  it("happy path: bus button -> confirmation -> 맞아요 -> confirmed", async () => {
+  it("happy path: bus button -> confirmation -> 맞아요 -> confirmed modal", async () => {
     grantPermissionWithLocation();
 
     render(<BusSightingScreen />);
+    await enterConfirmation();
 
-    // Wait until inference is ready; the bus button becomes enabled when
-    // routes, stops, route-stops, and location have all loaded.
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
-      ).toMatchObject({ disabled: false });
-    });
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
-    });
-
-    // Confirmation state: the inferred (route, stop) panel shows. The stop
-    // name now appears in both the headline card and the map preview label,
-    // so use getAllByText rather than getByText.
-    expect(await screen.findByText("이 정류장이 맞나요?")).toBeTruthy();
-    expect(screen.getByText("행복버스 1호선")).toBeTruthy();
-    expect(screen.getAllByText("청도 코아루블루핀").length).toBeGreaterThan(0);
+    // Confirmation header title and the yellow route chip + stop name.
+    expect(screen.getByText("정류장 매칭 확인")).toBeTruthy();
+    expect(screen.getByText("행복버스 1번")).toBeTruthy();
+    // Stop name appears in both the card and the map preview label.
+    expect(screen.getAllByText("청도공용버스터미널").length).toBeGreaterThan(0);
 
     await act(async () => {
       fireEvent.press(screen.getByTestId("bus-sighting-accept-button"));
     });
 
-    // Confirmed state: the recent-record card shows the cafe stop name and
-    // the 6-char reporter label that the mock API derives from "me".
-    const recent = await screen.findByTestId("bus-sighting-recent");
-    expect(within(recent).getByText(/청도 코아루블루핀/)).toBeTruthy();
-    expect(within(recent).getByText(/기록자 ID:/)).toBeTruthy();
-    expect(screen.getByText("확정이 되었습니다")).toBeTruthy();
+    const modal = await screen.findByTestId("bus-sighting-confirmed-modal");
+    expect(modal).toBeTruthy();
+    expect(screen.getByText("기록 완료")).toBeTruthy();
+    expect(screen.getByText(/확정이 되었습니다/)).toBeTruthy();
+    expect(screen.getByTestId("confirmed-modal-home-button")).toBeTruthy();
+    expect(screen.getByTestId("confirmed-modal-view-record-button")).toBeTruthy();
   });
 
-  it("rejection path: 틀려요 -> route grid -> tile -> stop selection -> 확정 -> confirmed", async () => {
+  it("confirmed modal: 홈으로 calls onBack, 기록 보기 calls onOpenArchiveHistory", async () => {
+    grantPermissionWithLocation();
+    const onBack = jest.fn();
+    const onOpenArchiveHistory = jest.fn();
+
+    render(
+      <BusSightingScreen
+        onBack={onBack}
+        onOpenArchiveHistory={onOpenArchiveHistory}
+      />,
+    );
+    await enterConfirmation();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-accept-button"));
+    });
+    await screen.findByTestId("bus-sighting-confirmed-modal");
+
+    fireEvent.press(screen.getByTestId("confirmed-modal-view-record-button"));
+    expect(onOpenArchiveHistory).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId("confirmed-modal-home-button"));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejection path: 틀려요 -> selection (H1 default) -> stop tap -> 기록 확정 -> confirmed", async () => {
     grantPermissionWithLocation();
 
     render(<BusSightingScreen />);
+    await enterConfirmation();
 
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
-      ).toMatchObject({ disabled: false });
-    });
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
-    });
-
-    // Reject the inference; the route grid should render with all six tiles.
     await act(async () => {
       fireEvent.press(screen.getByTestId("bus-sighting-reject-button"));
     });
 
-    expect(await screen.findByText("기록을 원하시는 호선을 골라주세요")).toBeTruthy();
+    // Merged selection screen: header title, all six route chips, H1 selected
+    // by default so the stop list is never empty.
+    expect(await screen.findByText("노선/정류장 선택")).toBeTruthy();
     for (const code of ["H1", "H2", "H3", "H4", "H5", "H6"]) {
-      expect(screen.getByTestId(`bus-sighting-route-tile-${code}`)).toBeTruthy();
+      expect(screen.getByTestId(`bus-sighting-route-chip-${code}`)).toBeTruthy();
     }
-
-    // Pick H6 deliberately so we can tell it apart from the inferred H1.
-    await act(async () => {
-      fireEvent.press(screen.getByTestId("bus-sighting-route-tile-H6"));
-    });
-
-    expect(await screen.findByText("해당 노선에서 정류장을 선택해주세요")).toBeTruthy();
-    // The final-confirm button stays disabled until a stop is picked.
     expect(
-      screen.getByTestId("bus-sighting-final-confirm-button").props
-        .accessibilityState,
-    ).toMatchObject({ disabled: true });
-
-    // H6 visits koaru-bluepin among others. Pick a different stop from the
-    // current GPS position so the test proves the manual stop selection is
-    // what gets recorded.
-    fireEvent.press(screen.getByTestId("route-map-pin-stop-cheongdo-terminal"));
+      screen.getByTestId("bus-sighting-route-chip-H1").props.accessibilityState,
+    ).toMatchObject({ selected: true });
+    // H1 visits all six stops, so the full rail renders.
     expect(
-      screen.getByTestId("bus-sighting-final-confirm-button").props
-        .accessibilityState,
-    ).toMatchObject({ disabled: false });
+      screen.getByTestId("bus-sighting-stop-row-stop-nonggong-entrance"),
+    ).toBeTruthy();
+
+    // Tap a stop -> the confirm-record modal asks to finalize.
+    fireEvent.press(
+      screen.getByTestId("bus-sighting-stop-row-stop-nonggong-entrance"),
+    );
+    const modal = await screen.findByTestId("bus-sighting-confirm-record-modal");
+    // Scope to the modal: the stop name also appears in the rail row behind it.
+    expect(within(modal).getByText("농공단지 입구")).toBeTruthy();
+    expect(within(modal).getByText(/기록을 완료하시겠습니까/)).toBeTruthy();
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId("bus-sighting-final-confirm-button"));
+      fireEvent.press(screen.getByTestId("confirm-record-confirm-button"));
     });
 
-    // Confirmed state shows H6 as the recorded route.
-    const recent = await screen.findByTestId("bus-sighting-recent");
-    expect(within(recent).getByText(/H6/)).toBeTruthy();
-    expect(within(recent).getByText(/청도 버스 터미널/)).toBeTruthy();
+    expect(
+      await screen.findByTestId("bus-sighting-confirmed-modal"),
+    ).toBeTruthy();
+  });
+
+  it("switching a route chip updates the stop rail and the cancel button dismisses the modal", async () => {
+    grantPermissionWithLocation();
+
+    render(<BusSightingScreen />);
+    await enterConfirmation();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-reject-button"));
+    });
+    await screen.findByText("노선/정류장 선택");
+
+    // H2 visits only three stops (no 농공단지 입구).
+    fireEvent.press(screen.getByTestId("bus-sighting-route-chip-H2"));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("bus-sighting-stop-row-stop-nonggong-entrance"),
+      ).toBeNull();
+    });
+    expect(
+      screen.getByTestId("bus-sighting-stop-row-stop-arae-gumi"),
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("bus-sighting-stop-row-stop-arae-gumi"));
+    expect(
+      await screen.findByTestId("bus-sighting-confirm-record-modal"),
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("confirm-record-cancel-button"));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("bus-sighting-confirm-record-modal"),
+      ).toBeNull();
+    });
   });
 
   it("renders the arrival-times entry only when onOpenArrivalTimes is provided and forwards taps", async () => {
@@ -211,17 +259,16 @@ describe("BusSightingScreen", () => {
     const onOpenRouteInfo = jest.fn();
     rerender(<BusSightingScreen onOpenRouteInfo={onOpenRouteInfo} />);
     const infoButton = screen.getByTestId("bus-sighting-info-button");
-    expect(infoButton).toBeTruthy();
     fireEvent.press(infoButton);
     expect(onOpenRouteInfo).toHaveBeenCalledTimes(1);
   });
 
   it("commits the location frozen at bus-button press, not the latest watched location", async () => {
-    // Drive the watcher with a sequence: arrive near 청도 코아루블루핀, then
-    // drift away to a coordinate that snaps to a different stop. The
-    // sighting that gets recorded must use the original position.
-    const koaru = { latitude: 35.6474, longitude: 128.7338 };
-    const drift = { latitude: 35.6492, longitude: 128.7355 }; // 청도군청
+    // Arrive at 청도공용버스터미널, then drift to 구미리 (which has no seed
+    // sighting). The recorded sighting must use the press-time coordinate, so
+    // it lands on the terminal and never on 구미리.
+    const terminal = { latitude: 35.6474, longitude: 128.7338 };
+    const drift = { latitude: 35.6492, longitude: 128.7355 }; // 구미리
 
     let positionCallback:
       | ((event: {
@@ -247,8 +294,8 @@ describe("BusSightingScreen", () => {
       positionCallback = callback;
       callback({
         coords: {
-          latitude: koaru.latitude,
-          longitude: koaru.longitude,
+          latitude: terminal.latitude,
+          longitude: terminal.longitude,
           accuracy: 5,
           altitude: null,
           altitudeAccuracy: null,
@@ -263,22 +310,11 @@ describe("BusSightingScreen", () => {
     });
 
     render(<BusSightingScreen />);
+    await enterConfirmation();
+    expect(screen.getAllByText("청도공용버스터미널").length).toBeGreaterThan(0);
 
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
-      ).toMatchObject({ disabled: false });
-    });
-
-    // Press the bus button at the koaru-bluepin position.
-    await act(async () => {
-      fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
-    });
-    expect(await screen.findByText("이 정류장이 맞나요?")).toBeTruthy();
-    // Stop name appears in both the header card and the map label.
-    expect(screen.getAllByText("청도 코아루블루핀").length).toBeGreaterThan(0);
-
-    // Now drift the position while still on the confirmation screen.
+    // Drift while still on the confirmation screen; the frozen card keeps the
+    // original stop name.
     await act(async () => {
       positionCallback?.({
         coords: {
@@ -293,19 +329,22 @@ describe("BusSightingScreen", () => {
         timestamp: Date.now(),
       });
     });
+    expect(screen.getAllByText("청도공용버스터미널").length).toBeGreaterThan(0);
 
     await act(async () => {
       fireEvent.press(screen.getByTestId("bus-sighting-accept-button"));
     });
+    await screen.findByTestId("bus-sighting-confirmed-modal");
 
-    // The mock API records the coordinate it was called with on the
-    // sighting record. Verify the recorded latitude matches the koaru
-    // press time, not the post-drift coordinate.
-    const recent = await screen.findByTestId("bus-sighting-recent");
-    // Stop name in the recent card reflects the snap that happened at
-    // press time. Drifting to cheongdo-office would have snapped to a
-    // different stop, so seeing koaru here proves the freeze worked.
-    expect(within(recent).getByText(/청도 코아루블루핀/)).toBeTruthy();
+    // The freeze worked if the new sighting landed on the terminal and 구미리
+    // gained nothing despite being the post-drift nearest stop.
+    const gumiriSightings = await getStopSightings("stop-gumiri");
+    expect(gumiriSightings.length).toBe(0);
+    const terminalSightings = await getStopSightings(
+      "stop-cheongdo-public-terminal",
+    );
+    // One seed sighting plus the one we just recorded.
+    expect(terminalSightings.length).toBeGreaterThanOrEqual(2);
   });
 
   it("back arrow walks the state machine in reverse", async () => {
@@ -313,42 +352,53 @@ describe("BusSightingScreen", () => {
     const onBack = jest.fn();
 
     render(<BusSightingScreen onBack={onBack} />);
+    await enterConfirmation();
 
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("bus-sighting-record-button").props.accessibilityState,
-      ).toMatchObject({ disabled: false });
-    });
-
-    // Enter confirmation, then rejection, then stop-selection.
-    await act(async () => {
-      fireEvent.press(screen.getByTestId("bus-sighting-record-button"));
-    });
     await act(async () => {
       fireEvent.press(screen.getByTestId("bus-sighting-reject-button"));
     });
-    await act(async () => {
-      fireEvent.press(screen.getByTestId("bus-sighting-route-tile-H2"));
-    });
-    expect(screen.getByText("해당 노선에서 정류장을 선택해주세요")).toBeTruthy();
+    expect(await screen.findByText("노선/정류장 선택")).toBeTruthy();
 
-    // First back: stop-selection -> route-grid
-    fireEvent.press(screen.getByLabelText("뒤로가기"));
-    expect(await screen.findByText("기록을 원하시는 호선을 골라주세요")).toBeTruthy();
-
-    // Second back: route-grid -> confirmation
+    // First back: selection -> confirmation
     fireEvent.press(screen.getByLabelText("뒤로가기"));
     expect(await screen.findByText("이 정류장이 맞나요?")).toBeTruthy();
 
-    // Third back: confirmation -> recorder
+    // Second back: confirmation -> recorder
     fireEvent.press(screen.getByLabelText("뒤로가기"));
     await waitFor(() => {
       expect(screen.getByText("방금 버스 봤어요!")).toBeTruthy();
     });
     expect(onBack).not.toHaveBeenCalled();
 
-    // Fourth back from recorder pops the screen.
+    // Third back from recorder pops the screen.
     fireEvent.press(screen.getByLabelText("뒤로가기"));
     expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the bottom nav on every state and forwards tab taps", async () => {
+    grantPermissionWithLocation();
+    const onSelectTab = jest.fn();
+
+    render(<BusSightingScreen onSelectTab={onSelectTab} />);
+
+    // Recorder
+    expect(await screen.findByTestId("bus-sighting-bottom-nav")).toBeTruthy();
+
+    await enterConfirmation();
+    // Confirmation
+    expect(screen.getByTestId("bus-sighting-bottom-nav")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("bus-sighting-reject-button"));
+    });
+    await screen.findByText("노선/정류장 선택");
+    // Selection
+    expect(screen.getByTestId("bus-sighting-bottom-nav")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("bus-sighting-bottom-nav-map"));
+    expect(onSelectTab).toHaveBeenCalledTimes(1);
+    expect(onSelectTab).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "map" }),
+    );
   });
 });
