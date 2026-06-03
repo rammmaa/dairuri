@@ -71,6 +71,7 @@ type BusSighting = {
   timeLabel: string;
   locationLabel: string;
 };
+type ActiveFilterGroup = "weekday" | "time" | null;
 
 function clampSheetTop(top: number, expandedTop = SHEET_EXPANDED_TOP) {
   return Math.min(SHEET_COLLAPSED_TOP, Math.max(expandedTop, top));
@@ -119,6 +120,17 @@ function mapPostsToPreviewMarkers(
   return [...markersById.values()];
 }
 
+function formatSelectedFilterLabel(
+  defaultLabel: string,
+  selectedValues: readonly string[],
+) {
+  if (selectedValues.length === 0) {
+    return defaultLabel;
+  }
+
+  return selectedValues.join(", ");
+}
+
 export function MapScreen({
   onSelectTab,
   onOpenPost,
@@ -130,6 +142,8 @@ export function MapScreen({
     useState<CategoryFilter["id"] | null>(null);
   const [selectedDays, setSelectedDays] = useState<WeekdayFilter[]>([]);
   const [selectedTimes, setSelectedTimes] = useState<TimeFilter[]>([]);
+  const [activeFilterGroup, setActiveFilterGroup] =
+    useState<ActiveFilterGroup>(null);
   const [sortMode, setSortMode] = useState<MapPostSortMode>("default");
   const [visibleCount, setVisibleCount] = useState(POST_PAGE_SIZE);
   const [sheetTop, setSheetTop] = useState(SHEET_DEFAULT_TOP);
@@ -260,6 +274,9 @@ export function MapScreen({
   };
   const toggleTimeFilter = (time: TimeFilter) => {
     setSelectedTimes((current) => toggleFilterValue(current, time));
+  };
+  const toggleFilterGroup = (group: Exclude<ActiveFilterGroup, null>) => {
+    setActiveFilterGroup((current) => (current === group ? null : group));
   };
   const cycleSortMode = () => {
     setSortMode((current) =>
@@ -602,7 +619,12 @@ export function MapScreen({
             </View>
           ) : (
             <>
-              <View style={styles.sheetFilterBar}>
+              <View
+                style={[
+                  styles.sheetFilterBar,
+                  activeFilterGroup !== null && styles.sheetFilterBarExpanded,
+                ]}
+              >
                 <View
                   {...sheetPanResponder.panHandlers}
                   accessibilityRole="adjustable"
@@ -613,32 +635,58 @@ export function MapScreen({
                   <View style={styles.handle} />
                 </View>
                 <View style={styles.sheetFilterGroups}>
-                  <View style={styles.sheetFilterRow}>
-                    <Text style={styles.filterGroupLabel}>요일</Text>
-                    {weekdayFilterOptions.map((day) => (
-                      <FilterChip
-                        key={day}
-                        label={day}
-                        selected={selectedDays.includes(day)}
-                        compact
-                        onPress={() => toggleDayFilter(day)}
-                        testID={`map-home-day-filter-${day}`}
-                      />
-                    ))}
+                  <View style={styles.sheetFilterControls}>
+                    <FilterChip
+                      label={formatSelectedFilterLabel("요일", selectedDays)}
+                      selected={
+                        activeFilterGroup === "weekday" ||
+                        selectedDays.length > 0
+                      }
+                      showChevron={activeFilterGroup !== "weekday"}
+                      compact
+                      onPress={() => toggleFilterGroup("weekday")}
+                      testID="map-home-filter-weekday"
+                    />
+                    <FilterChip
+                      label={formatSelectedFilterLabel("시간", selectedTimes)}
+                      selected={
+                        activeFilterGroup === "time" ||
+                        selectedTimes.length > 0
+                      }
+                      showChevron={activeFilterGroup !== "time"}
+                      compact
+                      onPress={() => toggleFilterGroup("time")}
+                      testID="map-home-filter-time"
+                    />
                   </View>
-                  <View style={styles.sheetFilterRow}>
-                    <Text style={styles.filterGroupLabel}>시간</Text>
-                    {timeFilterOptions.map((time) => (
-                      <FilterChip
-                        key={time}
-                        label={time}
-                        selected={selectedTimes.includes(time)}
-                        compact
-                        onPress={() => toggleTimeFilter(time)}
-                        testID={`map-home-time-filter-${time}`}
-                      />
-                    ))}
-                  </View>
+                  {activeFilterGroup === "weekday" ? (
+                    <View style={styles.sheetFilterRow}>
+                      {weekdayFilterOptions.map((day) => (
+                        <FilterChip
+                          key={day}
+                          label={day}
+                          selected={selectedDays.includes(day)}
+                          compact
+                          onPress={() => toggleDayFilter(day)}
+                          testID={`map-home-day-filter-${day}`}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
+                  {activeFilterGroup === "time" ? (
+                    <View style={styles.sheetFilterRow}>
+                      {timeFilterOptions.map((time) => (
+                        <FilterChip
+                          key={time}
+                          label={time}
+                          selected={selectedTimes.includes(time)}
+                          compact
+                          onPress={() => toggleTimeFilter(time)}
+                          testID={`map-home-time-filter-${time}`}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
               </View>
 
@@ -868,7 +916,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   sheetFilterBar: {
-    height: 116,
+    height: 80,
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -876,6 +924,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 28,
     paddingBottom: 10,
+  },
+  sheetFilterBarExpanded: {
+    height: 116,
   },
   dragHandleTouchArea: {
     position: "absolute",
@@ -898,18 +949,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 7,
   },
-  sheetFilterRow: {
+  sheetFilterControls: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
   },
-  filterGroupLabel: {
-    width: 32,
-    color: colors.grayText,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-    textAlign: "center",
+  sheetFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
   sheetScroll: {
     flex: 1,

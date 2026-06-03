@@ -225,7 +225,12 @@ describe("MapScreen", () => {
     expect(screen.getByText("요일")).toBeTruthy();
     expect(screen.getByText("시간")).toBeTruthy();
     expect(screen.queryByText("출발 장소")).toBeNull();
+    expect(screen.queryByTestId("map-home-day-filter-화")).toBeNull();
+    expect(screen.queryByTestId("map-home-time-filter-오전")).toBeNull();
 
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
+    expect(screen.getByTestId("map-home-day-filter-화")).toBeTruthy();
+    expect(screen.queryByTestId("map-home-time-filter-오전")).toBeNull();
     fireEvent.press(screen.getByTestId("map-home-day-filter-화"));
     expect(
       screen.getByTestId("map-home-day-filter-화").props.accessibilityState,
@@ -242,6 +247,9 @@ describe("MapScreen", () => {
     });
     expect(screen.getByText("5")).toBeTruthy();
 
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    expect(screen.queryByTestId("map-home-day-filter-화")).toBeNull();
+    expect(screen.getByTestId("map-home-time-filter-오전")).toBeTruthy();
     fireEvent.press(screen.getByTestId("map-home-time-filter-오전"));
     expect(
       screen.getByTestId("map-home-time-filter-오전").props.accessibilityState,
@@ -315,20 +323,22 @@ describe("MapScreen", () => {
     expect(screen.getByText("요일")).toBeTruthy();
     expect(screen.getByText("시간")).toBeTruthy();
     expect(screen.queryByLabelText("출발 장소")).toBeNull();
+    expect(screen.queryByTestId("map-home-day-filter-화")).toBeNull();
+    expect(screen.queryByTestId("map-home-time-filter-오전")).toBeNull();
 
-    const tuesdayChip = screen.getByTestId("map-home-day-filter-화");
-    const morningChip = screen.getByTestId("map-home-time-filter-오전");
-    const afternoonChip = screen.getByTestId("map-home-time-filter-오후");
-
-    fireEvent.press(tuesdayChip);
-    fireEvent.press(morningChip);
-    fireEvent.press(afternoonChip);
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
+    fireEvent.press(screen.getByTestId("map-home-day-filter-화"));
 
     expect(
       screen.getByTestId("map-home-day-filter-화").props.accessibilityState,
     ).toMatchObject({
       selected: true,
     });
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    fireEvent.press(screen.getByTestId("map-home-time-filter-오전"));
+    fireEvent.press(screen.getByTestId("map-home-time-filter-오후"));
+
     expect(
       screen.getByTestId("map-home-time-filter-오전").props.accessibilityState,
     ).toMatchObject({
@@ -347,6 +357,9 @@ describe("MapScreen", () => {
     ).toMatchObject({
       selected: false,
     });
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    expect(screen.queryByTestId("map-home-time-filter-오전")).toBeNull();
   });
 
   it("moves the bottom sheet when the drag handle is moved by touch", () => {
