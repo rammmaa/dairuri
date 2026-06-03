@@ -15,7 +15,9 @@ import {
   Clock3,
   FileText,
   MapPin,
+  Plus,
   Search,
+  X,
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 
@@ -30,7 +32,7 @@ import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { createPost } from "../services/api";
 import { searchPlaceCandidates as searchApiPlaceCandidates } from "../services/places";
-import type { Post, Weekday } from "../types/domain";
+import type { GeoCoordinate, Post, Weekday } from "../types/domain";
 import type { PlaceCandidate } from "../types/place";
 
 type RecruitmentType = "ride" | "work";
@@ -48,6 +50,13 @@ type AgreementId =
   | "thirdParty";
 
 type Agreements = Record<AgreementId, boolean>;
+
+type ScheduleEntry = {
+  id: string;
+  days: string[];
+  startTime: string;
+  endTime: string;
+};
 
 const weekdays = ["월", "화", "수", "목", "금", "토", "일"] as const;
 
@@ -92,8 +101,16 @@ export function CreateRecruitmentScreen({
 
   const [departure, setDeparture] = useState("");
   const [destination, setDestination] = useState("");
+  const [departureCoordinate, setDepartureCoordinate] =
+    useState<GeoCoordinate | null>(null);
+  const [destinationCoordinate, setDestinationCoordinate] =
+    useState<GeoCoordinate | null>(null);
   const [rideDays, setRideDays] = useState<string[]>([]);
-  const [rideTime, setRideTime] = useState("");
+  const [rideStartTime, setRideStartTime] = useState("");
+  const [rideEndTime, setRideEndTime] = useState("");
+  const [rideScheduleEntries, setRideScheduleEntries] = useState<ScheduleEntry[]>(
+    [],
+  );
   const [rideTag, setRideTag] = useState("");
   const [rideTitle, setRideTitle] = useState("");
   const [rideCapacity, setRideCapacity] = useState("");
@@ -104,6 +121,9 @@ export function CreateRecruitmentScreen({
   const [workDays, setWorkDays] = useState<string[]>([]);
   const [workStartTime, setWorkStartTime] = useState("");
   const [workEndTime, setWorkEndTime] = useState("");
+  const [workScheduleEntries, setWorkScheduleEntries] = useState<ScheduleEntry[]>(
+    [],
+  );
   const [workPay, setWorkPay] = useState("");
   const [workDetails, setWorkDetails] = useState("");
 
@@ -136,7 +156,7 @@ export function CreateRecruitmentScreen({
         return hasText(departure) && hasText(destination);
       }
       if (branchStepIndex === 1) {
-        return rideDays.length > 0 && hasText(rideTime) && hasText(rideTag);
+        return rideScheduleEntries.length > 0 && hasText(rideTag);
       }
       if (branchStepIndex === 2) {
         return hasText(rideTitle) && hasText(rideCapacity);
@@ -152,12 +172,7 @@ export function CreateRecruitmentScreen({
         return hasText(workTitle) && workTaskCategories.length > 0;
       }
       if (branchStepIndex === 1) {
-        return (
-          workDays.length > 0 &&
-          hasText(workStartTime) &&
-          hasText(workEndTime) &&
-          hasText(workPay)
-        );
+        return workScheduleEntries.length > 0 && hasText(workPay);
       }
       if (branchStepIndex === 2) {
         return hasText(workDetails) && allAgreementsChecked;
@@ -172,18 +187,15 @@ export function CreateRecruitmentScreen({
     departure,
     destination,
     rideCapacity,
-    rideDays.length,
     rideDetails,
+    rideScheduleEntries.length,
     rideTag,
-    rideTime,
     rideTitle,
     screenIndex,
     selectedType,
-    workDays.length,
     workDetails,
-    workEndTime,
     workPay,
-    workStartTime,
+    workScheduleEntries.length,
     workTaskCategories.length,
     workTitle,
   ]);
@@ -204,15 +216,6 @@ export function CreateRecruitmentScreen({
 
     setSubmitError(null);
 
-    if (selectedType === "ride" && branchStepIndex === 1) {
-      setRideTime((current) => commitTimeInput(current));
-    }
-
-    if (selectedType === "work" && branchStepIndex === 1) {
-      setWorkStartTime((current) => commitTimeInput(current));
-      setWorkEndTime((current) => commitTimeInput(current));
-    }
-
     const maxIndex = selectedType === "work" ? 4 : 5;
     if (screenIndex === maxIndex) {
       setSubmitting(true);
@@ -231,10 +234,17 @@ export function CreateRecruitmentScreen({
   };
 
   const handleSelectPlace = (place: PlaceCandidate) => {
+    const coordinate = {
+      latitude: place.latitude,
+      longitude: place.longitude,
+    };
+
     if (placePickerTarget === "departure") {
       setDeparture(place.name);
+      setDepartureCoordinate(coordinate);
     } else if (placePickerTarget === "destination") {
       setDestination(place.name);
+      setDestinationCoordinate(coordinate);
     }
 
     setPlacePickerTarget(null);
@@ -259,9 +269,58 @@ export function CreateRecruitmentScreen({
     setWorkTaskCategories((current) => toggleValue(current, category));
   };
 
+  const handleAddRideSchedule = () => {
+    const entry = createScheduleEntry(
+      rideDays,
+      rideStartTime,
+      rideEndTime,
+      rideScheduleEntries.length,
+    );
+
+    if (!entry) {
+      return;
+    }
+
+    setRideScheduleEntries((current) => [...current, entry]);
+    setRideDays([]);
+    setRideStartTime("");
+    setRideEndTime("");
+  };
+
+  const handleRemoveRideSchedule = (entryId: string) => {
+    setRideScheduleEntries((current) =>
+      current.filter((entry) => entry.id !== entryId),
+    );
+  };
+
+  const handleAddWorkSchedule = () => {
+    const entry = createScheduleEntry(
+      workDays,
+      workStartTime,
+      workEndTime,
+      workScheduleEntries.length,
+    );
+
+    if (!entry) {
+      return;
+    }
+
+    setWorkScheduleEntries((current) => [...current, entry]);
+    setWorkDays([]);
+    setWorkStartTime("");
+    setWorkEndTime("");
+  };
+
+  const handleRemoveWorkSchedule = (entryId: string) => {
+    setWorkScheduleEntries((current) =>
+      current.filter((entry) => entry.id !== entryId),
+    );
+  };
+
   function buildCreatePostInput(type: RecruitmentType): Partial<Post> {
     if (type === "work") {
-      const scheduleLabel = formatDays(workDays);
+      const scheduleLabel = formatScheduleEntries(workScheduleEntries);
+      const firstSchedule = workScheduleEntries[0];
 
       return {
         type: "job",
@@ -269,19 +328,21 @@ export function CreateRecruitmentScreen({
         title: workTitle.trim(),
         body: workDetails.trim(),
         placeName: "다로리 일대",
-        days: workDays as Weekday[],
-        startTime: workStartTime,
-        endTime: workEndTime,
+        days: getScheduleEntryDays(workScheduleEntries) as Weekday[],
+        startTime: firstSchedule?.startTime ?? "",
+        endTime: firstSchedule?.endTime ?? "",
         wageType: "hourly",
         wageAmount: parseCurrencyNumber(workPay),
         jobCategory: formatCategories(workTaskCategories),
         availableTasks: workTaskCategories,
         employmentTypes: ["partTime", "shortTerm"],
         preferredPay: formatHourlyPay(workPay),
-        availabilityNote: `${scheduleLabel} ${workStartTime} - ${workEndTime}`.trim(),
+        availabilityNote: scheduleLabel,
         contactNote: workDetails.trim(),
       };
     }
+
+    const firstSchedule = rideScheduleEntries[0];
 
     return {
       type: "carpool",
@@ -289,8 +350,12 @@ export function CreateRecruitmentScreen({
       body: rideDetails.trim(),
       departure,
       destination,
-      days: rideDays as Weekday[],
-      startTime: rideTime,
+      departureCoordinate: departureCoordinate ?? undefined,
+      destinationCoordinate: destinationCoordinate ?? undefined,
+      days: getScheduleEntryDays(rideScheduleEntries) as Weekday[],
+      startTime: firstSchedule?.startTime ?? "",
+      endTime: firstSchedule?.endTime ?? undefined,
+      scheduleNote: formatScheduleEntries(rideScheduleEntries),
       seats: parseCurrencyNumber(rideCapacity),
     };
   }
@@ -317,6 +382,7 @@ export function CreateRecruitmentScreen({
           selectedDays={workDays}
           startTime={workStartTime}
           endTime={workEndTime}
+          schedules={workScheduleEntries}
           pay={workPay}
           accent={accent}
           accentDark={accentDark}
@@ -329,6 +395,8 @@ export function CreateRecruitmentScreen({
           onCommitEndTime={() =>
             setWorkEndTime((current) => commitTimeInput(current))
           }
+          onAddSchedule={handleAddWorkSchedule}
+          onRemoveSchedule={handleRemoveWorkSchedule}
           onChangePay={(value) => setWorkPay(formatCurrency(value))}
         />
       ) : branchStepIndex === 2 ? (
@@ -348,8 +416,8 @@ export function CreateRecruitmentScreen({
           accentDark={accentDark}
           title={workTitle}
           routeLabel={formatCategories(workTaskCategories)}
-          scheduleLabel={formatDays(workDays)}
-          metaLabel={`${workStartTime} - ${workEndTime}`}
+          scheduleLabel={formatScheduleEntries(workScheduleEntries)}
+          metaLabel="가능 시간"
           detailLabel={formatHourlyPay(workPay)}
         />
       )
@@ -363,13 +431,23 @@ export function CreateRecruitmentScreen({
     ) : branchStepIndex === 1 ? (
       <RideScheduleStep
         selectedDays={rideDays}
-        time={rideTime}
+        startTime={rideStartTime}
+        endTime={rideEndTime}
+        schedules={rideScheduleEntries}
         tag={rideTag}
         accent={accent}
         accentDark={accentDark}
         onToggleDay={toggleRideDay}
-        onChangeTime={(value) => setRideTime(formatTimeInput(value))}
-        onCommitTime={() => setRideTime((current) => commitTimeInput(current))}
+        onChangeStartTime={(value) => setRideStartTime(formatTimeInput(value))}
+        onChangeEndTime={(value) => setRideEndTime(formatTimeInput(value))}
+        onCommitStartTime={() =>
+          setRideStartTime((current) => commitTimeInput(current))
+        }
+        onCommitEndTime={() =>
+          setRideEndTime((current) => commitTimeInput(current))
+        }
+        onAddSchedule={handleAddRideSchedule}
+        onRemoveSchedule={handleRemoveRideSchedule}
         onChangeTag={setRideTag}
       />
     ) : branchStepIndex === 2 ? (
@@ -397,7 +475,7 @@ export function CreateRecruitmentScreen({
         accentDark={accentDark}
         title={rideTitle}
         routeLabel={`${departure} → ${destination}`}
-        scheduleLabel={`${formatDays(rideDays)} ${rideTime}`.trim()}
+        scheduleLabel={formatScheduleEntries(rideScheduleEntries)}
         metaLabel={rideTag}
         detailLabel={`${rideCapacity}명`}
       />
@@ -538,7 +616,7 @@ function TypeSelectionStep({ selectedType, onSelect }: TypeSelectionStepProps) {
         <TypeCard
           type="work"
           title="인재 풀 등록"
-          description="가능한 업무와 시간을 알려요"
+          description="나의 가능한 업무와 선호 근무 시간을 마을 사장님들께 알려요"
           selected={selectedType === "work"}
           accent={colors.yellow}
           accentDark={colors.yellowText}
@@ -664,44 +742,56 @@ function RideRouteStep({
 
 type RideScheduleStepProps = {
   selectedDays: string[];
-  time: string;
+  startTime: string;
+  endTime: string;
+  schedules: ScheduleEntry[];
   tag: string;
   accent: string;
   accentDark: string;
   onToggleDay: (day: string) => void;
-  onChangeTime: (value: string) => void;
-  onCommitTime: () => void;
+  onChangeStartTime: (value: string) => void;
+  onChangeEndTime: (value: string) => void;
+  onCommitStartTime: () => void;
+  onCommitEndTime: () => void;
+  onAddSchedule: () => void;
+  onRemoveSchedule: (entryId: string) => void;
   onChangeTag: (value: string) => void;
 };
 
 function RideScheduleStep({
   selectedDays,
-  time,
+  startTime,
+  endTime,
+  schedules,
   tag,
   accent,
   accentDark,
   onToggleDay,
-  onChangeTime,
-  onCommitTime,
+  onChangeStartTime,
+  onChangeEndTime,
+  onCommitStartTime,
+  onCommitEndTime,
+  onAddSchedule,
+  onRemoveSchedule,
   onChangeTag,
 }: RideScheduleStepProps) {
   return (
     <View style={styles.stepBlock}>
       <ScreenTitle>언제 출발하시나요?</ScreenTitle>
-      <DaySelector
+      <ScheduleEditor
         selectedDays={selectedDays}
+        startTime={startTime}
+        endTime={endTime}
+        schedules={schedules}
         accent={accent}
         onToggleDay={onToggleDay}
-      />
-      <FieldInput
-        label="출발 희망 시간"
-        placeholder="출발 시간 입력"
-        value={time}
-        onChangeText={onChangeTime}
-        onBlur={onCommitTime}
-        icon={Clock3}
-        accent={accent}
-        keyboardType="number-pad"
+        onChangeStartTime={onChangeStartTime}
+        onChangeEndTime={onChangeEndTime}
+        onCommitStartTime={onCommitStartTime}
+        onCommitEndTime={onCommitEndTime}
+        onAddSchedule={onAddSchedule}
+        onRemoveSchedule={onRemoveSchedule}
+        addTestID="ride-schedule-add"
       />
       <FieldInput
         label="모집 성격"
@@ -831,6 +921,7 @@ type WorkScheduleStepProps = {
   selectedDays: string[];
   startTime: string;
   endTime: string;
+  schedules: ScheduleEntry[];
   pay: string;
   accent: string;
   accentDark: string;
@@ -839,6 +930,8 @@ type WorkScheduleStepProps = {
   onChangeEndTime: (value: string) => void;
   onCommitStartTime: () => void;
   onCommitEndTime: () => void;
+  onAddSchedule: () => void;
+  onRemoveSchedule: (entryId: string) => void;
   onChangePay: (value: string) => void;
 };
 
@@ -846,6 +939,7 @@ function WorkScheduleStep({
   selectedDays,
   startTime,
   endTime,
+  schedules,
   pay,
   accent,
   accentDark,
@@ -854,11 +948,79 @@ function WorkScheduleStep({
   onChangeEndTime,
   onCommitStartTime,
   onCommitEndTime,
+  onAddSchedule,
+  onRemoveSchedule,
   onChangePay,
 }: WorkScheduleStepProps) {
   return (
     <View style={styles.stepBlock}>
       <ScreenTitle>가능한 시간대를 알려주세요.</ScreenTitle>
+      <ScheduleEditor
+        selectedDays={selectedDays}
+        startTime={startTime}
+        endTime={endTime}
+        schedules={schedules}
+        accent={accent}
+        onToggleDay={onToggleDay}
+        onChangeStartTime={onChangeStartTime}
+        onChangeEndTime={onChangeEndTime}
+        onCommitStartTime={onCommitStartTime}
+        onCommitEndTime={onCommitEndTime}
+        onAddSchedule={onAddSchedule}
+        onRemoveSchedule={onRemoveSchedule}
+        addTestID="work-schedule-add"
+      />
+
+      <FieldInput
+        label="시간당 희망 급여"
+        placeholder="희망 급여"
+        value={pay}
+        onChangeText={onChangePay}
+        keyboardType="number-pad"
+        prefix="시간당"
+        suffix="원"
+        accent={accentDark}
+      />
+    </View>
+  );
+}
+
+type ScheduleEditorProps = {
+  selectedDays: string[];
+  startTime: string;
+  endTime: string;
+  schedules: ScheduleEntry[];
+  accent: string;
+  addTestID: string;
+  onToggleDay: (day: string) => void;
+  onChangeStartTime: (value: string) => void;
+  onChangeEndTime: (value: string) => void;
+  onCommitStartTime: () => void;
+  onCommitEndTime: () => void;
+  onAddSchedule: () => void;
+  onRemoveSchedule: (entryId: string) => void;
+};
+
+function ScheduleEditor({
+  selectedDays,
+  startTime,
+  endTime,
+  schedules,
+  accent,
+  addTestID,
+  onToggleDay,
+  onChangeStartTime,
+  onChangeEndTime,
+  onCommitStartTime,
+  onCommitEndTime,
+  onAddSchedule,
+  onRemoveSchedule,
+}: ScheduleEditorProps) {
+  const canAddSchedule =
+    selectedDays.length > 0 && hasText(startTime) && hasText(endTime);
+
+  return (
+    <View style={styles.scheduleEditor}>
       <DaySelector
         selectedDays={selectedDays}
         accent={accent}
@@ -897,16 +1059,63 @@ function WorkScheduleStep({
         </View>
       </View>
 
-      <FieldInput
-        label="시간당 희망 급여"
-        placeholder="희망 급여"
-        value={pay}
-        onChangeText={onChangePay}
-        keyboardType="number-pad"
-        prefix="시간당"
-        suffix="원"
-        accent={accentDark}
-      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="일정 추가"
+        accessibilityState={{ disabled: !canAddSchedule }}
+        disabled={!canAddSchedule}
+        onPress={onAddSchedule}
+        testID={addTestID}
+        style={({ pressed }) => [
+          styles.scheduleAddButton,
+          { borderColor: canAddSchedule ? accent : colors.gray100 },
+          !canAddSchedule && styles.scheduleAddButtonDisabled,
+          pressed && canAddSchedule && styles.pressed,
+        ]}
+      >
+        <Plus
+          size={16}
+          color={canAddSchedule ? colors.black : colors.gray300}
+          strokeWidth={2.5}
+        />
+        <Text
+          style={[
+            styles.scheduleAddText,
+            !canAddSchedule && styles.scheduleAddTextDisabled,
+          ]}
+        >
+          추가
+        </Text>
+      </Pressable>
+
+      {schedules.length > 0 ? (
+        <View style={styles.scheduleList}>
+          {schedules.map((entry) => {
+            const label = formatScheduleEntry(entry);
+
+            return (
+              <View
+                key={entry.id}
+                style={[styles.scheduleItem, { borderColor: accent }]}
+              >
+                <Text style={styles.scheduleItemText}>{label}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${label} 삭제`}
+                  onPress={() => onRemoveSchedule(entry.id)}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.scheduleRemoveButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <X size={14} color={colors.grayIcon} strokeWidth={2.4} />
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1443,8 +1652,51 @@ function toggleValue(values: string[], value: string) {
     : [...values, value];
 }
 
-function formatDays(days: string[]) {
-  return days.length > 0 ? days.join(" · ") : "요일 미정";
+function createScheduleEntry(
+  days: string[],
+  startTime: string,
+  endTime: string,
+  index: number,
+): ScheduleEntry | null {
+  const committedStartTime = commitTimeInput(startTime);
+  const committedEndTime = commitTimeInput(endTime);
+
+  if (
+    days.length === 0 ||
+    !hasText(committedStartTime) ||
+    !hasText(committedEndTime)
+  ) {
+    return null;
+  }
+
+  return {
+    id: `schedule-${index}-${days.join("")}-${committedStartTime}-${committedEndTime}`,
+    days,
+    startTime: committedStartTime,
+    endTime: committedEndTime,
+  };
+}
+
+function getScheduleEntryDays(entries: ScheduleEntry[]) {
+  const selectedDays = new Set<string>();
+
+  for (const entry of entries) {
+    for (const day of entry.days) {
+      selectedDays.add(day);
+    }
+  }
+
+  return weekdays.filter((day) => selectedDays.has(day));
+}
+
+function formatScheduleEntry(entry: ScheduleEntry) {
+  return `${entry.days.join(" · ")} ${entry.startTime} - ${entry.endTime}`;
+}
+
+function formatScheduleEntries(entries: ScheduleEntry[]) {
+  return entries.length > 0
+    ? entries.map((entry) => formatScheduleEntry(entry)).join(" · ")
+    : "시간 미정";
 }
 
 function formatCategories(categories: string[]) {
@@ -1692,6 +1944,9 @@ const styles = StyleSheet.create({
   fieldBlock: {
     gap: 8,
   },
+  scheduleEditor: {
+    gap: 12,
+  },
   label: {
     color: colors.gray400,
     fontFamily: typography.family.medium,
@@ -1842,6 +2097,58 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
+  },
+  scheduleAddButton: {
+    minHeight: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  scheduleAddButtonDisabled: {
+    backgroundColor: colors.gray50,
+  },
+  scheduleAddText: {
+    color: colors.black,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  scheduleAddTextDisabled: {
+    color: colors.gray300,
+  },
+  scheduleList: {
+    gap: 8,
+  },
+  scheduleItem: {
+    minHeight: 46,
+    paddingLeft: 14,
+    paddingRight: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  scheduleItemText: {
+    flex: 1,
+    minWidth: 0,
+    color: colors.black,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  scheduleRemoveButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
   },
   textArea: {
     minHeight: 170,
