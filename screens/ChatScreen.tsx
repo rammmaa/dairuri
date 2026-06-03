@@ -19,13 +19,19 @@ import {
   Send,
   ShieldAlert,
   SlidersHorizontal,
+  ThumbsUp,
   UserPlus,
   Users,
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 
 import { BottomNav } from "../components/BottomNav";
+import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
@@ -56,7 +62,7 @@ const chatRooms: ChatListRoom[] = [
   {
     id: "brungpot",
     category: "ride",
-    title: "부릉팟",
+    title: "‘청도감 학원’ 함께 다니실 사람 구해요",
     initials: "부",
     participantLabel: "김예린님 외 3명",
     latestMessage: "다로리 카페 앞에서 6시 40분에 뵐까요?",
@@ -70,7 +76,7 @@ const chatRooms: ChatListRoom[] = [
   {
     id: "dairuri-cafe",
     category: "work",
-    title: "농촌 일손 연락방",
+    title: "농촌 일손과 카페 보조 도울 수 있어요",
     initials: "일",
     participantLabel: "4명",
     latestMessage: "목요일 오전 카페 보조 가능하신가요?",
@@ -98,14 +104,40 @@ const chatRooms: ChatListRoom[] = [
 ];
 
 type ChatFilter = "all" | "ride" | "work";
+type InlineChatActionMode = "manner" | "credentials" | "invite";
+
+const inlineRoomMessages = [
+  {
+    id: "received-1",
+    text: "안녕하세요! 저희 월요일, 수요일 7시에 어디서 만나서 출발할까요?",
+    mine: false,
+  },
+  {
+    id: "sent-1",
+    text: "안녕하세요",
+    mine: true,
+  },
+  {
+    id: "sent-2",
+    text: "다로리 카페 앞에서 6시 40분에 뵐까요?",
+    mine: true,
+  },
+];
 
 export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [inlineAction, setInlineAction] = useState<InlineChatActionMode | null>(null);
+  const [inlineMannerSaved, setInlineMannerSaved] = useState(false);
+  const [inlineSearchOpen, setInlineSearchOpen] = useState(false);
+  const [inlineSearchQuery, setInlineSearchQuery] = useState("");
+  const [inlineMuted, setInlineMuted] = useState(false);
+  const [inlineStatusMessage, setInlineStatusMessage] = useState<string | null>(null);
   const [rooms, setRooms] = useState<ChatListRoom[]>(() =>
     process.env.NODE_ENV === "test" ? chatRooms : [],
   );
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -133,11 +165,40 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
 
   const handleBack = () => {
     setSelectedRoomId(null);
+    setMenuOpen(false);
+    setLeaveModalOpen(false);
+    setInlineAction(null);
+    setInlineSearchOpen(false);
+    setInlineSearchQuery("");
+    setInlineStatusMessage(null);
   };
 
   const openLeaveModal = () => {
     setMenuOpen(false);
     setLeaveModalOpen(true);
+  };
+
+  const openInlineAction = (mode: InlineChatActionMode) => {
+    setMenuOpen(false);
+    setInlineMannerSaved(false);
+    setInlineAction(mode);
+  };
+
+  const openInlineSearch = () => {
+    setMenuOpen(false);
+    setInlineSearchOpen(true);
+    setInlineSearchQuery("");
+  };
+
+  const toggleInlineMute = () => {
+    setMenuOpen(false);
+    setInlineMuted((current) => {
+      const nextMuted = !current;
+      setInlineStatusMessage(
+        nextMuted ? "이 채팅방 알림을 껐어요." : "이 채팅방 알림을 켰어요.",
+      );
+      return nextMuted;
+    });
   };
 
   if (selectedRoomId === null) {
@@ -156,6 +217,15 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
       />
     );
   }
+
+  const normalizedInlineSearchQuery = inlineSearchQuery.trim().toLowerCase();
+  const visibleInlineMessages = normalizedInlineSearchQuery
+    ? inlineRoomMessages.filter((message) =>
+        message.text.toLowerCase().includes(normalizedInlineSearchQuery),
+      )
+    : inlineRoomMessages;
+  const inlineInviteLink = `darori.chat/${selectedRoomId}`;
+  const selectedRoom = rooms.find((room) => room.id === selectedRoomId);
 
   return (
     <View style={styles.safeArea}>
@@ -176,8 +246,9 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             </Pressable>
 
             <View style={styles.headerTitleBlock}>
-              <Text style={styles.roomTitle}>부릉팟</Text>
-              <Text style={styles.roomMeta}>다산 1동 → 범어 1동{"\n"}월,수 7:00~8:00</Text>
+              <ScreenTitle style={styles.roomTitle} numberOfLines={1}>
+                {selectedRoom?.title ?? "채팅"}
+              </ScreenTitle>
             </View>
 
             <View style={styles.headerActions}>
@@ -214,9 +285,34 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
           </View>
         </View>
 
+        {inlineSearchOpen ? (
+          <View style={styles.inlineSearchPanel}>
+            <View style={styles.inlineSearchInputRow}>
+              <Search size={18} color={colors.grayIcon} strokeWidth={2.2} />
+              <TextInput
+                accessibilityLabel="채팅 메시지 검색"
+                placeholder="메시지 검색"
+                placeholderTextColor={colors.gray400}
+                value={inlineSearchQuery}
+                onChangeText={setInlineSearchQuery}
+                testID="chat-inline-search-input"
+                style={styles.inlineSearchInput}
+              />
+            </View>
+            {normalizedInlineSearchQuery ? (
+              <Text style={styles.inlineSearchResult}>
+                {visibleInlineMessages.length}개 메시지
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         <ScrollView
           style={styles.messagesScroll}
-          contentContainerStyle={styles.messagesContent}
+          contentContainerStyle={[
+            styles.messagesContent,
+            { paddingBottom: 80 + bottomInset },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.dateText}>2026년 5월 5일</Text>
@@ -248,35 +344,51 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             </View>
           </View>
 
-          <View style={styles.receivedRow}>
-            <Avatar />
-            <View style={styles.receivedBubbleLarge}>
-              <Text style={styles.messageText}>
-                안녕하세요! 저희 월요일, 수요일 7시에 어디서 만나서 출발할까요?
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.sentRow}>
-            <View style={styles.sentBubbleSmall}>
-              <Text style={styles.messageText}>안녕하세요</Text>
-            </View>
-            <Avatar />
-          </View>
-
-          <View style={styles.sentRow}>
-            <View style={styles.sentBubbleLarge}>
-              <Text style={styles.messageText}>
-                다로리 카페 앞에서 6시 40분에 뵐까요?
-              </Text>
-            </View>
-          </View>
+          {visibleInlineMessages.map((message) =>
+            message.mine ? (
+              <View key={message.id} style={styles.sentRow}>
+                <View
+                  style={
+                    message.text.length < 8
+                      ? styles.sentBubbleSmall
+                      : styles.sentBubbleLarge
+                  }
+                >
+                  <Text style={styles.messageText}>{message.text}</Text>
+                </View>
+                {message.id === "sent-1" ? <Avatar /> : null}
+              </View>
+            ) : (
+              <View key={message.id} style={styles.receivedRow}>
+                <Avatar />
+                <View style={styles.receivedBubbleLarge}>
+                  <Text style={styles.messageText}>{message.text}</Text>
+                </View>
+              </View>
+            ),
+          )}
         </ScrollView>
 
-        <View style={styles.inputBar}>
+        {inlineStatusMessage ? (
+          <Text
+            style={[
+              styles.inlineStatusText,
+              { paddingBottom: 80 + bottomInset },
+            ]}
+          >
+            {inlineStatusMessage}
+          </Text>
+        ) : null}
+
+        <View
+          style={[styles.inputBar, { bottom: 36 + bottomInset }]}
+          testID="chat-room-input-bar"
+        >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="첨부 추가"
+            accessibilityLabel="사진 첨부"
+            testID="chat-inline-attach-photo-button"
+            onPress={() => setInlineStatusMessage("사진을 첨부했어요.")}
             style={({ pressed }) => [
               styles.inputIconButton,
               pressed && styles.pressed,
@@ -287,7 +399,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
           <TextInput
             accessibilityLabel="메시지 입력"
             placeholder="메시지 보내기"
-            placeholderTextColor="#52525B"
+            placeholderTextColor={colors.grayIcon}
             style={styles.messageInput}
           />
           <Pressable
@@ -310,16 +422,32 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
               onPress={() => setMenuOpen(false)}
               style={styles.menuBackdrop}
             />
-            <View style={styles.menuPanel}>
+            <View style={[styles.menuPanel, { bottom: 22 + bottomInset }]}>
               <View style={styles.menuSectionLarge}>
-                <MenuAction icon={Users} label="매너 평가하기" />
+                <MenuAction
+                  icon={ThumbsUp}
+                  label="매너 평가하기"
+                  onPress={() => openInlineAction("manner")}
+                />
                 <MenuAction icon={ShieldAlert} label="신고하기" />
-                <MenuAction icon={IdCard} label="면허증, 자동차 보험 조회하기" />
-                <MenuAction icon={UserPlus} label="아는 사용자 초대하기" />
+                <MenuAction
+                  icon={IdCard}
+                  label="운전자 인증 확인하기"
+                  onPress={() => openInlineAction("credentials")}
+                />
+                <MenuAction
+                  icon={UserPlus}
+                  label="아는 사용자 초대하기"
+                  onPress={() => openInlineAction("invite")}
+                />
               </View>
               <View style={styles.menuSection}>
-                <MenuAction icon={Search} label="검색하기" />
-                <MenuAction icon={BellOff} label="알람끄기" />
+                <MenuAction icon={Search} label="검색하기" onPress={openInlineSearch} />
+                <MenuAction
+                  icon={BellOff}
+                  label={inlineMuted ? "알림켜기" : "알림끄기"}
+                  onPress={toggleInlineMute}
+                />
                 <MenuAction icon={LogOut} label="방 나가기" onPress={openLeaveModal} />
               </View>
               <Pressable
@@ -344,6 +472,15 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             </View>
           </View>
         ) : null}
+
+        <InlineChatActionModal
+          visible={inlineAction !== null}
+          mode={inlineAction}
+          inviteLink={inlineInviteLink}
+          mannerSaved={inlineMannerSaved}
+          onRate={() => setInlineMannerSaved(true)}
+          onClose={() => setInlineAction(null)}
+        />
 
         {leaveModalOpen ? (
           <View style={styles.modalOverlay}>
@@ -459,7 +596,7 @@ function ChatListScreen({
         <View style={styles.listHeader}>
           <View style={styles.listTitleRow}>
             <View>
-              <Text style={styles.listTitle}>채팅</Text>
+              <ScreenTitle>채팅</ScreenTitle>
               <Text style={styles.listSubtitle}>지금 함께 이동할 대화를 확인하세요</Text>
             </View>
             <View style={styles.listHeaderIconFrame}>
@@ -680,9 +817,97 @@ function MenuAction({ icon: Icon, label, onPress }: MenuActionProps) {
         pressed && styles.pressed,
       ]}
     >
-      <Icon size={24} color="#374151" strokeWidth={2.2} />
+      <Icon size={24} color={colors.grayIcon} strokeWidth={2.2} />
       <Text style={styles.menuActionText}>{label}</Text>
     </Pressable>
+  );
+}
+
+function InlineChatActionModal({
+  visible,
+  mode,
+  inviteLink,
+  mannerSaved,
+  onRate,
+  onClose,
+}: {
+  visible: boolean;
+  mode: InlineChatActionMode | null;
+  inviteLink: string;
+  mannerSaved: boolean;
+  onRate: () => void;
+  onClose: () => void;
+}) {
+  if (!visible || mode === null) {
+    return null;
+  }
+
+  return (
+    <View style={styles.actionOverlay}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="액션 닫기"
+        onPress={onClose}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.actionCard}>
+        {mode === "manner" ? (
+          <>
+            <Text style={styles.actionTitle}>매너 평가하기</Text>
+            <Text style={styles.actionDescription}>좋았던 항목을 선택해주세요.</Text>
+            {mannerSaved ? (
+              <Text style={styles.actionSuccessText}>매너 평가가 저장되었습니다.</Text>
+            ) : (
+              <View style={styles.ratingList}>
+                {[
+                  "시간 약속을 잘 지켰어요",
+                  "친절하게 소통했어요",
+                  "안전하게 운행했어요",
+                  "응답이 빨랐어요",
+                ].map((label) => (
+                  <Pressable
+                    key={label}
+                    accessibilityRole="button"
+                    onPress={onRate}
+                    style={({ pressed }) => [
+                      styles.ratingButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.ratingButtonText}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </>
+        ) : null}
+
+        {mode === "credentials" ? (
+          <>
+            <Text style={styles.actionTitle}>운전자 인증</Text>
+            <Text style={styles.actionSuccessText}>인증됨</Text>
+          </>
+        ) : null}
+
+        {mode === "invite" ? (
+          <>
+            <Text style={styles.actionTitle}>아는 사용자 초대하기</Text>
+            <Text style={styles.actionDescription}>초대 링크가 준비되었습니다.</Text>
+            <Text style={styles.inviteLink}>{inviteLink}</Text>
+          </>
+        ) : null}
+
+        {(mode !== "manner" || mannerSaved) ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={({ pressed }) => [styles.actionConfirmButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.actionConfirmText}>확인</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -715,20 +940,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 16,
   },
-  listTitle: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: typography.weight.bold,
-  },
   listSubtitle: {
     marginTop: 3,
     color: colors.grayText,
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   listHeaderIconFrame: {
     width: 44,
@@ -764,7 +981,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     padding: 0,
   },
   filterButton: {
@@ -802,10 +1018,9 @@ const styles = StyleSheet.create({
   },
   chatCount: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   emptyChatCard: {
     minHeight: 140,
@@ -816,10 +1031,9 @@ const styles = StyleSheet.create({
   },
   emptyChatText: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
   },
   filterTab: {
     flex: 1,
@@ -839,7 +1053,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   filterTabLabelSelected: {
@@ -880,7 +1093,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   chatCopy: {
     flex: 1,
@@ -899,18 +1111,16 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   timeText: {
     color: colors.grayText,
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   unreadTime: {
     color: colors.mintDark,
-    fontWeight: typography.weight.bold,
+    fontFamily: typography.family.bold,
   },
   chatMetaRow: {
     minHeight: 20,
@@ -923,7 +1133,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   metaDot: {
     width: 3,
@@ -938,7 +1147,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   unreadMessageText: {
     color: colors.grayIcon,
@@ -957,14 +1165,13 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   header: {
     height: 176,
     paddingTop: 10,
     backgroundColor: colors.surface,
-    shadowColor: "#000000",
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -990,11 +1197,6 @@ const styles = StyleSheet.create({
     paddingRight: 7,
   },
   roomTitle: {
-    color: colors.black,
-    fontFamily: typography.family.regular,
-    fontSize: 30,
-    lineHeight: 38,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   roomMeta: {
@@ -1003,7 +1205,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.lg,
     lineHeight: 26,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   headerActions: {
@@ -1018,8 +1219,8 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 5,
     borderWidth: 2,
-    borderColor: "#1F2937",
-    backgroundColor: "rgba(100, 116, 139, 0.25)",
+    borderColor: colors.slate,
+    backgroundColor: colors.overlay,
   },
   participantRow: {
     marginTop: 12,
@@ -1039,7 +1240,40 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 20,
-    fontWeight: typography.weight.regular,
+  },
+  inlineSearchPanel: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+    backgroundColor: colors.surface,
+    gap: 8,
+    zIndex: 1,
+  },
+  inlineSearchInputRow: {
+    minHeight: 42,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: colors.gray300,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  inlineSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    padding: 0,
+    color: colors.black,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  inlineSearchResult: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
   },
   messagesScroll: {
     flex: 1,
@@ -1056,7 +1290,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 20,
-    fontWeight: typography.weight.regular,
   },
   systemRow: {
     marginTop: 13,
@@ -1082,7 +1315,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 16,
-    fontWeight: typography.weight.regular,
   },
   systemCard: {
     width: 144,
@@ -1090,7 +1322,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: colors.black,
     overflow: "hidden",
-    backgroundColor: "#34D399",
+    backgroundColor: colors.mint,
   },
   systemCardTop: {
     minHeight: 66,
@@ -1106,7 +1338,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 20,
-    fontWeight: typography.weight.regular,
   },
   systemCardBody: {
     minHeight: 114,
@@ -1122,7 +1353,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 15,
-    fontWeight: typography.weight.regular,
     letterSpacing: -0.2,
   },
   recheckButton: {
@@ -1133,7 +1363,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: "#2DD4BF",
+    borderColor: colors.mint,
     backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
@@ -1143,7 +1373,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 16,
-    fontWeight: typography.weight.regular,
     letterSpacing: -0.2,
   },
   receivedRow: {
@@ -1189,7 +1418,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: 16,
-    fontWeight: typography.weight.regular,
+  },
+  inlineStatusText: {
+    paddingHorizontal: 30,
+    paddingBottom: 80,
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   inputBar: {
     position: "absolute",
@@ -1219,7 +1455,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: 18,
-    fontWeight: typography.weight.regular,
   },
   menuOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1242,14 +1477,14 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 10,
     borderRadius: 20,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.lineStrong,
     gap: 22,
   },
   menuSection: {
     paddingHorizontal: 24,
     paddingVertical: 24,
     borderRadius: 20,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.lineStrong,
     gap: 24,
   },
   menuAction: {
@@ -1265,12 +1500,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 22,
-    fontWeight: typography.weight.regular,
   },
   closePill: {
     height: 56,
     borderRadius: 10,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.lineStrong,
   },
   closeTextButton: {
     alignSelf: "center",
@@ -1284,11 +1518,10 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 22,
-    fontWeight: typography.weight.regular,
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(82, 82, 91, 0.6)",
+    backgroundColor: colors.overlayStrong,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 6,
@@ -1299,14 +1532,13 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     paddingHorizontal: 21,
     borderRadius: 16,
-    backgroundColor: "rgba(38, 38, 38, 0.85)",
+    backgroundColor: colors.overlayStrong,
   },
   confirmText: {
-    color: "#F4F4F5",
+    color: colors.sheet,
     fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 23,
-    fontWeight: typography.weight.regular,
   },
   confirmActions: {
     marginTop: 16,
@@ -1327,7 +1559,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 56,
     borderRadius: 24,
-    backgroundColor: "#DC2626",
+    backgroundColor: colors.red,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 14,
@@ -1337,8 +1569,118 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: 22,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
+  },
+  actionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.overlayStrong,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    zIndex: 7,
+  },
+  actionCard: {
+    width: "100%",
+    maxWidth: 360,
+    padding: 22,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    gap: 14,
+  },
+  actionTitle: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
+    textAlign: "center",
+  },
+  actionDescription: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    textAlign: "center",
+  },
+  actionSuccessText: {
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    textAlign: "center",
+  },
+  ratingList: {
+    gap: 8,
+  },
+  ratingButton: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ratingButtonSecondary: {
+    backgroundColor: colors.mintLight,
+    borderWidth: 1,
+    borderColor: colors.mint,
+  },
+  ratingButtonText: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  actionInfoList: {
+    borderRadius: 14,
+    backgroundColor: colors.gray100,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  actionInfoRow: {
+    minHeight: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  actionInfoLabel: {
+    color: colors.grayIcon,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  actionInfoValue: {
+    flex: 1,
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+    textAlign: "right",
+  },
+  inviteLink: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.mintLight,
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    textAlign: "center",
+  },
+  actionConfirmButton: {
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionConfirmText: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   pressed: {
     opacity: 0.78,

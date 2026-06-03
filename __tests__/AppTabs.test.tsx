@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import App from "../App";
 
@@ -22,10 +22,19 @@ describe("App tabs", () => {
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
-    expect(screen.getByText("여기서 검색")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("여기서 검색")).toBeTruthy();
+    });
 
     fireEvent.press(screen.getByTestId("map-home-bottom-nav-bus"));
-    expect(screen.getByText("가장 빠른 노선")).toBeTruthy();
+    expect(await screen.findByText("추천 경로")).toBeTruthy();
+
+    // Pushing the record-sighting button opens the BusSightingScreen sub-screen,
+    // and tapping the back affordance returns to the bus tab.
+    fireEvent.press(screen.getByTestId("route-record-sighting-button"));
+    expect(await screen.findByText("방금 버스 봤어요!")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("뒤로가기"));
+    expect(await screen.findByText("추천 경로")).toBeTruthy();
 
     // Pushing the record-sighting button opens the BusSightingScreen sub-screen,
     // and tapping the back affordance returns to the bus tab.
@@ -39,37 +48,38 @@ describe("App tabs", () => {
     expect(screen.getByText("정기 라이딩")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("recruitment-back"));
-    expect(screen.getByText("가장 빠른 노선")).toBeTruthy();
+    expect(await screen.findByText("추천 경로")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("route-bottom-nav-chat"));
     expect(screen.getByText("지금 함께 이동할 대화를 확인하세요")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("chat-room-brungpot"));
-    expect(screen.getByText("부릉팟")).toBeTruthy();
+    expect(screen.getByText("‘청도감 학원’ 함께 다니실 사람 구해요")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("chat-room-back"));
     expect(screen.getByText("지금 함께 이동할 대화를 확인하세요")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("chat-bottom-nav-profile"));
-    expect(screen.getByText("인증 완료")).toBeTruthy();
+    expect(screen.getByText("매너온도")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("profile-stat-saved"));
-    expect(screen.getByText("내 찜")).toBeTruthy();
-
-    fireEvent.press(screen.getByLabelText("뒤로가기"));
-    expect(screen.getByText("인증 완료")).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId("profile-stat-recruitments"));
-    expect(screen.getByText("내가 쓴 모집글")).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId("profile-subscreen-back"));
-    expect(screen.getByText("인증 완료")).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId("profile-stat-completed"));
-    expect(screen.getByText("지원서")).toBeTruthy();
-    expect(screen.getByText("자기소개")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("profile-edit-button"));
+    expect(screen.getByText("운전 여부")).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText("뒤로가기"));
+    expect(screen.getByText("매너온도")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("설정"));
+    expect(screen.getByText("전화번호")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("뒤로가기"));
+    expect(screen.getByText("매너온도")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("공지사항"));
+    expect(screen.getByText("앱 업데이트와 운영 안내를 확인하세요.")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("뒤로가기"));
+    expect(screen.getByText("매너온도")).toBeTruthy();
+
     fireEvent.press(screen.getByTestId("profile-bottom-nav-map"));
     expect(screen.getByText("여기서 검색")).toBeTruthy();
   });

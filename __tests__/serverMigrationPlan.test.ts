@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -29,6 +29,71 @@ describe("server database migration plan", () => {
         expect.objectContaining({ id: "001_initial_schema" }),
         expect.objectContaining({ id: "002_bus_archive" }),
         expect.objectContaining({ id: "002_human_resource_profiles" }),
+      ]),
+    );
+  });
+
+  it("keeps fresh reset schema compatible with seeded bus archive data", async () => {
+    const schemaSql = await readFile("server/db/schema.sql", "utf8");
+
+    for (const tableName of [
+      "bus_routes",
+      "bus_stops",
+      "bus_route_stops",
+      "bus_sightings",
+    ]) {
+      expect(schemaSql).toContain(`create table if not exists ${tableName}`);
+    }
+  });
+
+  it("ships an auth/session migration for future login support", async () => {
+    const migrations = await readSchemaMigrations();
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "004_auth_sessions",
+          sql: expect.stringContaining("create table if not exists auth_sessions"),
+        }),
+      ]),
+    );
+  });
+
+  it("ships a cleanup migration for placeholder recruitment seed records", async () => {
+    const migrations = await readSchemaMigrations();
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "006_remove_placeholder_recruitments",
+          sql: expect.stringContaining("delete from posts"),
+        }),
+      ]),
+    );
+  });
+
+  it("ships a login id migration for production signups", async () => {
+    const migrations = await readSchemaMigrations();
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "007_login_ids",
+          sql: expect.stringContaining("login_id"),
+        }),
+      ]),
+    );
+  });
+
+  it("ships chat image, driver verification, and manner rating migrations", async () => {
+    const migrations = await readSchemaMigrations();
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "008_manner_ratings_and_image_messages",
+          sql: expect.stringContaining("manner_ratings"),
+        }),
       ]),
     );
   });

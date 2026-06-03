@@ -20,7 +20,12 @@ import {
 import type { LucideIcon } from "lucide-react-native";
 
 import { MapPreview } from "../components/MapPreview";
+import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { createPost } from "../services/api";
@@ -76,41 +81,6 @@ const initialAgreements: Agreements = {
   thirdParty: false,
 };
 
-const fallbackPlaceCandidates: PlaceCandidate[] = [
-  {
-    id: "cheongdo-station",
-    name: "청도역",
-    address: "경북 청도군 청도읍 청화로",
-    latitude: 35.6474,
-    longitude: 128.7338,
-    source: "fallback",
-  },
-  {
-    id: "daejeon-station",
-    name: "대전역",
-    address: "대전 동구 중앙로 215",
-    latitude: 36.3324,
-    longitude: 127.4346,
-    source: "fallback",
-  },
-  {
-    id: "dairuri-cafe",
-    name: "다로리 카페",
-    address: "다로리로 12",
-    latitude: 37.5572,
-    longitude: 126.9246,
-    source: "fallback",
-  },
-  {
-    id: "central-stop",
-    name: "중앙 정류장",
-    address: "중앙대로 버스정류장",
-    latitude: 37.5591,
-    longitude: 126.9272,
-    source: "fallback",
-  },
-];
-
 export function CreateRecruitmentScreen({
   onCancel,
   onComplete,
@@ -149,6 +119,7 @@ export function CreateRecruitmentScreen({
   const progress = selectedType
     ? Math.min((screenIndex + 1) / totalScreens, 1)
     : 0.22;
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
 
   const allAgreementsChecked = useMemo(
     () => agreementItems.every((item) => agreements[item.id]),
@@ -436,7 +407,7 @@ export function CreateRecruitmentScreen({
     submitting
       ? "등록 중..."
       : selectedType === "work" && screenIndex === 4
-      ? "인적 자원 등록하기"
+      ? "인재 풀 등록"
       : selectedType === "ride" && screenIndex === 5
         ? "라이드 모집 시작하기"
         : "다음";
@@ -461,9 +432,13 @@ export function CreateRecruitmentScreen({
       <View style={styles.screen} testID="recruitment-create-screen">
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 126 + bottomInset },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          testID="recruitment-create-scroll"
         >
           <View style={styles.header}>
             <Pressable
@@ -497,7 +472,10 @@ export function CreateRecruitmentScreen({
           ) : null}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View
+          style={[styles.footer, { bottom: 34 + bottomInset }]}
+          testID="recruitment-footer"
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={buttonLabel}
@@ -543,7 +521,7 @@ type TypeSelectionStepProps = {
 function TypeSelectionStep({ selectedType, onSelect }: TypeSelectionStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>어떤 모집을 시작할까요?</Text>
+      <ScreenTitle>어떤 모집을 시작할까요?</ScreenTitle>
 
       <View style={styles.typeList}>
         <TypeCard
@@ -559,7 +537,7 @@ function TypeSelectionStep({ selectedType, onSelect }: TypeSelectionStepProps) {
         />
         <TypeCard
           type="work"
-          title="인적 자원"
+          title="인재 풀 등록"
           description="가능한 업무와 시간을 알려요"
           selected={selectedType === "work"}
           accent={colors.yellow}
@@ -625,8 +603,24 @@ function TypeCard({
         />
       </View>
       <View style={styles.typeCopy}>
-        <Text style={styles.typeTitle}>{title}</Text>
-        <Text style={styles.typeDescription}>{description}</Text>
+        <Text
+          style={styles.typeTitle}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.82}
+          maxFontSizeMultiplier={1.08}
+        >
+          {title}
+        </Text>
+        <Text
+          style={styles.typeDescription}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.86}
+          maxFontSizeMultiplier={1.08}
+        >
+          {description}
+        </Text>
       </View>
     </Pressable>
   );
@@ -647,7 +641,7 @@ function RideRouteStep({
 }: RideRouteStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>어디로 떠나시나요?</Text>
+      <ScreenTitle>어디로 떠나시나요?</ScreenTitle>
       <PlaceSelectField
         label="출발지"
         placeholder="출발지 선택"
@@ -693,7 +687,7 @@ function RideScheduleStep({
 }: RideScheduleStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>언제 출발하시나요?</Text>
+      <ScreenTitle>언제 출발하시나요?</ScreenTitle>
       <DaySelector
         selectedDays={selectedDays}
         accent={accent}
@@ -738,7 +732,7 @@ function RideTitleStep({
 }: RideTitleStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>모집글의 제목을 정해주세요.</Text>
+      <ScreenTitle>모집글의 제목을 정해주세요.</ScreenTitle>
       <FieldInput
         label="모집글 제목"
         placeholder="제목 입력"
@@ -782,7 +776,7 @@ function WorkBasicsStep({
 }: WorkBasicsStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>어떤 일을 할 수 있나요?</Text>
+      <ScreenTitle>어떤 일을 할 수 있나요?</ScreenTitle>
       <FieldInput
         label="소개 제목"
         placeholder="나를 소개하는 제목"
@@ -816,7 +810,7 @@ function WorkBasicsStep({
                 <Text
                   style={[
                     styles.categoryLabel,
-                    selected && { color: accentDark, fontWeight: typography.weight.bold },
+                    selected && { color: accentDark, fontFamily: typography.family.bold },
                   ]}
                   numberOfLines={1}
                   adjustsFontSizeToFit
@@ -864,7 +858,7 @@ function WorkScheduleStep({
 }: WorkScheduleStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>가능한 시간대를 알려주세요.</Text>
+      <ScreenTitle>가능한 시간대를 알려주세요.</ScreenTitle>
       <DaySelector
         selectedDays={selectedDays}
         accent={accent}
@@ -938,11 +932,11 @@ function DetailsStep({
 }: DetailsStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>
+      <ScreenTitle>
         {type === "ride"
           ? "어떤 라이드를 원하시나요?"
           : "가능 업무와 연락 전 참고사항을 알려주세요."}
-      </Text>
+      </ScreenTitle>
 
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>상세 설명</Text>
@@ -1032,7 +1026,7 @@ function ReviewStep({
 }: ReviewStepProps) {
   return (
     <View style={styles.stepBlock}>
-      <Text style={styles.title}>마지막으로 확인해주세요.</Text>
+      <ScreenTitle>마지막으로 확인해주세요.</ScreenTitle>
 
       <View style={[styles.reviewCard, { borderColor: accent }]}>
         <View style={styles.reviewHeader}>
@@ -1094,32 +1088,77 @@ function PlacePickerScreen({
   onSelectPlace,
 }: PlacePickerScreenProps) {
   const [query, setQuery] = useState(currentValue);
-  const [places, setPlaces] = useState<PlaceCandidate[]>(() =>
-    getFallbackPlaceCandidates(currentValue),
-  );
+  const [places, setPlaces] = useState<PlaceCandidate[]>([]);
+  const [isSearchingPlace, setIsSearchingPlace] = useState(false);
+  const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
   const title =
     target === "departure" ? "지도에서 출발지 선택" : "지도에서 목적지 선택";
 
   useEffect(() => {
     let active = true;
-    const fallback = getFallbackPlaceCandidates(query);
+    const trimmedQuery = query.trim();
 
-    setPlaces(fallback);
+    if (trimmedQuery.length < 2) {
+      setPlaces([]);
+      setPlaceSearchError(null);
+      setIsSearchingPlace(false);
+      return () => {
+        active = false;
+      };
+    }
 
-    searchApiPlaceCandidates(query).then((apiPlaces) => {
-      if (!active || apiPlaces.length === 0) {
-        return;
-      }
+    setIsSearchingPlace(true);
+    setPlaceSearchError(null);
 
-      setPlaces(mergePlaceCandidates(apiPlaces, fallback));
-    });
+    searchApiPlaceCandidates(trimmedQuery)
+      .then((apiPlaces) => {
+        if (!active) {
+          return;
+        }
+
+        setPlaceSearchError(null);
+        setPlaces(apiPlaces);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        setPlaces([]);
+        setPlaceSearchError(
+          error instanceof Error
+            ? "지도 API 검색에 실패했어요. 잠시 후 다시 검색해주세요."
+            : "지도 API 검색에 실패했어요. 잠시 후 다시 검색해주세요.",
+        );
+      })
+      .finally(() => {
+        if (active) {
+          setIsSearchingPlace(false);
+        }
+      });
 
     return () => {
       active = false;
     };
   }, [query]);
 
-  const firstPlace = places[0] ?? fallbackPlaceCandidates[0];
+  const firstPlace = places[0];
+  const firstPlaceCamera = firstPlace
+    ? {
+        latitude: firstPlace.latitude,
+        longitude: firstPlace.longitude,
+        zoom: 16,
+      }
+    : undefined;
+  const canSelectMapCenter = Boolean(firstPlace);
+  const helperText =
+    query.trim().length < 2
+      ? "장소명을 2글자 이상 입력하면 지도 API 결과가 표시돼요."
+      : isSearchingPlace
+        ? "지도 API에서 장소를 찾는 중이에요."
+        : places.length === 0 && !placeSearchError
+          ? "검색 결과가 없어요."
+          : null;
 
   return (
     <View style={styles.safeArea}>
@@ -1152,8 +1191,12 @@ function PlacePickerScreen({
           />
         </View>
 
-        <View style={styles.placeMapFrame}>
-          <MapPreview style={styles.placeMap} />
+        <View
+          style={styles.placeMapFrame}
+          testID="place-map-frame"
+          accessibilityValue={{ text: firstPlace?.name ?? "검색 결과 없음" }}
+        >
+          <MapPreview style={styles.placeMap} camera={firstPlaceCamera} />
           <View style={[styles.placeMapPin, { backgroundColor: accent }]}>
             <MapPin size={24} color={colors.surface} strokeWidth={2.4} />
           </View>
@@ -1161,12 +1204,19 @@ function PlacePickerScreen({
 
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ disabled: !canSelectMapCenter }}
           accessibilityLabel="지도 중심 선택"
-          onPress={() => onSelectPlace(firstPlace)}
+          disabled={!canSelectMapCenter}
+          onPress={() => {
+            if (firstPlace) {
+              onSelectPlace(firstPlace);
+            }
+          }}
           testID="place-select-map-center"
           style={({ pressed }) => [
             styles.mapCenterButton,
             { backgroundColor: accent },
+            !canSelectMapCenter && styles.mapCenterButtonDisabled,
             pressed && styles.pressed,
           ]}
         >
@@ -1179,6 +1229,14 @@ function PlacePickerScreen({
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.label}>지도 API 결과</Text>
+          {placeSearchError ? (
+            <Text style={styles.placeSearchError}>
+              {placeSearchError}
+            </Text>
+          ) : null}
+          {helperText ? (
+            <Text style={styles.placeSearchHelper}>{helperText}</Text>
+          ) : null}
           {places.map((place) => (
             <Pressable
               key={place.id}
@@ -1294,6 +1352,10 @@ function DaySelector({ selectedDays, accent, onToggleDay }: DaySelectorProps) {
                   styles.dayLabel,
                   selected && styles.dayLabelSelected,
                 ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+                maxFontSizeMultiplier={1}
               >
                 {day}
               </Text>
@@ -1389,37 +1451,6 @@ function formatCategories(categories: string[]) {
   return categories.length > 0 ? categories.join(" · ") : "가능 업무";
 }
 
-function getFallbackPlaceCandidates(query: string) {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return fallbackPlaceCandidates;
-  }
-
-  const filtered = fallbackPlaceCandidates.filter((place) => {
-    const searchable = `${place.name} ${place.address}`.toLowerCase();
-    return searchable.includes(normalizedQuery);
-  });
-
-  return filtered.length > 0 ? filtered : fallbackPlaceCandidates;
-}
-
-function mergePlaceCandidates(
-  apiPlaces: PlaceCandidate[],
-  fallbackPlaces: PlaceCandidate[],
-) {
-  const seen = new Set<string>();
-
-  return [...apiPlaces, ...fallbackPlaces].filter((place) => {
-    const key = `${place.name}-${place.address}`;
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
-}
-
 function formatCurrency(value: string) {
   const numeric = value.replace(/[^0-9]/g, "");
   if (!numeric) {
@@ -1478,15 +1509,13 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 28,
-    paddingBottom: 126,
     gap: 30,
   },
   submitError: {
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.medium,
     textAlign: "center",
   },
   header: {
@@ -1513,13 +1542,6 @@ const styles = StyleSheet.create({
   stepBlock: {
     gap: 28,
   },
-  title: {
-    color: colors.black,
-    fontFamily: typography.family.medium,
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: typography.weight.medium,
-  },
   placeHeader: {
     paddingHorizontal: 20,
     paddingTop: 28,
@@ -1532,9 +1554,8 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.black,
     fontFamily: typography.family.medium,
-    fontSize: 20,
-    lineHeight: 28,
-    fontWeight: typography.weight.medium,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
   },
   placeSearchRow: {
     height: 56,
@@ -1555,7 +1576,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   placeMapFrame: {
     height: 270,
@@ -1589,12 +1609,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  mapCenterButtonDisabled: {
+    backgroundColor: colors.gray300,
+    opacity: 0.72,
+  },
   mapCenterButtonText: {
     color: colors.surface,
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   placeListScroll: {
     flex: 1,
@@ -1651,6 +1674,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   typeCopy: {
+    minWidth: 0,
     gap: 6,
   },
   typeTitle: {
@@ -1658,14 +1682,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.medium,
   },
   typeDescription: {
     color: colors.gray400,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   fieldBlock: {
     gap: 8,
@@ -1675,7 +1697,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
     letterSpacing: 0.4,
   },
   inputRow: {
@@ -1698,7 +1719,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   inputActiveText: {
     color: colors.black,
@@ -1710,35 +1730,42 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   placeResultName: {
     color: colors.black,
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   placeResultAddress: {
     color: colors.gray400,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
+  },
+  placeSearchError: {
+    color: colors.red,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+  },
+  placeSearchHelper: {
+    color: colors.gray400,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
   },
   prefixText: {
     color: colors.gray300,
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   suffixText: {
     color: colors.slate,
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   helperText: {
     marginTop: -18,
@@ -1746,17 +1773,18 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   dayRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 5,
+    justifyContent: "center",
+    gap: 4,
   },
   dayCircle: {
-    width: 44,
-    height: 44,
+    flex: 1,
+    minWidth: 0,
+    maxWidth: 44,
+    aspectRatio: 1,
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
@@ -1764,10 +1792,9 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   dayLabelSelected: {
@@ -1792,9 +1819,8 @@ const styles = StyleSheet.create({
   categoryLabel: {
     color: colors.grayIcon,
     fontFamily: typography.family.medium,
-    fontSize: 10,
+    fontSize: typography.size.xs,
     lineHeight: 14,
-    fontWeight: typography.weight.medium,
     textAlign: "center",
   },
   timeInput: {
@@ -1809,7 +1835,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
     textAlign: "center",
   },
   rangeText: {
@@ -1817,7 +1842,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   textArea: {
     minHeight: 170,
@@ -1830,7 +1854,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   agreementList: {
     marginTop: 22,
@@ -1858,7 +1881,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   reviewCard: {
     width: "100%",
@@ -1880,7 +1902,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   reviewBadge: {
     minWidth: 42,
@@ -1893,9 +1914,8 @@ const styles = StyleSheet.create({
   reviewBadgeText: {
     color: colors.surface,
     fontFamily: typography.family.bold,
-    fontSize: 10,
+    fontSize: typography.size.xs,
     lineHeight: 14,
-    fontWeight: typography.weight.bold,
   },
   reviewRow: {
     minHeight: 24,
@@ -1917,13 +1937,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   footer: {
     position: "absolute",
     left: 20,
     right: 20,
-    bottom: 34,
   },
   footerButton: {
     height: 64,
@@ -1939,7 +1957,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
     textAlign: "center",
   },
   footerButtonTextActive: {

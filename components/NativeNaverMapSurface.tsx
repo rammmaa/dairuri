@@ -1,8 +1,5 @@
 import { StyleProp, StyleSheet, View, ViewStyle } from "react-native";
-import {
-  NaverMapMarkerOverlay,
-  NaverMapView,
-} from "@mj-studio/react-native-naver-map";
+import { NaverMapView } from "@mj-studio/react-native-naver-map";
 
 import { colors } from "../constants/colors";
 import type { MapPreviewCamera, MapPreviewMarker } from "./mapPreviewData";
@@ -17,10 +14,8 @@ export type NaverMapSurfaceProps = {
 
 export function NativeNaverMapSurface({
   style,
-  markers,
   initialCamera,
   camera,
-  onMarkerPress,
 }: NaverMapSurfaceProps) {
   const activeCamera = camera ?? initialCamera;
 
@@ -56,22 +51,7 @@ export function NativeNaverMapSurface({
           circleColor: colors.blueSoft,
           circleOutlineWidth: 0,
         }}
-      >
-        {markers.map((marker) => (
-          <NaverMapMarkerOverlay
-            key={marker.id}
-            latitude={marker.latitude}
-            longitude={marker.longitude}
-            caption={{
-              text: marker.label,
-              textSize: 13,
-              color: colors.slate,
-              haloColor: colors.surface,
-            }}
-            onTap={() => onMarkerPress?.(marker.id)}
-          />
-        ))}
-      </NaverMapView>
+      />
     </View>
   );
 }

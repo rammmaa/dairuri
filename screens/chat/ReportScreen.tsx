@@ -7,6 +7,7 @@ import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
+import { submitReport as submitReportRequest } from "../../services/api";
 
 export type ReportScreenProps = {
   roomId: string;
@@ -28,14 +29,24 @@ export function ReportScreen({ roomId, onBack, onSubmitted }: ReportScreenProps)
     null,
   );
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const submitReport = () => {
-    if (!selectedReason) {
+  const submitReport = async () => {
+    if (!selectedReason || submitting) {
       return;
     }
 
-    setSubmitted(true);
-    onSubmitted?.();
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await submitReportRequest(roomId, selectedReason);
+      setSubmitted(true);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "신고를 제출하지 못했어요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -74,7 +85,12 @@ export function ReportScreen({ roomId, onBack, onSubmitted }: ReportScreenProps)
                 accessibilityState={{ selected }}
                 accessibilityLabel={reason}
                 key={reason}
-                onPress={() => setSelectedReason(reason)}
+                onPress={() => {
+                  setSelectedReason(reason);
+                  if (errorMessage) {
+                    setErrorMessage(null);
+                  }
+                }}
                 style={({ pressed }) => [
                   styles.reasonItem,
                   selected && styles.reasonItemSelected,
@@ -93,9 +109,10 @@ export function ReportScreen({ roomId, onBack, onSubmitted }: ReportScreenProps)
         </View>
       </ScrollView>
       <View style={styles.footer}>
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         <AppButton
-          label="신고 제출"
-          disabled={!selectedReason}
+          label={submitting ? "제출 중" : "신고 제출"}
+          disabled={!selectedReason || submitting}
           onPress={submitReport}
           testID="report-submit-button"
         />
@@ -116,26 +133,23 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   description: {
     marginTop: 8,
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   roomHint: {
     marginTop: 12,
     color: colors.gray400,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   reasonList: {
     marginTop: 28,
@@ -163,14 +177,13 @@ const styles = StyleSheet.create({
   reasonText: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   reasonTextSelected: {
     color: colors.mintDark,
-    fontWeight: typography.weight.bold,
+    fontFamily: typography.family.bold,
   },
   radio: {
     width: 20,
@@ -198,6 +211,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.surface,
+    gap: 10,
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   completeBody: {
     flex: 1,
@@ -216,19 +236,17 @@ const styles = StyleSheet.create({
   },
   completeTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   completeDescription: {
     marginBottom: 10,
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
 });

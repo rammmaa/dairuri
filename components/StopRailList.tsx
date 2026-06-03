@@ -116,12 +116,11 @@ const styles = StyleSheet.create({
   name: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
   },
   nameSelected: {
     fontFamily: typography.family.bold,
-    fontWeight: typography.weight.bold,
   },
 });

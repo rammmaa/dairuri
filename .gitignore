@@ -15,6 +15,7 @@ web-build/
 *.p12
 *.key
 *.mobileprovision
+*.apk
 npm-debug.*
 yarn-debug.*
 yarn-error.*
@@ -28,3 +29,4 @@ coverage/
 expo-env.d.ts
 ios/
 android/
+.vercel

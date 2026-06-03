@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   emptyText: {
     flex: 1,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     textAlign: "center",
     textAlignVertical: "center",
@@ -315,10 +315,10 @@ const styles = StyleSheet.create({
   },
   labelText: {
     color: colors.black,
-    fontFamily: typography.family.body,
-    fontSize: 11,
-    lineHeight: 14,
-    backgroundColor: "rgba(255,255,255,0.86)",
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    backgroundColor: colors.surfaceTranslucent,
     paddingHorizontal: 4,
     borderRadius: 4,
   },

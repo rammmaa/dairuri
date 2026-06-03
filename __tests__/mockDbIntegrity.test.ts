@@ -1,12 +1,17 @@
 import { mockApplications, mockChatRooms, mockMe, mockMessages, mockPosts } from "../data/mockDomain";
 import {
   connectMockDatabase,
+  resetMockDatabase,
   validateDatabaseConsistency,
   type MockDatabase,
 } from "../services/mockDb";
 import { applyToPost, sendMessage } from "../services/mockApi";
 
 describe("mock database integrity", () => {
+  beforeEach(() => {
+    resetMockDatabase();
+  });
+
   it("connects to the mock database and validates current relationships", () => {
     const database = connectMockDatabase();
     const result = validateDatabaseConsistency(database);
@@ -67,6 +72,12 @@ describe("mock database integrity", () => {
     );
     await expect(sendMessage("missing-room", "안녕하세요")).rejects.toThrow(
       "Cannot send message to missing room",
+    );
+  });
+
+  it("rejects self-application writes", async () => {
+    await expect(applyToPost("carpool-1", "제가 쓴 글에는 신청하지 않습니다.")).rejects.toThrow(
+      "Cannot apply to your own post",
     );
   });
 

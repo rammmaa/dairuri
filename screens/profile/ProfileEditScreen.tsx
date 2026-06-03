@@ -1,5 +1,6 @@
 import { Camera, CarFront, UserRound, UserRoundCheck } from "lucide-react-native";
-import { useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import { useEffect, useState } from "react";
 import {
   Image,
   Pressable,
@@ -13,10 +14,15 @@ import { AppButton } from "../../components/AppButton";
 import { Header } from "../../components/Header";
 import { TextInputField } from "../../components/TextInputField";
 import { colors } from "../../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockMe } from "../../data/mockDomain";
-import type { DriverType } from "../../types/domain";
+import { getMe, updateMe } from "../../services/api";
+import type { DriverType, UpdateUserProfileInput } from "../../types/domain";
 import { ProfileImageBottomSheet } from "./ProfileImageBottomSheet";
 
 export type ProfileEditScreenProps = {
@@ -25,18 +31,148 @@ export type ProfileEditScreenProps = {
 };
 
 export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
-  const [nickname, setNickname] = useState(mockMe.nickname);
-  const [driverType, setDriverType] = useState<DriverType>(mockMe.driverType);
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(mockMe.avatarUrl);
+  const initialProfile = process.env.NODE_ENV === "test" ? mockMe : undefined;
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
+  const [nickname, setNickname] = useState(initialProfile?.nickname ?? "");
+  const [driverType, setDriverType] = useState<DriverType>(
+    initialProfile?.driverType ?? "nonDriver",
+  );
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
+    initialProfile?.avatarUrl,
+  );
+  const [avatarChanged, setAvatarChanged] = useState(false);
+  const [driverVerified, setDriverVerified] = useState(
+    Boolean(
+      initialProfile?.driverVerification?.licenseVerified &&
+        initialProfile.driverVerification.insuranceVerified,
+    ),
+  );
   const [imageSheetVisible, setImageSheetVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const closeImageSheet = () => {
-    setImageSheetVisible(false);
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+
+    getMe()
+      .then((profile) => {
+        if (!active) {
+          return;
+        }
+        setNickname(profile.nickname);
+        setDriverType(profile.driverType);
+        setAvatarUrl(profile.avatarUrl);
+        setDriverVerified(
+          Boolean(
+            profile.driverVerification?.licenseVerified &&
+              profile.driverVerification.insuranceVerified,
+          ),
+        );
+        setAvatarChanged(false);
+      })
+      .catch((error) => {
+        if (active) {
+          setErrorMessage(
+            error instanceof Error ? error.message : "프로필을 불러오지 못했어요.",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSave = async () => {
+    if (saving || nickname.trim().length === 0) {
+      return;
+    }
+
+    setSaving(true);
+    setErrorMessage(null);
+    try {
+      const input: UpdateUserProfileInput = {
+        nickname: nickname.trim(),
+        driverType,
+      };
+      if (avatarChanged) {
+        input.avatarUrl = avatarUrl ?? null;
+      }
+
+      await updateMe(input);
+      onSaved?.();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "프로필 수정에 실패했어요.",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleImageAction = (nextAvatarUrl?: string) => {
-    setAvatarUrl(nextAvatarUrl);
-    closeImageSheet();
+  const applyPickedAvatar = (asset: ImagePicker.ImagePickerAsset | undefined) => {
+    if (!asset) {
+      setErrorMessage("사진을 선택하지 못했어요.");
+      return;
+    }
+
+    setAvatarUrl(getAvatarPayload(asset));
+    setAvatarChanged(true);
+    setErrorMessage(null);
+  };
+
+  const handleOpenCamera = async () => {
+    setImageSheetVisible(false);
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      setErrorMessage("카메라 권한이 필요해요.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.72,
+      base64: true,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (result.canceled) {
+      setErrorMessage("사진 선택을 취소했어요.");
+      return;
+    }
+
+    applyPickedAvatar(result.assets[0]);
+  };
+
+  const handleOpenLibrary = async () => {
+    setImageSheetVisible(false);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setErrorMessage("사진 접근 권한이 필요해요.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.72,
+      base64: true,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (result.canceled) {
+      setErrorMessage("사진 선택을 취소했어요.");
+      return;
+    }
+
+    applyPickedAvatar(result.assets[0]);
   };
 
   return (
@@ -46,13 +182,21 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 120 + bottomInset },
+          ]}
           showsVerticalScrollIndicator={false}
+          testID="profile-edit-scroll"
         >
           <View style={styles.avatarBlock}>
             <View style={styles.avatarFrame}>
               {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.avatarImage}
+                  testID="profile-avatar-image"
+                />
               ) : (
                 <UserRound size={54} color={colors.mintDark} strokeWidth={2.1} />
               )}
@@ -64,7 +208,7 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
               onPress={() => setImageSheetVisible(true)}
               style={({ pressed }) => [styles.avatarEditButton, pressed && styles.pressed]}
             >
-              <Camera size={18} color={colors.surface} strokeWidth={2.4} />
+              <Camera size={18} color={colors.mintDark} strokeWidth={2.4} />
             </Pressable>
           </View>
 
@@ -83,7 +227,17 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
                 label="운전자"
                 icon="car"
                 selected={driverType === "driver"}
-                onPress={() => setDriverType("driver")}
+                onPress={() => {
+                  if (!driverVerified) {
+                    setErrorMessage(
+                      "운전자로 변경하려면 운전면허와 자동차 보험 인증이 필요해요.",
+                    );
+                    return;
+                  }
+
+                  setErrorMessage(null);
+                  setDriverType("driver");
+                }}
               />
               <DriverOption
                 label="비운전자"
@@ -93,27 +247,47 @@ export function ProfileEditScreen({ onBack, onSaved }: ProfileEditScreenProps) {
               />
             </View>
           </View>
+
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View
+          style={[styles.footer, { paddingBottom: 24 + bottomInset }]}
+          testID="profile-edit-footer"
+        >
           <AppButton
-            label="수정"
-            onPress={onSaved}
-            disabled={nickname.trim().length === 0}
+            label={saving ? "저장 중" : "수정"}
+            onPress={handleSave}
+            disabled={saving || nickname.trim().length === 0}
             testID="profile-save"
           />
         </View>
-      </View>
 
-      <ProfileImageBottomSheet
-        visible={imageSheetVisible}
-        onClose={closeImageSheet}
-        onRemove={() => handleImageAction(undefined)}
-        onOpenCamera={() => handleImageAction("camera://profile-preview")}
-        onOpenLibrary={() => handleImageAction("library://profile-preview")}
-      />
+        <ProfileImageBottomSheet
+          visible={imageSheetVisible}
+          onClose={() => setImageSheetVisible(false)}
+          onRemove={() => {
+            setAvatarUrl(undefined);
+            setAvatarChanged(true);
+            setErrorMessage(null);
+            setImageSheetVisible(false);
+          }}
+          onOpenCamera={() => {
+            void handleOpenCamera();
+          }}
+          onOpenLibrary={() => {
+            void handleOpenLibrary();
+          }}
+        />
+      </View>
     </View>
   );
+}
+
+function getAvatarPayload(asset: ImagePicker.ImagePickerAsset) {
+  return asset.base64
+    ? `data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}`
+    : asset.uri;
 }
 
 type DriverOptionProps = {
@@ -162,22 +336,23 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 34,
-    paddingBottom: 120,
-    gap: 26,
+    paddingTop: 24,
+    gap: 24,
   },
   avatarBlock: {
     alignSelf: "center",
-    width: 124,
-    height: 124,
+    width: 178,
+    height: 178,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarFrame: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
+    width: 168,
+    height: 168,
+    borderRadius: 84,
     backgroundColor: colors.mintLight,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -188,14 +363,14 @@ const styles = StyleSheet.create({
   },
   avatarEditButton: {
     position: "absolute",
-    right: 4,
-    bottom: 8,
+    right: 10,
+    bottom: 14,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.mint,
-    borderWidth: 3,
-    borderColor: colors.surface,
+    backgroundColor: colors.mintLight,
+    borderWidth: 2,
+    borderColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -204,10 +379,9 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   driverRow: {
     flexDirection: "row",
@@ -215,15 +389,15 @@ const styles = StyleSheet.create({
   },
   driverOption: {
     flex: 1,
-    minHeight: 56,
-    borderRadius: 18,
+    minHeight: 82,
+    borderRadius: 14,
     backgroundColor: colors.gray50,
     borderWidth: 1,
     borderColor: colors.gray50,
-    flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "center",
-    gap: 8,
+    paddingHorizontal: 16,
+    gap: 7,
   },
   driverOptionSelected: {
     backgroundColor: colors.mintLight,
@@ -231,10 +405,15 @@ const styles = StyleSheet.create({
   },
   driverOptionText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   pressed: {
     opacity: 0.78,
@@ -246,7 +425,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: spacing.screenX,
     paddingTop: 12,
-    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.surface,

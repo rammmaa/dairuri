@@ -14,6 +14,12 @@ async function main() {
     if (process.env.DATABASE_RESET_SCHEMA === "true") {
       await pool.query(`
         drop table if exists
+          bus_sightings,
+          bus_route_stops,
+          bus_stops,
+          bus_routes,
+          auth_sessions,
+          phone_verifications,
           reports,
           chat_messages,
           chat_room_participants,

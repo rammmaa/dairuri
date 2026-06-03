@@ -52,8 +52,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenX,
     paddingTop: 12,
     paddingBottom: 26,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
     backgroundColor: colors.surface,
     gap: 14,
   },
@@ -66,10 +66,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
-    textAlign: "center",
+    textAlign: "left",
   },
 });

@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   prompt: {
     marginTop: 10,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
     textAlign: "center",
@@ -135,7 +135,6 @@ const styles = StyleSheet.create({
   stopName: {
     color: colors.mintDark,
     fontFamily: typography.family.bold,
-    fontWeight: typography.weight.bold,
   },
   buttonRow: {
     marginTop: 22,
@@ -157,7 +156,6 @@ const styles = StyleSheet.create({
     color: colors.grayIcon,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
   confirmButton: {
     backgroundColor: colors.yellow,
@@ -166,7 +164,6 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
   disabled: {
     opacity: 0.55,

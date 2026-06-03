@@ -1,26 +1,54 @@
-const naverMapNcpKeyId =
-  process.env.NAVER_MAP_NCP_KEY_ID ??
-  process.env.EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID ??
-  "";
+if (!process.env.JEST_WORKER_ID) {
+  require("dotenv").config({ quiet: true });
+}
+
+function firstNonEmptyEnv(keys) {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+const splashConfig = {
+  image: "./assets/splash-icon.png",
+  resizeMode: "contain",
+  backgroundColor: "#ffffff",
+};
+const naverMapNcpKeyId = firstNonEmptyEnv([
+  "NAVER_MAP_NCP_KEY_ID",
+  "EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID",
+]);
 const naverMapWebNcpKeyId =
-  process.env.EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID ??
-  process.env.EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID ??
-  naverMapNcpKeyId ??
-  "";
+  firstNonEmptyEnv([
+    "EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID",
+    "EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID",
+  ]) || naverMapNcpKeyId;
 
 module.exports = {
   expo: {
-    name: "다로리",
+    name: "다로링크",
     slug: "dairuri",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
-    splash: {
-      image: "./assets/splash-icon.png",
-      resizeMode: "contain",
+    jsEngine: "hermes",
+    splash: splashConfig,
+    androidStatusBar: {
+      barStyle: "dark-content",
       backgroundColor: "#ffffff",
+      translucent: false,
+    },
+    androidNavigationBar: {
+      barStyle: "dark-content",
+      backgroundColor: "#ffffff",
+      enforceContrast: true,
     },
     ios: {
       supportsTablet: false,
@@ -32,7 +60,8 @@ module.exports = {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
-      edgeToEdgeEnabled: true,
+      splash: splashConfig,
+      edgeToEdgeEnabled: false,
       predictiveBackGestureEnabled: false,
     },
     web: {
@@ -41,6 +70,7 @@ module.exports = {
     plugins: [
       "expo-asset",
       "expo-font",
+      "expo-secure-store",
       [
         "@mj-studio/react-native-naver-map",
         {

@@ -99,12 +99,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   subtext: {
     marginTop: 8,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     textAlign: "center",
@@ -131,7 +130,6 @@ const styles = StyleSheet.create({
     color: colors.mintDark,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
   viewButton: {
     backgroundColor: colors.yellow,
@@ -140,7 +138,6 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
   pressed: {
     opacity: 0.86,

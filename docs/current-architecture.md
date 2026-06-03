@@ -1,6 +1,6 @@
 # Current Architecture
 
-기준: `feat/map-bus-sighting-archive` 브랜치의 현재 코드. 웹 배포는 Vercel의 Expo web export 흐름을 사용하며, Android APK/EAS 설정은 별도 PR `feat/android-apk-build-profile`에 있다.
+기준: 현재 저장소 코드. 웹 배포는 Vercel의 Expo web export 흐름을 사용하며, Android APK/EAS 설정은 `eas.json`의 `apk` profile에 있다.
 
 ## High-Level Architecture
 
@@ -84,9 +84,9 @@ The app defaults to live API mode. If `EXPO_PUBLIC_DARORI_API_BASE_URL` is missi
 Live requests can include:
 
 - `EXPO_PUBLIC_DARORI_API_BASE_URL`: API server base URL. Local server uses `http://localhost:8787`; same-origin Vercel web deploy can use `/api`.
-- `EXPO_PUBLIC_DARORI_USER_ID`: sent as `X-Darori-User-Id` for write requests.
+- `Authorization: Bearer <session token>`: issued by `POST /auth/login` or `POST /auth/signup` and sent by `services/apiClient.ts`.
 
-These names are current code-level identifiers. The user context is still a development contract, not production-grade auth.
+`X-Darori-User-Id` remains only as a test/development fallback when `DARORI_ALLOW_DEV_USER_HEADER=true` on the server and `EXPO_PUBLIC_DARORI_ALLOW_DEV_USER_HEADER=true` on the client.
 
 ## Map Layer
 
@@ -111,27 +111,43 @@ Server entrypoints:
 | Route | Auth | Rate limit | Repository action |
 | --- | --- | --- | --- |
 | `GET /health` | no | no | none |
-| `GET /posts` | optional user header | no | `listPosts(viewerUserId)` |
-| `GET /posts/:id` | optional user header | no | `getPostById(id, viewerUserId)` |
+| `POST /auth/signup` | no | yes | `registerUser(body)` |
+| `POST /auth/phone-verifications` | no | yes | create verification code and send via SOLAPI SMS |
+| `POST /auth/phone-verifications/:id/confirm` | no | yes | confirm verification code and issue signup proof |
+| `POST /auth/login` | no | yes | `authenticateUser(body)` |
+| `GET /me` | required | no | `getUserById(userId)` |
+| `PATCH /me` | required | no | `updateUserProfile(userId, body)` |
+| `PATCH /me/password` | required | yes | `changeUserPassword(userId, body)` |
+| `DELETE /me` | required | yes | `deleteUserAccount(userId)` |
+| `GET /me/posts` | required | no | `listUserPosts(userId, userId)` |
+| `GET /me/saved-posts` | required | no | `listSavedPosts(userId)` |
+| `GET /me/received-applications` | required | no | `listReceivedApplicationDetails(userId)` |
+| `GET /posts` | optional bearer token | no | `listPosts(viewerUserId)` |
+| `GET /maps/geocode` | no | no | `searchNaverPlaces(query)` |
+| `GET /posts/:id` | optional bearer token | no | `getPostById(id, viewerUserId)` |
 | `POST /posts` | required | yes | `createPost(body, userId)` |
 | `POST /posts/:id/like` | required | yes | `togglePostLike(postId, userId)` |
+| `GET /posts/:id/applications` | required | no | `listApplicationsForPost(postId, userId)` |
 | `POST /posts/:id/applications` | required | yes | `createApplication(postId, intro, userId)` |
-| `POST /applications/:id/accept` | required | yes | `updateApplicationStatus(id, "accepted")` |
-| `POST /applications/:id/reject` | required | yes | `updateApplicationStatus(id, "rejected", reason)` |
+| `GET /applications/:id` | required | no | `getApplicationDetail(id, userId)` |
+| `POST /applications/:id/accept` | required | yes | `acceptApplicationAndCreateChatRoom(id, userId)` |
+| `POST /applications/:id/reject` | required | yes | `rejectApplication(id, userId, reason)` |
 | `GET /bus/routes` | no | no | `listBusRoutes()` |
 | `GET /bus/stops` | no | no | `listBusStops()` |
 | `GET /bus/route-stops` | no | no | `listBusRouteStops()` |
 | `GET /bus/stops/:id/sightings` | no | no | `listSightingsForStop(stopId, limit)` |
 | `POST /bus/sightings` | required | yes | `recordBusSighting(body, userId)` |
-| `GET /chat/rooms` | no | no | `listChatRooms()` |
-| `GET /chat/rooms/:roomId/messages` | no | no | `listChatMessages(roomId)` |
+| `GET /chat/rooms` | required | no | `listChatRooms(userId)` |
+| `GET /chat/rooms/:roomId/messages` | required | no | `listChatMessages(roomId, userId)` |
 | `POST /chat/rooms/:roomId/messages` | required | yes | `createChatMessage(roomId, text, userId)` |
+| `POST /reports` | required | yes | `createReport(roomId, reason, userId)` |
 
 Auth behavior:
 
-- `server/api/auth.ts` reads `X-Darori-User-Id`.
-- Write endpoints return `401` when the header is missing or invalid.
-- Read endpoints can use the header only to calculate viewer-specific fields such as `liked`.
+- `server/api/auth.ts` verifies bearer tokens against `auth_sessions`.
+- Authenticated endpoints return `401` when the session token is missing, expired, or invalid.
+- Public post reads can use an optional bearer token only to calculate viewer-specific fields such as `liked`.
+- Development user headers are disabled unless explicitly enabled for local debugging.
 
 Rate limit behavior:
 
@@ -168,6 +184,7 @@ Main schema file: `server/db/schema.sql`
 Durable PostgreSQL tables:
 
 - `users`
+- `phone_verifications`
 - `vehicles`
 - `posts`
 - `post_likes`
@@ -176,6 +193,7 @@ Durable PostgreSQL tables:
 - `chat_room_participants`
 - `chat_messages`
 - `reports`
+- `auth_sessions`
 - `bus_routes`
 - `bus_stops`
 - `bus_route_stops`
@@ -199,6 +217,7 @@ Redis usage:
 
 | Target | Current path |
 | --- | --- |
+| Android APK | EAS profile `apk` in `eas.json`, `android.buildType=apk` |
 | Web production | Vercel uses `vercel.json` to run `npx expo export --platform web --output-dir dist` |
 | API production | Vercel serves `api/[...path].ts` under `/api/*`, or `npm run api:start` can run the same handler on a separate Node host |
 | Web local | `npm run web` |
@@ -211,27 +230,31 @@ Redis usage:
 | Variable | Used by | Required for |
 | --- | --- | --- |
 | `EXPO_PUBLIC_DARORI_API_BASE_URL` | app client | live API mode |
-| `EXPO_PUBLIC_DARORI_USER_ID` | app client | development write user header |
+| `EXPO_PUBLIC_DARORI_USER_ID` | app client | development-only user header fallback |
+| `EXPO_PUBLIC_DARORI_ALLOW_DEV_USER_HEADER` | app client | opt into development-only user header fallback |
 | `EXPO_PUBLIC_DARORI_USE_MOCK_API` | app client | test/local mock opt-in only |
 | `EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID` | Expo app / native map | public native Dynamic Map key fallback |
 | `EXPO_PUBLIC_NAVER_MAP_WEB_NCP_KEY_ID` | web map surface | Naver Web Dynamic Map script auth |
 | `NAVER_MAP_NCP_KEY_ID` | Expo config | native Naver map client id |
 | `NAVER_MAP_API_KEY` | server API | Naver REST APIs such as geocoding/directions |
+| `SOLAPI_API_KEY` | server API | SOLAPI API key for phone verification SMS |
+| `SOLAPI_API_SECRET` | server API | SOLAPI API secret for HMAC-SHA256 signing |
+| `SOLAPI_FROM` | server API | registered SOLAPI sender number |
+| `PHONE_VERIFICATION_HASH_SECRET` | server API | secret salt for stored phone-code and proof-token hashes |
+| `PHONE_VERIFICATION_DEBUG_CODE_ENABLED` | server API | temporary production debug escape hatch that exposes verification codes |
 | `DATABASE_URL` | server DB | PostgreSQL access |
 | `REDIS_URL` | server API | rate limiting / Redis access |
 | `DATABASE_SSL` / `PGSSLMODE` / `POSTGRES_SSL` | server DB | production SSL config |
 | `DARORI_API_PORT` | server API | local API port override |
+| `DARORI_ALLOW_DEV_USER_HEADER` | server API | opt into development-only `X-Darori-User-Id` auth fallback |
 | `DARORI_RATE_LIMIT_DISABLED` | server API | controlled local rate-limit bypass |
 
 ## Current Gaps
 
 These are not finished yet:
 
-- Real auth token/session verification. Current write auth is a development header contract.
-- Application review still reads seeded fixture data until an application-list/detail endpoint exists.
-- Profile edit/settings still read the local development user fixture until user profile endpoints exist.
-- Role/ownership checks for accepting or rejecting applications.
 - Production `DATABASE_URL` and `REDIS_URL` verification against real infrastructure.
 - Production Naver Maps domain/environment verification for the final deployment URL.
-- App UI for real login session propagation into `EXPO_PUBLIC_DARORI_USER_ID` replacement.
+- Persistent native token storage. Current session state is in-memory; app restart requires logging in again until secure storage is added.
+- Production profile image upload/storage. The UI no longer saves fake `camera://` or `library://` URIs and keeps photo editing disabled until object storage is configured.
 - Branding cleanup across `app.config.js`, environment variable names, fixtures, and reference docs after the public name is final.

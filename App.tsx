@@ -1,13 +1,17 @@
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   NotoSans_400Regular,
   NotoSans_500Medium,
   NotoSans_600SemiBold,
   NotoSans_700Bold,
 } from "@expo-google-fonts/noto-sans";
-import { View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import {
+  initialWindowMetrics,
+  SafeAreaProvider,
+} from "react-native-safe-area-context";
 
 import { AuthScreen } from "./screens/auth/AuthScreen";
 import { MapScreen } from "./screens/MapScreen";
@@ -27,25 +31,60 @@ import { MyPostsScreen } from "./screens/profile/MyPostsScreen";
 import { ProfileEditScreen } from "./screens/profile/ProfileEditScreen";
 import { SavedPostsScreen } from "./screens/profile/SavedPostsScreen";
 import { SettingsScreen } from "./screens/profile/SettingsScreen";
+import {
+  ProfileInfoScreen,
+  type ProfileInfoScreenKind,
+} from "./screens/profile/ProfileInfoScreen";
+import { resolveInitialAuthenticated } from "./data/appAuthGate";
 import type { BottomNavItem } from "./data/mapHome";
+import {
+  clearPersistedAuthSession,
+  hasAuthSession,
+  restoreAuthSession,
+} from "./services/authSession";
+import { colors } from "./constants/colors";
+import { typography } from "./constants/typography";
+import { configureDefaultFontScaling } from "./utils/fontScaling";
 
-type DevStartScreen = "auth" | BottomNavItem["id"];
-type ProfileSubScreen = "edit" | "settings" | "saved" | "mine" | null;
+configureDefaultFontScaling();
 
-const DEV_START_SCREEN: DevStartScreen =
-  process.env.NODE_ENV === "test" ? "auth" : "map";
+type ProfileSubScreen =
+  | "edit"
+  | "settings"
+  | "saved"
+  | "mine"
+  | ProfileInfoScreenKind
+  | null;
+const INITIAL_TAB: BottomNavItem["id"] = "map";
+const fallbackInitialWindowMetrics = {
+  frame: { x: 0, y: 0, width: 0, height: 0 },
+  insets: { top: 0, right: 0, bottom: 0, left: 0 },
+};
 
 export default function App() {
+  return (
+    <SafeAreaProvider
+      initialMetrics={initialWindowMetrics ?? fallbackInitialWindowMetrics}
+    >
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
   const [fontsLoaded] = useFonts({
     NotoSans_400Regular,
     NotoSans_500Medium,
     NotoSans_600SemiBold,
     NotoSans_700Bold,
   });
-  const [authenticated, setAuthenticated] = useState(DEV_START_SCREEN !== "auth");
-  const [activeTab, setActiveTab] = useState<BottomNavItem["id"]>(
-    DEV_START_SCREEN === "auth" ? "map" : DEV_START_SCREEN,
-  );
+  const initialAuthenticated = resolveInitialAuthenticated({
+    hasAuthSession: hasAuthSession(),
+    skipAuth: process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH,
+  });
+  const [authenticated, setAuthenticated] = useState(initialAuthenticated);
+  const [authChecked, setAuthChecked] = useState(initialAuthenticated);
+  const [activeTab, setActiveTab] = useState<BottomNavItem["id"]>(INITIAL_TAB);
   const [returnTab, setReturnTab] = useState<BottomNavItem["id"]>("map");
   const [profileSubScreen, setProfileSubScreen] =
     useState<ProfileSubScreen>(null);
@@ -57,6 +96,31 @@ export default function App() {
   const [busRouteInfoOpen, setBusRouteInfoOpen] = useState(false);
   const [busArchiveHistoryOpen, setBusArchiveHistoryOpen] = useState(false);
   const [busArrivalTimesOpen, setBusArrivalTimesOpen] = useState(false);
+  useEffect(() => {
+    if (!fontsLoaded || authChecked) {
+      return undefined;
+    }
+
+    let active = true;
+
+    restoreAuthSession()
+      .then((session) => {
+        if (!active) {
+          return;
+        }
+        setAuthenticated(Boolean(session));
+        setAuthChecked(true);
+      })
+      .catch(() => {
+        if (active) {
+          setAuthChecked(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authChecked, fontsLoaded]);
 
   const handleSelectTab = (item: BottomNavItem) => {
     if (item.id === "posts" && activeTab !== "posts") {
@@ -80,7 +144,17 @@ export default function App() {
   };
 
   if (!fontsLoaded) {
-    return <View />;
+    return <View style={styles.loadingScreen} />;
+  }
+
+  if (!authChecked) {
+    return (
+      <View style={styles.loadingScreen}>
+        <Text style={styles.loadingText}>
+          로그인 상태를 확인하고 있어요
+        </Text>
+      </View>
+    );
   }
 
   if (!authenticated) {
@@ -103,6 +177,10 @@ export default function App() {
             setActiveTab("chat");
             setSelectedChatRoomId("room-1");
           }}
+          onSubmitted={() => {
+            setSelectedPostId(null);
+            setActiveTab("map");
+          }}
         />
         <StatusBar style="dark" />
       </>
@@ -115,10 +193,14 @@ export default function App() {
         <ApplicationReviewScreen
           applicationId={reviewApplicationId}
           onBack={() => setReviewApplicationId(null)}
-          onOpenChat={() => {
+          onGoHome={() => {
+            setReviewApplicationId(null);
+            setActiveTab("map");
+          }}
+          onOpenChat={(roomId) => {
             setReviewApplicationId(null);
             setActiveTab("chat");
-            setSelectedChatRoomId("room-1");
+            setSelectedChatRoomId(roomId);
           }}
         />
         <StatusBar style="dark" />
@@ -229,6 +311,7 @@ export default function App() {
         <SettingsScreen
           onBack={() => setProfileSubScreen(null)}
           onLogout={() => {
+            void clearPersistedAuthSession();
             setProfileSubScreen(null);
             setActiveTab("map");
             setAuthenticated(false);
@@ -238,6 +321,11 @@ export default function App() {
         <ProfileEditScreen
           onBack={() => setProfileSubScreen(null)}
           onSaved={() => setProfileSubScreen(null)}
+        />
+      ) : profileSubScreen !== null ? (
+        <ProfileInfoScreen
+          kind={profileSubScreen}
+          onBack={() => setProfileSubScreen(null)}
         />
       ) : (
         <MyPageScreen
@@ -257,3 +345,18 @@ export default function App() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
+  loadingText: {
+    color: colors.black,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+  },
+});

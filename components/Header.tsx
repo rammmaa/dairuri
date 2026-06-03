@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors } from "../constants/colors";
+import {
+  getSafeAreaTopInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { typography } from "../constants/typography";
 
 export type HeaderProps = {
@@ -22,54 +26,71 @@ export function Header({
   right,
   border = true,
 }: HeaderProps) {
+  const topInset = getSafeAreaTopInset(useRuntimeSafeAreaInsets());
+
   return (
-    <View style={[styles.root, border && styles.border]}>
-      <View style={styles.side}>
-        {showBack ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="뒤로가기"
-            hitSlop={12}
-            onPress={onBack}
-            testID={backTestID}
-            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
-          >
-            <ChevronLeft size={22} color={colors.black} strokeWidth={2.4} />
-          </Pressable>
-        ) : null}
-      </View>
-      <Text style={styles.title} numberOfLines={1}>
+    <View
+      style={[
+        styles.root,
+        {
+          minHeight: 88 + topInset,
+          paddingTop: topInset + 36,
+        },
+        border && styles.border,
+      ]}
+    >
+      {showBack ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="뒤로가기"
+          hitSlop={12}
+          onPress={onBack}
+          testID={backTestID}
+          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+        >
+          <ChevronLeft size={24} color={colors.black} strokeWidth={2.35} />
+        </Pressable>
+      ) : (
+        <View style={styles.backSpacer} />
+      )}
+      <Text
+        style={styles.title}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.82}
+        maxFontSizeMultiplier={1.08}
+      >
         {title}
       </Text>
-      <View style={[styles.side, styles.right]}>{right}</View>
+      <View style={styles.right}>{right}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    minHeight: 52,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",
   },
   border: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-  },
-  side: {
-    width: 72,
-    minHeight: 44,
-    justifyContent: "center",
+    borderBottomColor: colors.lineStrong,
   },
   right: {
+    minWidth: 72,
+    minHeight: 36,
     alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  backSpacer: {
+    width: 34,
+    height: 36,
   },
   backButton: {
-    width: 36,
+    width: 34,
     height: 36,
-    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -78,11 +99,11 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
+    minWidth: 0,
     color: colors.black,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.base,
-    lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
-    textAlign: "center",
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
+    textAlign: "left",
   },
 });

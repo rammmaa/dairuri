@@ -14,14 +14,10 @@ export async function searchPlaceCandidates(
     return [];
   }
 
-  try {
-    return await apiRequest<PlaceCandidate[]>(
-      `/maps/geocode?query=${encodeURIComponent(trimmedQuery)}`,
-      {
-        method: "GET",
-      },
-    );
-  } catch {
-    return [];
-  }
+  return apiRequest<PlaceCandidate[]>(
+    `/maps/geocode?query=${encodeURIComponent(trimmedQuery)}`,
+    {
+      method: "GET",
+    },
+  );
 }

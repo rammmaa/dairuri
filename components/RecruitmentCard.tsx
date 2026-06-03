@@ -9,14 +9,16 @@ import type { MapHomePost } from "../data/mapHome";
 export type RecruitmentCardProps = {
   post: MapHomePost;
   onPress?: (post: MapHomePost) => void;
+  testID?: string;
 };
 
-export function RecruitmentCard({ post, onPress }: RecruitmentCardProps) {
+export function RecruitmentCard({ post, onPress, testID }: RecruitmentCardProps) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${post.title} 상세보기`}
       onPress={onPress ? () => onPress(post) : undefined}
+      testID={testID}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.mainBlock}>
@@ -69,11 +71,11 @@ function MetaRow({ color, icon: Icon, label }: MetaRowProps) {
 const styles = StyleSheet.create({
   card: {
     width: "100%",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: spacing.cardRadius,
+    paddingHorizontal: spacing.homeCardPaddingX,
+    paddingVertical: spacing.homeCardPaddingY,
+    borderRadius: spacing.homeCardRadius,
     backgroundColor: colors.surface,
-    gap: 10,
+    gap: spacing.homeCardContentGap,
   },
   pressed: {
     opacity: 0.86,
@@ -89,21 +91,19 @@ const styles = StyleSheet.create({
   },
   titleCopy: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   author: {
-    color: colors.black,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
+    color: colors.slate,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   title: {
     color: colors.black,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.base,
-    lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
   },
   metaBlock: {
     gap: 3,
@@ -115,10 +115,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   metaLabel: {
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
   originBlock: {
     gap: 3,
@@ -130,23 +129,20 @@ const styles = StyleSheet.create({
   },
   originLabel: {
     color: colors.yellowText,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   originName: {
-    color: colors.grayIcon,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
+    color: colors.black,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   createdAgo: {
     color: colors.mutedText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
   },
 });

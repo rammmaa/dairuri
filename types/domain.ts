@@ -3,7 +3,13 @@ export type PostType = "carpool" | "job";
 export type PostStatus = "open" | "closed" | "matched";
 export type Weekday = "월" | "화" | "수" | "목" | "금" | "토" | "일";
 export type ApplicationStatus = "pending" | "accepted" | "rejected";
-export type ChatMessageType = "text" | "system" | "postCard";
+export type ChatMessageType = "text" | "system" | "postCard" | "image";
+
+export type DriverVerification = {
+  licenseVerified: boolean;
+  insuranceVerified: boolean;
+  verifiedAt?: string;
+};
 
 export type VehicleInfo = {
   plateNumber: string;
@@ -13,6 +19,7 @@ export type VehicleInfo = {
 
 export type UserProfile = {
   id: string;
+  loginId?: string;
   nickname: string;
   realName?: string;
   phone?: string;
@@ -22,6 +29,7 @@ export type UserProfile = {
   temperature: number;
   driverType: DriverType;
   vehicle?: VehicleInfo;
+  driverVerification?: DriverVerification;
 };
 
 export type BasePost = {
@@ -77,6 +85,81 @@ export type Application = {
   rejectionReason?: string;
 };
 
+export type ApplicationDetail = {
+  application: Application;
+  post: Post;
+};
+
+export type UpdateUserProfileInput = {
+  nickname?: string;
+  driverType?: DriverType;
+  avatarUrl?: string | null;
+};
+
+export type LoginInput = {
+  identifier: string;
+  password: string;
+};
+
+export type SignupInput = {
+  loginId: string;
+  nickname: string;
+  realName?: string;
+  phone: string;
+  email?: string;
+  password: string;
+  driverType: DriverType;
+  vehicle?: VehicleInfo;
+  phoneVerification: PhoneVerificationProof;
+};
+
+export type AuthSession = {
+  token: string;
+  user: UserProfile;
+};
+
+export type PhoneVerificationProof = {
+  id: string;
+  token: string;
+};
+
+export type PhoneVerificationStartInput = {
+  phone: string;
+};
+
+export type PhoneVerificationStartResult = {
+  verificationId: string;
+  expiresAt: string;
+  debugCode?: string;
+};
+
+export type PhoneVerificationConfirmInput = {
+  verificationId: string;
+  code: string;
+};
+
+export type PhoneVerificationConfirmResult = {
+  verificationId: string;
+  phone: string;
+  verifiedToken: string;
+  verifiedAt: string;
+};
+
+export type ChangePasswordInput = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+export type MannerRatingInput = {
+  roomId: string;
+  tags: string[];
+};
+
+export type MannerRatingResult = {
+  targetUserId: string;
+  temperature: number;
+};
+
 export type ChatRoom = {
   id: string;
   title: string;
@@ -93,6 +176,7 @@ export type ChatMessage = {
   senderId?: string;
   type: ChatMessageType;
   text?: string;
+  imageUrl?: string;
   createdAt: string;
   post?: Post;
 };

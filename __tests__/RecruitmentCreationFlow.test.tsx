@@ -7,17 +7,62 @@ import {
 
 import App from "../App";
 import * as api from "../services/api";
+import { clearAuthSession } from "../services/authSession";
+import { searchPlaceCandidates } from "../services/places";
+
+jest.mock("../services/places", () => ({
+  searchPlaceCandidates: jest.fn(),
+}));
+
+const mockSearchPlaceCandidates = jest.mocked(searchPlaceCandidates);
+
+function mockPlaceResults() {
+  mockSearchPlaceCandidates.mockImplementation(async (query: string) => {
+    if (query.includes("청도")) {
+      return [
+        {
+          id: "api-cheongdo-station",
+          name: "청도역",
+          address: "경북 청도군 청도읍 청화로",
+          latitude: 35.6474,
+          longitude: 128.7338,
+          source: "api",
+        },
+      ];
+    }
+
+    if (query.includes("대전")) {
+      return [
+        {
+          id: "api-daejeon-station",
+          name: "대전역",
+          address: "대전 동구 중앙로 215",
+          latitude: 36.3324,
+          longitude: 127.4346,
+          source: "api",
+        },
+      ];
+    }
+
+    return [];
+  });
+}
 
 describe("Recruitment creation flow", () => {
+  beforeEach(() => {
+    mockPlaceResults();
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
+    clearAuthSession();
   });
 
   it("opens the ride creation flow from the post tab and enters chat after publishing", async () => {
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
-    fireEvent.press(screen.getByTestId("map-home-bottom-nav-posts"));
+    fireEvent.press(await screen.findByTestId("map-home-bottom-nav-posts"));
 
     expect(screen.getByText("어떤 모집을 시작할까요?")).toBeTruthy();
     const nextButton = screen.getByTestId("recruitment-next");
@@ -36,12 +81,16 @@ describe("Recruitment creation flow", () => {
     fireEvent.press(screen.getByTestId("place-field-departure"));
     expect(screen.getByText("지도에서 출발지 선택")).toBeTruthy();
     fireEvent.changeText(screen.getByPlaceholderText("장소 검색"), "청도");
-    fireEvent.press(screen.getByTestId("place-result-cheongdo-station"));
+    await screen.findByTestId("place-result-api-cheongdo-station");
+    expect(screen.getByTestId("place-map-frame").props.accessibilityValue).toEqual({
+      text: "청도역",
+    });
+    fireEvent.press(await screen.findByTestId("place-result-api-cheongdo-station"));
 
     fireEvent.press(screen.getByTestId("place-field-destination"));
     expect(screen.getByText("지도에서 목적지 선택")).toBeTruthy();
     fireEvent.changeText(screen.getByPlaceholderText("장소 검색"), "대전");
-    fireEvent.press(screen.getByTestId("place-result-daejeon-station"));
+    fireEvent.press(await screen.findByTestId("place-result-api-daejeon-station"));
 
     expect(screen.getByText("청도역")).toBeTruthy();
     expect(screen.getByText("대전역")).toBeTruthy();
@@ -71,7 +120,7 @@ describe("Recruitment creation flow", () => {
 
     fireEvent.press(screen.getByText("라이드 모집 시작하기"));
     expect(await screen.findByText("지금 함께 이동할 대화를 확인하세요")).toBeTruthy();
-    expect(screen.getByText("부릉팟")).toBeTruthy();
+    expect(screen.getByText("‘청도감 학원’ 함께 다니실 사람 구해요")).toBeTruthy();
   });
 
   it("branches to the resource profile flow and requires profile fields before the final check", async () => {
@@ -80,7 +129,7 @@ describe("Recruitment creation flow", () => {
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
-    fireEvent.press(screen.getByTestId("map-home-bottom-nav-posts"));
+    fireEvent.press(await screen.findByTestId("map-home-bottom-nav-posts"));
     fireEvent.press(screen.getByTestId("recruitment-type-work"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
@@ -115,9 +164,9 @@ describe("Recruitment creation flow", () => {
     expect(screen.getByText("유통/판매 · 생산/건설")).toBeTruthy();
     expect(screen.getByText("화 · 목")).toBeTruthy();
     expect(screen.getByText("시간당 123,123원")).toBeTruthy();
-    expect(screen.getByText("인적 자원")).toBeTruthy();
+    expect(screen.getByText("인재 풀 등록")).toBeTruthy();
 
-    fireEvent.press(screen.getByText("인적 자원 등록하기"));
+    fireEvent.press(screen.getByText("인재 풀 등록"));
 
     await waitFor(() => {
       expect(createPostSpy).toHaveBeenCalledWith(
@@ -139,7 +188,7 @@ describe("Recruitment creation flow", () => {
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
-    fireEvent.press(screen.getByTestId("map-home-bottom-nav-posts"));
+    fireEvent.press(await screen.findByTestId("map-home-bottom-nav-posts"));
     fireEvent.press(screen.getByTestId("recruitment-type-work"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
     fireEvent.changeText(screen.getByPlaceholderText("나를 소개하는 제목"), "농촌 일손과 카페 보조 가능");
@@ -173,13 +222,15 @@ describe("Recruitment creation flow", () => {
     render(<App />);
 
     fireEvent.press(await screen.findByTestId("auth-login-next"));
-    fireEvent.press(screen.getByTestId("map-home-bottom-nav-posts"));
+    fireEvent.press(await screen.findByTestId("map-home-bottom-nav-posts"));
     fireEvent.press(screen.getByTestId("recruitment-type-ride"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
     fireEvent.press(screen.getByTestId("place-field-departure"));
-    fireEvent.press(screen.getByTestId("place-result-cheongdo-station"));
+    fireEvent.changeText(screen.getByPlaceholderText("장소 검색"), "청도");
+    fireEvent.press(await screen.findByTestId("place-result-api-cheongdo-station"));
     fireEvent.press(screen.getByTestId("place-field-destination"));
-    fireEvent.press(screen.getByTestId("place-result-daejeon-station"));
+    fireEvent.changeText(screen.getByPlaceholderText("장소 검색"), "대전");
+    fireEvent.press(await screen.findByTestId("place-result-api-daejeon-station"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
     fireEvent.changeText(screen.getByPlaceholderText("출발 시간 입력"), "830");
@@ -187,5 +238,30 @@ describe("Recruitment creation flow", () => {
     fireEvent(screen.getByPlaceholderText("출발 시간 입력"), "blur");
 
     expect(screen.getByPlaceholderText("출발 시간 입력").props.value).toBe("08:30");
+  });
+
+  it("does not show local place recommendations when the map API search fails", async () => {
+    mockSearchPlaceCandidates.mockRejectedValueOnce(new Error("지도 API 실패"));
+
+    render(<App />);
+
+    fireEvent.press(await screen.findByTestId("auth-login-next"));
+    fireEvent.press(await screen.findByTestId("map-home-bottom-nav-posts"));
+    fireEvent.press(screen.getByTestId("recruitment-type-ride"));
+    fireEvent.press(screen.getByTestId("recruitment-next"));
+    fireEvent.press(screen.getByTestId("place-field-departure"));
+    fireEvent.changeText(screen.getByPlaceholderText("장소 검색"), "없는곳");
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("지도 API 검색에 실패했어요. 잠시 후 다시 검색해주세요."),
+      ).toBeTruthy();
+    });
+    expect(screen.queryByText("추천 장소")).toBeNull();
+    expect(screen.queryByTestId("place-result-cheongdo-station")).toBeNull();
+    expect(screen.getByTestId("place-select-map-center").props.accessibilityState)
+      .toMatchObject({
+        disabled: true,
+      });
   });
 });

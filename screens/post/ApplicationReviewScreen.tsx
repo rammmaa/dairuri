@@ -1,14 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppButton } from "../../components/AppButton";
 import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockApplications, mockPosts } from "../../data/mockDomain";
-import { acceptApplication, rejectApplication } from "../../services/api";
-import type { Application, Post } from "../../types/domain";
+import {
+  acceptApplication,
+  getApplicationDetail,
+  rejectApplication,
+} from "../../services/api";
+import type { ApplicationDetail, UserProfile } from "../../types/domain";
 import {
   ApplicationDecisionModal,
   type ApplicationDecisionModalMode,
@@ -17,85 +25,208 @@ import {
 export type ApplicationReviewScreenProps = {
   applicationId: string;
   onBack?: () => void;
-  onOpenChat?: () => void;
+  onGoHome?: () => void;
+  onOpenChat?: (roomId: string) => void;
 };
 
-const formatTemperature = (temperature: number) => `${temperature.toFixed(1)}°C`;
+const formatVehicle = (applicant: UserProfile) =>
+  applicant.vehicle?.modelName ?? applicant.vehicle?.plateNumber ?? "미등록";
 
-function findApplication(applicationId: string): Application {
-  return (
-    mockApplications.find((application) => application.id === applicationId) ??
-    mockApplications[0]
-  );
-}
+function getInitialApplicationDetail(
+  applicationId: string,
+): ApplicationDetail | undefined {
+  if (process.env.NODE_ENV !== "test") {
+    return undefined;
+  }
 
-function findLinkedPost(application: Application): Post | undefined {
-  return mockPosts.find((post) => post.id === application.postId);
+  const application =
+    mockApplications.find((item) => item.id === applicationId) ?? mockApplications[0];
+  const post = mockPosts.find((item) => item.id === application.postId);
+  return post ? { application, post } : undefined;
 }
 
 export function ApplicationReviewScreen({
   applicationId,
   onBack,
+  onGoHome,
   onOpenChat,
 }: ApplicationReviewScreenProps) {
-  const application = useMemo(() => findApplication(applicationId), [applicationId]);
-  const linkedPost = useMemo(() => findLinkedPost(application), [application]);
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
+  const initialDetail = useMemo(
+    () => getInitialApplicationDetail(applicationId),
+    [applicationId],
+  );
+  const [detail, setDetail] = useState<ApplicationDetail | undefined>(initialDetail);
   const [modalMode, setModalMode] = useState<ApplicationDecisionModalMode | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [acceptedRoomId, setAcceptedRoomId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+    setErrorMessage(null);
+
+    getApplicationDetail(applicationId)
+      .then((nextDetail) => {
+        if (active) {
+          setDetail(nextDetail);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "지원서를 불러오지 못했어요.",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [applicationId]);
+
+  if (!detail) {
+    return (
+      <View style={styles.safeArea}>
+        <Header title="지원서" showBack onBack={onBack} />
+        <View style={styles.loadingState}>
+          <Text style={styles.loadingText}>
+            {errorMessage ?? "지원서를 불러오는 중이에요"}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const { application, post: linkedPost } = detail;
+  const isCarpoolReview = linkedPost.type === "carpool";
+  const headerTitle = isCarpoolReview ? "프로필" : "지원서";
 
   const trimmedReason = rejectReason.trim();
   const isRejectSubmitDisabled = trimmedReason.length < 5;
 
-  const handleApprove = () => {
-    void acceptApplication(application.id);
-    setModalMode("approved");
-  };
-
-  const handleRejectSubmit = () => {
-    if (isRejectSubmitDisabled) {
+  const handleApprove = async () => {
+    if (submitting) {
       return;
     }
 
-    void rejectApplication(application.id, trimmedReason);
-    setRejectReason("");
-    setModalMode("rejected");
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const room = await acceptApplication(application.id);
+      setAcceptedRoomId(room.id);
+      setDetail((current) =>
+        current
+          ? {
+              ...current,
+              application: { ...current.application, status: "accepted" },
+            }
+          : current,
+      );
+      setModalMode("approved");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "승인 처리에 실패했어요.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRejectSubmit = async () => {
+    if (isRejectSubmitDisabled || submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await rejectApplication(application.id, trimmedReason);
+      setDetail((current) =>
+        current
+          ? {
+              ...current,
+              application: {
+                ...current.application,
+                status: "rejected",
+                rejectionReason: trimmedReason,
+              },
+            }
+          : current,
+      );
+      setRejectReason("");
+      setModalMode("rejected");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "거절 처리에 실패했어요.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const closeModal = () => {
     setModalMode(null);
   };
 
+  const goHomeFromModal = () => {
+    closeModal();
+    onGoHome?.();
+  };
+
+  const confirmCompletion = () => {
+    if (modalMode === "rejected" && isCarpoolReview && onGoHome) {
+      goHomeFromModal();
+      return;
+    }
+
+    closeModal();
+  };
+
   const openChatFromModal = () => {
     closeModal();
-    onOpenChat?.();
+    if (acceptedRoomId) {
+      onOpenChat?.(acceptedRoomId);
+    }
   };
 
   return (
     <View style={styles.safeArea}>
-      <Header title="지원서" showBack onBack={onBack} />
+      <Header title={headerTitle} showBack onBack={onBack} />
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 112 + bottomInset },
+        ]}
         showsVerticalScrollIndicator={false}
+        testID="application-review-scroll"
       >
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{application.applicant.nickname.slice(0, 1)}</Text>
           </View>
-          <View style={styles.profileTextBlock}>
-            <Text style={styles.nickname}>{application.applicant.nickname}</Text>
-            {application.applicant.phone ? (
-              <Text style={styles.phone}>{application.applicant.phone}</Text>
-            ) : null}
-          </View>
-          <View style={styles.temperatureBadge}>
-            <Text style={styles.temperatureText}>
-              {formatTemperature(application.applicant.temperature)}
-            </Text>
+          <View style={styles.profileRows}>
+            <ProfileInfoRow
+              label="이름"
+              value={application.applicant.realName ?? application.applicant.nickname}
+            />
+            <ProfileInfoRow
+              label="전화번호"
+              value={application.applicant.phone ?? "미등록"}
+            />
+            <ProfileInfoRow label="차종" value={formatVehicle(application.applicant)} />
           </View>
         </View>
 
-        {linkedPost ? (
+        {!isCarpoolReview ? (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>연결된 모집글</Text>
             <View style={styles.linkedPostCard}>
@@ -113,19 +244,29 @@ export function ApplicationReviewScreen({
             <Text style={styles.introText}>{application.intro}</Text>
           </View>
         </View>
+
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: spacing.bottomButton + bottomInset },
+        ]}
+        testID="application-review-footer"
+      >
         <AppButton
           label="거절"
           variant="danger"
           onPress={() => setModalMode("rejectReason")}
+          disabled={submitting}
           testID="application-reject-button"
           style={styles.footerButton}
         />
         <AppButton
-          label="승인"
+          label={submitting ? "처리 중" : "승인"}
           onPress={handleApprove}
+          disabled={submitting}
           testID="application-approve-button"
           style={styles.footerButton}
         />
@@ -136,11 +277,22 @@ export function ApplicationReviewScreen({
         mode={modalMode ?? "approved"}
         reason={rejectReason}
         onReasonChange={setRejectReason}
-        onConfirm={modalMode === "rejectReason" ? handleRejectSubmit : closeModal}
+        onConfirm={modalMode === "rejectReason" ? handleRejectSubmit : confirmCompletion}
         onCancel={closeModal}
+        onGoHome={goHomeFromModal}
         onOpenChat={modalMode === "approved" ? openChatFromModal : undefined}
-        confirmDisabled={isRejectSubmitDisabled}
+        confirmDisabled={submitting || isRejectSubmitDisabled}
+        postType={linkedPost.type}
       />
+    </View>
+  );
+}
+
+function ProfileInfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.profileInfoRow}>
+      <Text style={styles.profileInfoLabel}>{label}</Text>
+      <Text style={styles.profileInfoValue}>{value}</Text>
     </View>
   );
 }
@@ -155,8 +307,20 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.screenX,
-    paddingBottom: 112,
     gap: 20,
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.screenX,
+  },
+  loadingText: {
+    color: colors.grayText,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+    textAlign: "center",
   },
   profileCard: {
     minHeight: 84,
@@ -180,38 +344,29 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
-  profileTextBlock: {
+  profileRows: {
     flex: 1,
     gap: 4,
   },
-  nickname: {
+  profileInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  profileInfoLabel: {
+    minWidth: 58,
+    color: colors.grayText,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+  },
+  profileInfoValue: {
+    flex: 1,
     color: colors.black,
     fontFamily: typography.family.bold,
-    fontSize: typography.size.base,
-    lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
-  },
-  phone: {
-    color: colors.grayText,
-    fontFamily: typography.family.body,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
-  },
-  temperatureBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: colors.yellowLight,
-  },
-  temperatureText: {
-    color: colors.yellowText,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   section: {
     gap: 10,
@@ -221,7 +376,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   linkedPostCard: {
     padding: 16,
@@ -236,14 +390,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   linkedPostTitle: {
     color: colors.black,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   introCard: {
     minHeight: 180,
@@ -253,10 +405,15 @@ const styles = StyleSheet.create({
   },
   introText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.regular,
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   footer: {
     position: "absolute",
@@ -265,7 +422,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: spacing.screenX,
     paddingTop: 12,
-    paddingBottom: spacing.bottomButton,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.surface,

@@ -48,4 +48,12 @@ describe("MapPreview", () => {
       { translateY: -28 },
     ]);
   });
+
+  it("does not render app-level map pins over the map surface", () => {
+    render(<MapPreview />);
+
+    expect(screen.queryByTestId("map-preview-marker-cafe")).toBeNull();
+    expect(screen.queryByTestId("map-preview-marker-bus")).toBeNull();
+    expect(screen.queryByTestId("map-preview-marker-library")).toBeNull();
+  });
 });

@@ -718,9 +718,8 @@ const styles = StyleSheet.create({
   headline: {
     color: colors.mintDark,
     fontFamily: typography.family.bold,
-    fontSize: 24,
-    lineHeight: 31,
-    fontWeight: typography.weight.bold,
+    fontSize: typography.size.title,
+    lineHeight: typography.lineHeight.title,
   },
   busButtonHalo: {
     marginTop: 28,
@@ -766,14 +765,14 @@ const styles = StyleSheet.create({
   },
   locationText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
   },
   helpText: {
     marginTop: 16,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
     textAlign: "center",
@@ -787,13 +786,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   confirmHint: {
     marginTop: 6,
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
   },
@@ -824,7 +822,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   mapTile: {
     marginTop: 16,
@@ -834,7 +831,7 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 12,
     color: colors.red,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     textAlign: "center",
   },
@@ -863,7 +860,6 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontFamily: typography.family.bold,
     fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
   },
   pressed: {
     opacity: 0.86,
@@ -889,7 +885,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.semibold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.semibold,
     marginBottom: 10,
   },
   sectionLabelSpaced: {

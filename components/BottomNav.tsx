@@ -16,6 +16,10 @@ import {
 } from "react-native";
 
 import { colors } from "../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import type { BottomNavItem } from "../data/mapHome";
@@ -43,11 +47,20 @@ export function BottomNav({
   style,
   testID,
 }: BottomNavProps) {
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
+
   return (
     <View
       accessibilityRole="tablist"
       testID={testID}
-      style={[styles.container, style]}
+      style={[
+        styles.container,
+        {
+          height: spacing.navHeight + bottomInset,
+          paddingBottom: 8 + bottomInset,
+        },
+        style,
+      ]}
     >
       {items.map((item) => {
         const Icon = navIcons[item.id];
@@ -106,20 +119,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: spacing.navHeight,
     paddingHorizontal: 8,
-    paddingTop: 7,
-    paddingBottom: 8,
+    paddingTop: 9,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: colors.gray300,
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "stretch",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 8,
   },
   item: {
     flex: 1,
@@ -143,20 +149,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mintLight,
   },
   postIconFrame: {
-    backgroundColor: colors.mintDark,
+    backgroundColor: colors.mint,
   },
   label: {
     width: "100%",
     color: colors.grayText,
-    fontFamily: typography.family.nav,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
   selectedLabel: {
-    color: colors.mintDark,
-    fontWeight: typography.weight.bold,
+    color: colors.black,
+    fontFamily: typography.family.bold,
   },
   postLabel: {
     color: colors.black,

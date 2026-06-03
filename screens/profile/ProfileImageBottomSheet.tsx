@@ -25,24 +25,24 @@ export function ProfileImageBottomSheet({
       label: "현재 프로필 지우기",
       icon: Trash2,
       onPress: onRemove,
-      danger: true,
+      testID: "profile-image-remove",
     },
     {
       label: "카메라 열기",
       icon: Camera,
       onPress: onOpenCamera,
-      danger: false,
+      testID: "profile-image-open-camera",
     },
     {
       label: "사진첩 열기",
       icon: ImageIcon,
       onPress: onOpenLibrary,
-      danger: false,
+      testID: "profile-image-open-library",
     },
   ];
 
   return (
-    <BottomSheet visible={visible} title="프로필 사진" onClose={onClose} testID="profile-image-sheet">
+    <BottomSheet visible={visible} onClose={onClose} testID="profile-image-sheet">
       <View style={styles.actionList}>
         {actions.map((action) => {
           const Icon = action.icon;
@@ -53,18 +53,13 @@ export function ProfileImageBottomSheet({
               accessibilityRole="button"
               accessibilityLabel={action.label}
               onPress={action.onPress}
+              testID={action.testID}
               style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
             >
-              <View style={[styles.iconFrame, action.danger && styles.dangerIconFrame]}>
-                <Icon
-                  size={20}
-                  color={action.danger ? colors.red : colors.mintDark}
-                  strokeWidth={2.3}
-                />
+              <View style={styles.iconFrame}>
+                <Icon size={20} color={colors.gray400} strokeWidth={2.1} />
               </View>
-              <Text style={[styles.actionLabel, action.danger && styles.dangerText]}>
-                {action.label}
-              </Text>
+              <Text style={styles.actionLabel}>{action.label}</Text>
             </Pressable>
           );
         })}
@@ -75,7 +70,7 @@ export function ProfileImageBottomSheet({
 
 const styles = StyleSheet.create({
   actionList: {
-    gap: 6,
+    gap: 2,
   },
   actionRow: {
     minHeight: 54,
@@ -89,24 +84,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray50,
   },
   iconFrame: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.mintLight,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
-  dangerIconFrame: {
-    backgroundColor: colors.gray50,
-  },
   actionLabel: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
-  },
-  dangerText: {
-    color: colors.red,
   },
 });

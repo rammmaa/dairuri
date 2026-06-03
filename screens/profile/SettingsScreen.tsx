@@ -1,12 +1,15 @@
-import { ChevronRight, LockKeyhole, Trash2 } from "lucide-react-native";
-import { useState } from "react";
+import { ChevronRight, Eye, EyeOff, LockKeyhole, Scissors } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
   Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import type { ReactNode } from "react";
 
@@ -14,9 +17,15 @@ import { AppButton } from "../../components/AppButton";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
+import {
+  getSafeAreaBottomInset,
+  useRuntimeSafeAreaInsets,
+} from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockMe } from "../../data/mockDomain";
+import { changePassword, deleteMe, getMe } from "../../services/api";
+import type { UserProfile } from "../../types/domain";
 
 export type SettingsScreenProps = {
   onBack?: () => void;
@@ -26,21 +35,110 @@ export type SettingsScreenProps = {
 type ConfirmationTarget = "logout" | "delete" | null;
 
 export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
+  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
   const [confirmationTarget, setConfirmationTarget] = useState<ConfirmationTarget>(null);
-  const vehicleImages = mockMe.vehicle?.images ?? [];
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [currentPasswordVisible, setCurrentPasswordVisible] = useState(false);
+  const [newPasswordVisible, setNewPasswordVisible] = useState(false);
+  const [newPasswordConfirmVisible, setNewPasswordConfirmVisible] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [accountActionLoading, setAccountActionLoading] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | undefined>(() =>
+    process.env.NODE_ENV === "test" ? mockMe : undefined,
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const vehicleImages = profile?.vehicle?.images ?? [];
+  const email = splitEmail(profile?.email);
+  const driverVerified = Boolean(
+    profile?.driverVerification?.licenseVerified &&
+      profile.driverVerification.insuranceVerified,
+  );
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") {
+      return undefined;
+    }
+
+    let active = true;
+
+    getMe()
+      .then((nextProfile) => {
+        if (active) {
+          setProfile(nextProfile);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setErrorMessage(
+            error instanceof Error ? error.message : "계정 정보를 불러오지 못했어요.",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const closeConfirmation = () => {
+    if (accountActionLoading) {
+      return;
+    }
     setConfirmationTarget(null);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (confirmationTarget === "logout") {
       closeConfirmation();
       onLogout?.();
       return;
     }
 
-    closeConfirmation();
+    if (confirmationTarget !== "delete" || accountActionLoading) {
+      return;
+    }
+
+    setAccountActionLoading(true);
+    setErrorMessage(null);
+    try {
+      await deleteMe();
+      setConfirmationTarget(null);
+      onLogout?.();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "계정 탈퇴에 실패했어요.");
+    } finally {
+      setAccountActionLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (
+      passwordSaving ||
+      newPassword.length < 8 ||
+      newPassword !== newPasswordConfirm ||
+      !currentPassword.trim()
+    ) {
+      return;
+    }
+
+    setPasswordSaving(true);
+    setErrorMessage(null);
+    try {
+      await changePassword({ currentPassword, newPassword });
+      setPasswordModalVisible(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setNewPasswordConfirm("");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "비밀번호를 변경하지 못했어요.",
+      );
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   return (
@@ -50,20 +148,36 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 124 + bottomInset },
+          ]}
           showsVerticalScrollIndicator={false}
+          testID="settings-scroll"
         >
           <Section title="전화번호">
-            <ReadonlyField value={mockMe.phone ?? "전화번호 없음"} />
+            <ReadonlyField value={profile?.phone ?? "전화번호 없음"} />
           </Section>
 
           <Section title="이메일">
-            <ReadonlyField value={mockMe.email ?? "이메일 없음"} />
+            <View style={styles.emailRow}>
+              <ReadonlyField value={email.local} style={styles.emailLocalField} />
+              <ReadonlyField value={email.domain} style={styles.emailDomainField} />
+            </View>
           </Section>
 
           <Section title="차량 정보">
-            <ReadonlyField value={mockMe.vehicle?.plateNumber ?? "등록된 차량 없음"} />
+            <Text style={driverVerified ? styles.verifiedText : styles.unverifiedText}>
+              {driverVerified ? "인증됨" : "인증 필요"}
+            </Text>
+            <Text style={styles.subsectionLabel}>차량 번호</Text>
+            <ReadonlyField
+              value={maskPlateNumber(profile?.vehicle?.plateNumber)}
+              accessory={<EyeOff size={18} color={colors.gray300} strokeWidth={2.1} />}
+            />
             {vehicleImages.length > 0 ? (
+              <>
+                <Text style={styles.subsectionLabel}>차량 사진</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -78,13 +192,18 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
                   />
                 ))}
               </ScrollView>
+              </>
             ) : (
               <Text style={styles.emptyText}>등록된 차량 사진이 없어요</Text>
             )}
           </Section>
 
           <Section title="계정 정보">
-            <SettingsMenuRow label="비밀번호 변경" icon="password" />
+            <SettingsMenuRow
+              label="비밀번호 변경"
+              icon="password"
+              onPress={() => setPasswordModalVisible(true)}
+            />
             <SettingsMenuRow
               label="계정 탈퇴"
               icon="delete"
@@ -92,9 +211,14 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
               onPress={() => setConfirmationTarget("delete")}
             />
           </Section>
+
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View
+          style={[styles.footer, { paddingBottom: 24 + bottomInset }]}
+          testID="settings-footer"
+        >
           <AppButton
             label="로그아웃"
             variant="outline"
@@ -115,13 +239,138 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
             ? "다시 이용하려면 로그인이 필요합니다."
             : "탈퇴하면 저장된 프로필과 모집 내역을 되돌릴 수 없습니다."
         }
-        confirmLabel={confirmationTarget === "logout" ? "로그아웃하기" : "탈퇴하기"}
+        confirmLabel={
+          accountActionLoading
+            ? "처리 중"
+            : confirmationTarget === "logout"
+              ? "로그아웃하기"
+              : "탈퇴하기"
+        }
         cancelLabel="취소"
         confirmVariant={confirmationTarget === "delete" ? "danger" : "primary"}
-        onConfirm={handleConfirm}
+        onConfirm={() => {
+          void handleConfirm();
+        }}
         onCancel={closeConfirmation}
         testID="settings-confirm-modal"
       />
+      {passwordModalVisible ? (
+        <View style={styles.modalOverlay} testID="settings-password-modal">
+          <View style={styles.passwordCard}>
+            <Text style={styles.passwordTitle}>비밀번호 변경</Text>
+            <SecurePasswordField
+              label="현재 비밀번호"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              visible={currentPasswordVisible}
+              onToggleVisible={() => setCurrentPasswordVisible((current) => !current)}
+              testID="settings-current-password"
+            />
+            <SecurePasswordField
+              label="새 비밀번호"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              visible={newPasswordVisible}
+              onToggleVisible={() => setNewPasswordVisible((current) => !current)}
+              error={
+                newPassword.length > 0 && newPassword.length < 8
+                  ? "8자 이상 입력해주세요."
+                  : undefined
+              }
+              testID="settings-new-password"
+            />
+            <SecurePasswordField
+              label="새 비밀번호 확인"
+              value={newPasswordConfirm}
+              onChangeText={setNewPasswordConfirm}
+              visible={newPasswordConfirmVisible}
+              onToggleVisible={() =>
+                setNewPasswordConfirmVisible((current) => !current)
+              }
+              error={
+                newPasswordConfirm.length > 0 && newPassword !== newPasswordConfirm
+                  ? "새 비밀번호가 일치하지 않아요."
+                  : undefined
+              }
+              testID="settings-new-password-confirm"
+            />
+            <View style={styles.passwordActions}>
+              <AppButton
+                label="취소"
+                variant="ghost"
+                size="medium"
+                onPress={() => {
+                  if (!passwordSaving) {
+                    setPasswordModalVisible(false);
+                  }
+                }}
+                style={styles.passwordAction}
+              />
+              <AppButton
+                label={passwordSaving ? "변경 중" : "변경"}
+                size="medium"
+                disabled={
+                  passwordSaving || !currentPassword.trim() || newPassword.length < 8
+                  || newPassword !== newPasswordConfirm
+                }
+                onPress={handleChangePassword}
+                style={styles.passwordAction}
+                testID="settings-password-submit"
+              />
+            </View>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+type SecurePasswordFieldProps = {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  visible: boolean;
+  onToggleVisible: () => void;
+  error?: string;
+  testID: string;
+};
+
+function SecurePasswordField({
+  label,
+  value,
+  onChangeText,
+  visible,
+  onToggleVisible,
+  error,
+  testID,
+}: SecurePasswordFieldProps) {
+  const Icon = visible ? EyeOff : Eye;
+
+  return (
+    <View style={styles.passwordField}>
+      <Text style={styles.passwordFieldLabel}>{label}</Text>
+      <View style={styles.passwordInputBox}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={!visible}
+          placeholder={label}
+          placeholderTextColor={colors.gray300}
+          autoCapitalize="none"
+          testID={testID}
+          style={styles.passwordInput}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={visible ? "비밀번호 숨기기" : "비밀번호 보기"}
+          hitSlop={8}
+          testID={`${testID}-visibility-toggle`}
+          onPress={onToggleVisible}
+        >
+          <Icon size={20} color={colors.gray300} strokeWidth={2.1} />
+        </Pressable>
+      </View>
+      {error ? <Text style={styles.passwordFieldError}>{error}</Text> : null}
     </View>
   );
 }
@@ -142,12 +391,15 @@ function Section({ title, children }: SectionProps) {
 
 type ReadonlyFieldProps = {
   value: string;
+  accessory?: ReactNode;
+  style?: StyleProp<ViewStyle>;
 };
 
-function ReadonlyField({ value }: ReadonlyFieldProps) {
+function ReadonlyField({ value, accessory, style }: ReadonlyFieldProps) {
   return (
-    <View style={styles.readonlyField}>
+    <View style={[styles.readonlyField, style]}>
       <Text style={styles.readonlyText}>{value}</Text>
+      {accessory}
     </View>
   );
 }
@@ -160,7 +412,7 @@ type SettingsMenuRowProps = {
 };
 
 function SettingsMenuRow({ label, icon, danger = false, onPress }: SettingsMenuRowProps) {
-  const Icon = icon === "password" ? LockKeyhole : Trash2;
+  const Icon = icon === "password" ? LockKeyhole : Scissors;
 
   return (
     <Pressable
@@ -182,6 +434,23 @@ function SettingsMenuRow({ label, icon, danger = false, onPress }: SettingsMenuR
   );
 }
 
+function splitEmail(email?: string) {
+  if (!email || !email.includes("@")) {
+    return { local: "현재 이메일", domain: "@gmail.com" };
+  }
+
+  const [local, domain] = email.split("@");
+  return { local, domain: `@${domain}` };
+}
+
+function maskPlateNumber(plateNumber?: string) {
+  if (!plateNumber) {
+    return "등록된 차량 없음";
+  }
+
+  return plateNumber.replace(/\s*\S{4}$/, " ****");
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -197,53 +466,97 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 20,
-    paddingBottom: 124,
-    gap: 22,
+    gap: 20,
   },
   section: {
     gap: 10,
   },
   sectionTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.bold,
   },
   readonlyField: {
     minHeight: 52,
     paddingHorizontal: 14,
     borderRadius: 12,
     backgroundColor: colors.gray50,
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
   readonlyText: {
-    color: colors.grayIcon,
-    fontFamily: typography.family.body,
-    fontSize: typography.size.base,
-    lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
+    flex: 1,
+    color: colors.gray300,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  emailRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  emailLocalField: {
+    flex: 1,
+  },
+  emailDomainField: {
+    width: 98,
+  },
+  subsectionLabel: {
+    color: colors.grayText,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+  },
+  verifiedText: {
+    alignSelf: "flex-start",
+    minHeight: 24,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.mintLight,
+    color: colors.mintDark,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.xs,
+    lineHeight: 24,
+  },
+  unverifiedText: {
+    alignSelf: "flex-start",
+    minHeight: 24,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.gray100,
+    color: colors.gray400,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.xs,
+    lineHeight: 24,
   },
   vehicleImages: {
     gap: 8,
   },
   vehicleImage: {
-    width: 112,
-    height: 76,
-    borderRadius: 16,
+    width: 92,
+    height: 56,
+    borderRadius: 10,
     backgroundColor: colors.gray100,
   },
   emptyText: {
     color: colors.mutedText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   menuRow: {
     minHeight: 58,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: colors.gray50,
     flexDirection: "row",
     alignItems: "center",
@@ -253,7 +566,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: colors.mintLight,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -263,10 +575,9 @@ const styles = StyleSheet.create({
   menuLabel: {
     flex: 1,
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.medium,
   },
   menuLabelDanger: {
     color: colors.red,
@@ -281,9 +592,71 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: spacing.screenX,
     paddingTop: 12,
-    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.surface,
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 35,
+    paddingHorizontal: spacing.screenX,
+    backgroundColor: colors.overlay,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  passwordCard: {
+    width: "100%",
+    maxWidth: 360,
+    padding: spacing.screenX,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    gap: 16,
+  },
+  passwordTitle: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
+    textAlign: "center",
+  },
+  passwordField: {
+    gap: 8,
+  },
+  passwordFieldLabel: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  passwordInputBox: {
+    minHeight: 52,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: colors.gray50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    minHeight: 44,
+    paddingVertical: 0,
+    color: colors.black,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
+  },
+  passwordFieldError: {
+    color: colors.red,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+  },
+  passwordActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  passwordAction: {
+    flex: 1,
   },
 });

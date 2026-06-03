@@ -14,7 +14,7 @@ import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockPosts } from "../../data/mockDomain";
-import { getPosts } from "../../services/api";
+import { getSavedPosts } from "../../services/api";
 import type { Post } from "../../types/domain";
 
 export type SavedPostsScreenProps = {
@@ -24,10 +24,9 @@ export type SavedPostsScreenProps = {
 
 export function SavedPostsScreen({ onBack, posts }: SavedPostsScreenProps) {
   const [loadedPosts, setLoadedPosts] = useState<Post[]>(() =>
-    process.env.NODE_ENV === "test" ? mockPosts : [],
+    process.env.NODE_ENV === "test" ? mockPosts.filter((post) => post.liked) : [],
   );
-  const sourcePosts = posts ?? loadedPosts;
-  const savedPosts = sourcePosts.filter((post) => post.liked);
+  const savedPosts = posts ?? loadedPosts;
 
   useEffect(() => {
     if (posts || process.env.NODE_ENV === "test") {
@@ -36,7 +35,7 @@ export function SavedPostsScreen({ onBack, posts }: SavedPostsScreenProps) {
 
     let active = true;
 
-    getPosts()
+    getSavedPosts()
       .then((nextPosts) => {
         if (active) {
           setLoadedPosts(nextPosts);
@@ -212,10 +211,9 @@ const styles = StyleSheet.create({
   },
   countText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   cardList: {
     gap: 10,
@@ -263,10 +261,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.yellowLight,
   },
   typeBadgeText: {
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.bold,
   },
   jobText: {
     color: colors.mintDark,
@@ -276,17 +273,15 @@ const styles = StyleSheet.create({
   },
   postTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
   },
   postBody: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
   },
   metaBlock: {
     gap: 3,
@@ -299,10 +294,9 @@ const styles = StyleSheet.create({
   metaText: {
     flex: 1,
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
   },
   emptyCard: {
     minHeight: 188,
@@ -315,18 +309,16 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   emptyDescription: {
     color: colors.mutedText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
 });

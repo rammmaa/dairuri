@@ -220,7 +220,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.semibold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.semibold,
     marginBottom: 10,
   },
   selectSectionLabelSpaced: {
@@ -254,7 +253,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   sectionLabel: {
     alignSelf: "flex-start",
@@ -264,7 +262,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.semibold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.semibold,
   },
   weekdayRow: {
     width: "100%",
@@ -291,12 +288,10 @@ const styles = StyleSheet.create({
     color: colors.black,
     fontFamily: typography.family.semibold,
     fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
   },
   weekdayTextSelected: {
     color: colors.surface,
     fontFamily: typography.family.bold,
-    fontWeight: typography.weight.bold,
   },
   timeList: {
     width: "100%",
@@ -312,7 +307,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
   },

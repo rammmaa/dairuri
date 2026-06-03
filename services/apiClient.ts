@@ -1,3 +1,7 @@
+import { getAuthToken } from "./authSession";
+
+export const productionApiBaseUrl = "https://api.dairuri.harammm.me";
+
 export type ApiRequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
@@ -39,6 +43,9 @@ function getLiveApiBaseUrl() {
   const baseUrl = process.env.EXPO_PUBLIC_DARORI_API_BASE_URL?.trim();
 
   if (!baseUrl) {
+    if (process.env.NODE_ENV === "production") {
+      return productionApiBaseUrl;
+    }
     return undefined;
   }
 
@@ -46,8 +53,21 @@ function getLiveApiBaseUrl() {
 }
 
 function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+
   const userId = process.env.EXPO_PUBLIC_DARORI_USER_ID?.trim();
-  return userId ? { "X-Darori-User-Id": userId } : {};
+  if (
+    userId &&
+    (process.env.NODE_ENV === "test" ||
+      process.env.EXPO_PUBLIC_DARORI_ALLOW_DEV_USER_HEADER === "true")
+  ) {
+    return { "X-Darori-User-Id": userId };
+  }
+
+  return {};
 }
 
 function buildRequestHeaders(headers: HeadersInit | undefined) {

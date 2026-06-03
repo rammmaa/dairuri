@@ -25,6 +25,7 @@ export type ApplyFlowModalProps = {
   post: Post;
   onClose: () => void;
   onOpenChat?: () => void;
+  onReturnHome?: () => void;
 };
 
 const initialTerms: TermsState = {
@@ -38,17 +39,21 @@ export function ApplyFlowModal({
   visible,
   post,
   onClose,
-  onOpenChat,
+  onReturnHome,
 }: ApplyFlowModalProps) {
   const [step, setStep] = useState<ApplyStep>(1);
   const [intro, setIntro] = useState("");
   const [terms, setTerms] = useState<TermsState>(initialTerms);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
       setStep(1);
       setIntro("");
       setTerms(initialTerms);
+      setSubmitting(false);
+      setSubmitError(null);
     }
   }, [visible]);
 
@@ -94,14 +99,29 @@ export function ApplyFlowModal({
     });
   };
 
-  const submitApplication = () => {
-    void applyToPost(post.id, intro.trim());
-    setStep(3);
+  const submitApplication = async () => {
+    if (submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      await applyToPost(post.id, intro.trim());
+      setStep(3);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "지원 요청을 보내지 못했어요.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const complete = () => {
     onClose();
-    onOpenChat?.();
+    onReturnHome?.();
   };
 
   return (
@@ -176,11 +196,12 @@ export function ApplyFlowModal({
               />
             </View>
             <AppButton
-              label="확인"
-              disabled={!requiredTermsChecked}
+              label={submitting ? "처리 중" : "확인"}
+              disabled={!requiredTermsChecked || submitting}
               onPress={submitApplication}
               testID="apply-terms-confirm-button"
             />
+            {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
           </View>
         ) : null}
 
@@ -190,14 +211,18 @@ export function ApplyFlowModal({
               <CheckCircle2 size={34} color={colors.mintDark} strokeWidth={2.3} />
             </View>
             <Text style={styles.completeTitle}>
-              {isResourceProfile ? "연락 요청 완료" : "지원 완료"}
+              잘 제출되었어요!
             </Text>
             <Text style={styles.description}>
               {isResourceProfile
-                ? "작성하신 연락 내용이 등록자에게 전달되었습니다.\n채팅에서 이어서 이야기해보세요."
+                ? "작성하신 연락 내용이 등록자에게 전달되었습니다."
                 : "작성하신 지원서가 작성자에게 전달되었습니다.\n검토 후 연락 드릴게요!"}
             </Text>
-            <AppButton label="확인" onPress={complete} testID="apply-complete-button" />
+            <AppButton
+              label="메인으로 돌아가기"
+              onPress={complete}
+              testID="apply-complete-button"
+            />
           </View>
         ) : null}
       </View>
@@ -235,10 +260,9 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.medium,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.medium,
     textAlign: "center",
   },
   content: {
@@ -246,17 +270,21 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
   },
   helper: {
     color: colors.grayText,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
-    fontWeight: typography.weight.regular,
+  },
+  errorText: {
+    color: colors.red,
+    fontFamily: typography.family.medium,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
   },
   termsList: {
     paddingVertical: 4,
@@ -280,18 +308,16 @@ const styles = StyleSheet.create({
   },
   completeTitle: {
     color: colors.black,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
-    fontWeight: typography.weight.bold,
     textAlign: "center",
   },
   description: {
     color: colors.grayIcon,
-    fontFamily: typography.family.body,
+    fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
-    fontWeight: typography.weight.regular,
     textAlign: "center",
   },
 });

@@ -5,7 +5,8 @@
   "buildCommand": "npx expo export --platform web --output-dir dist",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api", "destination": "/api/index" },
+    { "source": "/api/:path*", "destination": "/api/index?path=:path*" },
+    { "source": "/:path((?!api/).*)", "destination": "/index.html" }
   ]
 }

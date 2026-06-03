@@ -3,6 +3,8 @@ import type { PlaceCandidate } from "../../types/place";
 export type NaverMapsRuntimeConfig = {
   ncpKeyId?: string;
   apiKey?: string;
+  searchClientId?: string;
+  searchClientSecret?: string;
 };
 
 export type NaverMapsConfigValidation = {
@@ -25,6 +27,26 @@ type NaverGeocodeResponse = {
   };
 };
 
+type NaverLocalSearchItem = {
+  title?: string;
+  roadAddress?: string;
+  address?: string;
+  mapx?: string;
+  mapy?: string;
+};
+
+type NaverLocalSearchResponse = {
+  items?: NaverLocalSearchItem[];
+};
+
+type OpenStreetMapSearchItem = {
+  place_id?: number | string;
+  display_name?: string;
+  lat?: string;
+  lon?: string;
+  name?: string;
+};
+
 export class NaverMapsConfigError extends Error {
   constructor(message: string) {
     super(message);
@@ -40,6 +62,12 @@ export function readNaverMapsRuntimeConfig(
       env.NAVER_MAP_NCP_KEY_ID ?? env.EXPO_PUBLIC_NAVER_MAP_NCP_KEY_ID,
     ),
     apiKey: trimOptional(env.NAVER_MAP_API_KEY),
+    searchClientId: trimOptional(
+      env.NAVER_SEARCH_CLIENT_ID ?? env.NAVER_LOCAL_SEARCH_CLIENT_ID,
+    ),
+    searchClientSecret: trimOptional(
+      env.NAVER_SEARCH_CLIENT_SECRET ?? env.NAVER_LOCAL_SEARCH_CLIENT_SECRET,
+    ),
   };
 }
 
@@ -56,6 +84,14 @@ export function validateNaverMapsRuntimeConfig(
     errors.push("NAVER_MAP_API_KEY is required for Naver Maps REST APIs");
   }
 
+  if (config.searchClientId && !config.searchClientSecret) {
+    errors.push("NAVER_SEARCH_CLIENT_SECRET is required for Naver local search");
+  }
+
+  if (!config.searchClientId && config.searchClientSecret) {
+    errors.push("NAVER_SEARCH_CLIENT_ID is required for Naver local search");
+  }
+
   return {
     ok: errors.length === 0,
     errors,
@@ -64,10 +100,29 @@ export function validateNaverMapsRuntimeConfig(
 
 export function buildNaverGeocodeUrl(query: string) {
   const url = new URL(
-    "https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode",
+    "https://maps.apigw.ntruss.com/map-geocode/v2/geocode",
   );
 
   url.searchParams.set("query", query.trim());
+  return url;
+}
+
+export function buildNaverLocalSearchUrl(query: string) {
+  const url = new URL("https://openapi.naver.com/v1/search/local.json");
+
+  url.searchParams.set("query", query.trim());
+  url.searchParams.set("display", "5");
+  return url;
+}
+
+export function buildFallbackPlaceSearchUrl(query: string) {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+
+  url.searchParams.set("q", query.trim());
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "5");
+  url.searchParams.set("countrycodes", "kr");
+  url.searchParams.set("accept-language", "ko");
   return url;
 }
 
@@ -103,6 +158,63 @@ export function mapNaverGeocodeResponse(
     .filter((place): place is PlaceCandidate => place !== null);
 }
 
+export function mapNaverLocalSearchResponse(
+  query: string,
+  payload: NaverLocalSearchResponse,
+): PlaceCandidate[] {
+  const items = payload.items ?? [];
+  const trimmedQuery = query.trim();
+
+  return items
+    .map((item, index): PlaceCandidate | null => {
+      const longitude = parseNaverLocalCoordinate(item.mapx);
+      const latitude = parseNaverLocalCoordinate(item.mapy);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return null;
+      }
+
+      const name = stripHtmlTags(item.title) || trimmedQuery;
+
+      return {
+        id: makePlaceId(`local-${trimmedQuery}`, index),
+        name,
+        address: item.roadAddress || item.address || "검색된 네이버 지도 위치",
+        latitude,
+        longitude,
+        source: "api",
+      };
+    })
+    .filter((place): place is PlaceCandidate => place !== null);
+}
+
+export function mapOpenStreetMapSearchResponse(
+  query: string,
+  payload: OpenStreetMapSearchItem[],
+): PlaceCandidate[] {
+  const trimmedQuery = query.trim();
+
+  return payload
+    .map((item, index): PlaceCandidate | null => {
+      const latitude = Number(item.lat);
+      const longitude = Number(item.lon);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return null;
+      }
+
+      return {
+        id: makeFallbackPlaceId(trimmedQuery, index),
+        name: item.name?.trim() || trimmedQuery,
+        address: item.display_name?.trim() || "검색된 지도 위치",
+        latitude,
+        longitude,
+        source: "fallback",
+      };
+    })
+    .filter((place): place is PlaceCandidate => place !== null);
+}
+
 export async function searchNaverPlaces(
   query: string,
   options: {
@@ -121,29 +233,66 @@ export async function searchNaverPlaces(
     throw new NaverMapsConfigError(validation.errors.join(", "));
   }
 
-  const ncpKeyId = config.ncpKeyId;
-  const apiKey = config.apiKey;
-  if (!ncpKeyId || !apiKey) {
+  const hasGeocodeCredentials = Boolean(config.ncpKeyId && config.apiKey);
+  const hasLocalSearchCredentials = Boolean(
+    config.searchClientId && config.searchClientSecret,
+  );
+
+  if (!hasGeocodeCredentials && !hasLocalSearchCredentials) {
     throw new NaverMapsConfigError("Naver Maps credentials are incomplete");
   }
 
   const fetchImpl = options.fetchImpl ?? fetch;
-  const response = await fetchImpl(buildNaverGeocodeUrl(trimmedQuery).toString(), {
+  const searches: Array<Promise<PlaceCandidate[]>> = [];
+
+  if (
+    hasLocalSearchCredentials &&
+    config.searchClientId &&
+    config.searchClientSecret
+  ) {
+    searches.push(searchNaverLocal(trimmedQuery, fetchImpl, config));
+  }
+
+  if (hasGeocodeCredentials && config.ncpKeyId && config.apiKey) {
+    searches.push(searchNaverGeocode(trimmedQuery, fetchImpl, config));
+  }
+
+  const settled = await Promise.allSettled(searches);
+  const places = settled.flatMap((result) =>
+    result.status === "fulfilled" ? result.value : [],
+  );
+  const dedupedPlaces = dedupePlaces(places);
+
+  if (dedupedPlaces.length > 0) {
+    return dedupedPlaces;
+  }
+
+  if (settled.some((result) => result.status === "fulfilled")) {
+    return searchFallbackPlaces(trimmedQuery, fetchImpl);
+  }
+
+  const firstError = settled.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  );
+  throw firstError?.reason ?? new Error("Naver place search failed");
+}
+
+async function searchFallbackPlaces(query: string, fetchImpl: typeof fetch) {
+  const response = await fetchImpl(buildFallbackPlaceSearchUrl(query).toString(), {
     method: "GET",
     headers: {
       Accept: "application/json",
-      "X-NCP-APIGW-API-KEY-ID": ncpKeyId,
-      "X-NCP-APIGW-API-KEY": apiKey,
+      "User-Agent": "darori/1.0 place-search",
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Naver geocoding request failed: ${response.status}`);
+    return [];
   }
 
-  return mapNaverGeocodeResponse(
-    trimmedQuery,
-    (await response.json()) as NaverGeocodeResponse,
+  return mapOpenStreetMapSearchResponse(
+    query,
+    (await response.json()) as OpenStreetMapSearchItem[],
   );
 }
 
@@ -154,4 +303,91 @@ function trimOptional(value: string | undefined) {
 
 function makePlaceId(query: string, index: number) {
   return `naver-${query}-${index}`.replace(/[^a-zA-Z0-9가-힣_-]/g, "-");
+}
+
+function makeFallbackPlaceId(query: string, index: number) {
+  return `fallback-${query}-${index}`.replace(/[^a-zA-Z0-9가-힣_-]/g, "-");
+}
+
+async function searchNaverGeocode(
+  query: string,
+  fetchImpl: typeof fetch,
+  config: NaverMapsRuntimeConfig,
+) {
+  const response = await fetchImpl(buildNaverGeocodeUrl(query).toString(), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-NCP-APIGW-API-KEY-ID": config.ncpKeyId ?? "",
+      "X-NCP-APIGW-API-KEY": config.apiKey ?? "",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Naver geocoding request failed: ${response.status}`);
+  }
+
+  return mapNaverGeocodeResponse(
+    query,
+    (await response.json()) as NaverGeocodeResponse,
+  );
+}
+
+async function searchNaverLocal(
+  query: string,
+  fetchImpl: typeof fetch,
+  config: NaverMapsRuntimeConfig,
+) {
+  const response = await fetchImpl(buildNaverLocalSearchUrl(query).toString(), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-Naver-Client-Id": config.searchClientId ?? "",
+      "X-Naver-Client-Secret": config.searchClientSecret ?? "",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Naver local search request failed: ${response.status}`);
+  }
+
+  return mapNaverLocalSearchResponse(
+    query,
+    (await response.json()) as NaverLocalSearchResponse,
+  );
+}
+
+function parseNaverLocalCoordinate(value: string | undefined) {
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric)) {
+    return Number.NaN;
+  }
+
+  return numeric / 10_000_000;
+}
+
+function stripHtmlTags(value: string | undefined) {
+  return value?.replace(/<[^>]*>/g, "").trim() ?? "";
+}
+
+function dedupePlaces(places: PlaceCandidate[]) {
+  const seen = new Set<string>();
+  const deduped: PlaceCandidate[] = [];
+
+  for (const place of places) {
+    const key = [
+      place.name,
+      place.address,
+      place.latitude.toFixed(6),
+      place.longitude.toFixed(6),
+    ].join("|");
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(place);
+    }
+  }
+
+  return deduped;
 }

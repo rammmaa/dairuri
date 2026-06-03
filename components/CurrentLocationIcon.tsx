@@ -1,5 +1,7 @@
 import Svg, { Path } from "react-native-svg";
 
+import { colors } from "../constants/colors";
+
 export type CurrentLocationIconProps = {
   size?: number;
   color?: string;
@@ -7,7 +9,7 @@ export type CurrentLocationIconProps = {
 
 export function CurrentLocationIcon({
   size = 14,
-  color = "#5B5E67",
+  color = colors.grayIcon,
 }: CurrentLocationIconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 14 14" fill="none">

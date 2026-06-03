@@ -29,6 +29,7 @@ describe("server create post input", () => {
       departure: "남성현역",
       destination: "청도명어학원",
       placeName: null,
+      price: null,
       wageAmount: null,
       createdAt: "2026-05-14T00:00:00.000Z",
     });
@@ -82,7 +83,7 @@ describe("server create post input", () => {
       normalizeCreatePostInput(
         {
           type: "job",
-          title: "인적 자원 등록",
+          title: "인재 풀 등록",
           body: "등원 도우미를 구합니다.",
           days: ["월"],
           startTime: "09:00",
@@ -96,5 +97,61 @@ describe("server create post input", () => {
         },
       ),
     ).toThrow("job post requires placeName and wageAmount");
+  });
+
+  it("rejects text fields with non-text values", () => {
+    expect(() =>
+      normalizeCreatePostInput(
+        {
+          type: "carpool",
+          title: 123 as never,
+          body: "정기적으로 같이 이동할 분을 구합니다.",
+          departure: "남성현역",
+          destination: "청도명어학원",
+        },
+        {
+          id: "post-test",
+          authorId: "me",
+          createdAt: "2026-05-14T00:00:00.000Z",
+        },
+      ),
+    ).toThrow("title must be text");
+  });
+
+  it("rejects numeric fields with non-number values", () => {
+    expect(() =>
+      normalizeCreatePostInput(
+        {
+          type: "carpool",
+          title: "같이 이동해요",
+          body: "정기적으로 같이 이동할 분을 구합니다.",
+          departure: "남성현역",
+          destination: "청도명어학원",
+          seats: "3" as never,
+        },
+        {
+          id: "post-test",
+          authorId: "me",
+          createdAt: "2026-05-14T00:00:00.000Z",
+        },
+      ),
+    ).toThrow("seats must be a number");
+
+    expect(() =>
+      normalizeCreatePostInput(
+        {
+          type: "job",
+          title: "농촌 일손 가능",
+          body: "농번기 일손을 도울 수 있어요.",
+          placeName: "다로리 일대",
+          wageAmount: "12000" as never,
+        },
+        {
+          id: "post-job",
+          authorId: "me",
+          createdAt: "2026-05-14T00:00:00.000Z",
+        },
+      ),
+    ).toThrow("wageAmount must be a number");
   });
 });

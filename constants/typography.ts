@@ -1,7 +1,5 @@
 export const typography = {
   family: {
-    body: "NotoSans_400Regular",
-    nav: "NotoSans_400Regular",
     regular: "NotoSans_400Regular",
     medium: "NotoSans_500Medium",
     semibold: "NotoSans_600SemiBold",
@@ -12,17 +10,13 @@ export const typography = {
     sm: 14,
     base: 16,
     lg: 18,
+    title: 24,
   },
   lineHeight: {
     xs: 16,
     sm: 20,
     base: 22,
     lg: 26,
-  },
-  weight: {
-    regular: "400",
-    medium: "500",
-    semibold: "600",
-    bold: "700",
+    title: 32,
   },
 } as const;
