@@ -259,10 +259,16 @@ async function main() {
     for (const link of records.busRouteStops) {
       await client.query(
         `
+          delete from bus_route_stops
+          where route_id = $1
+            and (stop_id = $2 or sequence = $3)
+        `,
+        [link.routeId, link.stopId, link.sequence],
+      );
+      await client.query(
+        `
           insert into bus_route_stops (route_id, stop_id, sequence)
           values ($1, $2, $3)
-          on conflict (route_id, stop_id) do update set
-            sequence = excluded.sequence
         `,
         [link.routeId, link.stopId, link.sequence],
       );

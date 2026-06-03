@@ -110,6 +110,14 @@ describe("server database migration plan", () => {
       ]),
     );
   });
+
+  it("refreshes seeded bus route-stop links across both unique constraints", async () => {
+    const seedSource = await readFile("server/db/seed.ts", "utf8");
+
+    expect(seedSource).toMatch(
+      /delete from bus_route_stops[\s\S]*where route_id = \$1[\s\S]*\(stop_id = \$2 or sequence = \$3\)/,
+    );
+  });
 });
 
 describe("readSchemaMigrations", () => {
