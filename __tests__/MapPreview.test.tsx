@@ -56,4 +56,26 @@ describe("MapPreview", () => {
     expect(screen.queryByTestId("map-preview-marker-bus")).toBeNull();
     expect(screen.queryByTestId("map-preview-marker-library")).toBeNull();
   });
+
+  it("renders explicit app-level map pins and forwards marker presses", () => {
+    const handleMarkerPress = jest.fn();
+
+    render(
+      <MapPreview
+        markers={[
+          {
+            id: "ride-carpool-1",
+            label: "다로리 카페 라이드",
+            latitude: 35.6474,
+            longitude: 128.7338,
+          },
+        ]}
+        onMarkerPress={handleMarkerPress}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("map-preview-marker-ride-carpool-1"));
+
+    expect(handleMarkerPress).toHaveBeenCalledWith("ride-carpool-1");
+  });
 });

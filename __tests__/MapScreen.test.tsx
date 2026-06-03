@@ -111,7 +111,7 @@ describe("MapScreen", () => {
     expect(screen.getAllByTestId("category-current-location-icon")).toHaveLength(3);
   });
 
-  it("exposes no-op-safe map search and location callbacks without app pins", () => {
+  it("exposes map search, location callbacks, and ride pins", () => {
     const handleSearchPress = jest.fn();
     const handleCurrentLocationPress = jest.fn();
     const handleMarkerPress = jest.fn();
@@ -126,11 +126,12 @@ describe("MapScreen", () => {
 
     fireEvent.press(screen.getByTestId("map-home-search-button"));
     fireEvent.press(screen.getByTestId("map-home-current-location-button"));
+    fireEvent.press(screen.getByTestId("map-preview-marker-ride-carpool-1"));
 
     expect(handleSearchPress).toHaveBeenCalledTimes(1);
     expect(handleCurrentLocationPress).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("map-preview-marker-cafe")).toBeNull();
-    expect(handleMarkerPress).not.toHaveBeenCalled();
+    expect(handleMarkerPress).toHaveBeenCalledWith("ride-carpool-1");
   });
 
   it("opens a real map search field from the home search bar", () => {
@@ -207,7 +208,7 @@ describe("MapScreen", () => {
     }
   });
 
-  it("filters map posts by category and cycles date, time, and sort controls", () => {
+  it("filters map posts by category and multi-selects weekday and time controls", () => {
     render(<MapScreen />);
 
     expect(screen.getByText("5")).toBeTruthy();
@@ -221,11 +222,41 @@ describe("MapScreen", () => {
     fireEvent.press(screen.getByTestId("map-home-category-work"));
     expect(screen.getByText("5")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("map-home-filter-날짜"));
-    expect(screen.getByText("오늘")).toBeTruthy();
+    expect(screen.getByText("요일")).toBeTruthy();
+    expect(screen.getByText("시간")).toBeTruthy();
+    expect(screen.queryByText("출발 장소")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("map-home-filter-시간"));
-    expect(screen.getByText("오후")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("map-home-day-filter-화"));
+    expect(
+      screen.getByTestId("map-home-day-filter-화").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    expect(screen.getByText("3")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-day-filter-수"));
+    expect(
+      screen.getByTestId("map-home-day-filter-수").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    expect(screen.getByText("5")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-time-filter-오전"));
+    expect(
+      screen.getByTestId("map-home-time-filter-오전").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    expect(screen.getByText("2")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-time-filter-오후"));
+    expect(
+      screen.getByTestId("map-home-time-filter-오후").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    expect(screen.getByText("5")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("map-home-sort-filter"));
     expect(screen.getByText("최신순")).toBeTruthy();
@@ -278,25 +309,42 @@ describe("MapScreen", () => {
     ).toBe(56);
   });
 
-  it("toggles the departure place bottom filter chip selection", () => {
+  it("toggles weekday and time filter chips independently", () => {
     render(<MapScreen />);
 
-    expect(screen.getByText("날짜")).toBeTruthy();
+    expect(screen.getByText("요일")).toBeTruthy();
     expect(screen.getByText("시간")).toBeTruthy();
-    const departureChip = screen.getByLabelText("출발 장소");
+    expect(screen.queryByLabelText("출발 장소")).toBeNull();
 
-    fireEvent.press(departureChip);
+    const tuesdayChip = screen.getByTestId("map-home-day-filter-화");
+    const morningChip = screen.getByTestId("map-home-time-filter-오전");
+    const afternoonChip = screen.getByTestId("map-home-time-filter-오후");
 
-    const selectedDepartureChip = screen.getByLabelText("남성현역");
-    expect(screen.getAllByText("남성현역").length).toBeGreaterThan(0);
-    expect(selectedDepartureChip.props.accessibilityState).toMatchObject({
+    fireEvent.press(tuesdayChip);
+    fireEvent.press(morningChip);
+    fireEvent.press(afternoonChip);
+
+    expect(
+      screen.getByTestId("map-home-day-filter-화").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    expect(
+      screen.getByTestId("map-home-time-filter-오전").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    expect(
+      screen.getByTestId("map-home-time-filter-오후").props.accessibilityState,
+    ).toMatchObject({
       selected: true,
     });
 
-    fireEvent.press(selectedDepartureChip);
+    fireEvent.press(screen.getByTestId("map-home-time-filter-오전"));
 
-    expect(screen.getByText("출발 장소")).toBeTruthy();
-    expect(screen.getByLabelText("출발 장소").props.accessibilityState).toMatchObject({
+    expect(
+      screen.getByTestId("map-home-time-filter-오전").props.accessibilityState,
+    ).toMatchObject({
       selected: false,
     });
   });

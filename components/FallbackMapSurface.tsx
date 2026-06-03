@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import {
   PanResponder,
+  Pressable,
   StyleProp,
   StyleSheet,
   Text,
@@ -32,6 +33,10 @@ type MapLabel = {
 };
 
 const PAN_LIMIT = 140;
+const FALLBACK_MAP_WIDTH = 390;
+const FALLBACK_MAP_HEIGHT = 540;
+const MARKER_SIZE = 34;
+const MARKER_SCALE = 9000;
 
 const routeSegments: RoadSegment[] = [
   {
@@ -156,7 +161,12 @@ function clampPan(value: number) {
 
 export function FallbackMapSurface({
   style,
+  markers,
+  initialCamera,
+  camera,
+  onMarkerPress,
 }: FallbackMapSurfaceProps) {
+  const activeCamera = camera ?? initialCamera;
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const startOffsetRef = useRef({ x: 0, y: 0 });
   const panResponder = useMemo(
@@ -246,9 +256,49 @@ export function FallbackMapSurface({
           <View style={styles.locationHalo} />
           <View style={styles.locationDot} />
         </View>
+
+        {markers.map((marker) => {
+          const position = projectMarkerPosition(marker, activeCamera);
+
+          return (
+            <Pressable
+              key={marker.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${marker.label} 지도 핀`}
+              onPress={() => onMarkerPress?.(marker.id)}
+              testID={`map-preview-marker-${marker.id}`}
+              style={({ pressed }) => [
+                styles.markerPin,
+                position,
+                pressed && styles.markerPinPressed,
+              ]}
+            >
+              <View style={styles.markerDot} />
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
+}
+
+function projectMarkerPosition(
+  marker: MapPreviewMarker,
+  camera: MapPreviewCamera,
+): ViewStyle {
+  const rawLeft =
+    FALLBACK_MAP_WIDTH / 2 +
+    (marker.longitude - camera.longitude) * MARKER_SCALE -
+    MARKER_SIZE / 2;
+  const rawTop =
+    FALLBACK_MAP_HEIGHT / 2 -
+    (marker.latitude - camera.latitude) * MARKER_SCALE -
+    MARKER_SIZE;
+
+  return {
+    left: Math.max(14, Math.min(FALLBACK_MAP_WIDTH - MARKER_SIZE - 14, rawLeft)),
+    top: Math.max(86, Math.min(FALLBACK_MAP_HEIGHT - MARKER_SIZE - 108, rawTop)),
+  };
 }
 
 const styles = StyleSheet.create({
@@ -357,6 +407,31 @@ const styles = StyleSheet.create({
     height: 58,
     alignItems: "center",
     justifyContent: "center",
+  },
+  markerPin: {
+    position: "absolute",
+    width: MARKER_SIZE,
+    height: MARKER_SIZE,
+    borderRadius: MARKER_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.mint,
+    borderWidth: 3,
+    borderColor: colors.surface,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  markerPinPressed: {
+    opacity: 0.82,
+  },
+  markerDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.mintDark,
   },
   locationPulse: {
     position: "absolute",

@@ -5,6 +5,25 @@ export type CategoryFilter = {
   label: string;
 };
 
+export const weekdayFilterOptions = [
+  "월",
+  "화",
+  "수",
+  "목",
+  "금",
+  "토",
+  "일",
+] as const;
+export type WeekdayFilter = (typeof weekdayFilterOptions)[number];
+
+export const timeFilterOptions = ["오전", "오후"] as const;
+export type TimeFilter = (typeof timeFilterOptions)[number];
+
+type MapHomeCoordinate = {
+  latitude: number;
+  longitude: number;
+};
+
 export type BottomNavItem = {
   id: "map" | "bus" | "posts" | "chat" | "profile";
   label: string;
@@ -14,9 +33,8 @@ export type MapHomePost = {
   id: string;
   detailPostId: string;
   category: CategoryFilter["id"];
-  dateFilter: "오늘" | "내일";
-  timeFilter: "오전" | "오후";
-  departurePlace: "남성현역" | "다로리 카페";
+  dayFilters: WeekdayFilter[];
+  timeFilter: TimeFilter;
   createdMinutesAgo: number;
   author: string;
   title: string;
@@ -27,6 +45,15 @@ export type MapHomePost = {
   originName: string;
   createdAgo: string;
   liked: boolean;
+  marker?: MapHomeCoordinate;
+};
+
+const knownPlaceCoordinates: Record<string, MapHomeCoordinate> = {
+  "다로리 카페": { latitude: 35.6482, longitude: 128.7358 },
+  "다로리 카페 인근": { latitude: 35.6482, longitude: 128.7358 },
+  남성현역: { latitude: 35.7153, longitude: 128.7473 },
+  청도역: { latitude: 35.6474, longitude: 128.7338 },
+  청도명어학원: { latitude: 35.6501, longitude: 128.737 },
 };
 
 export const categoryFilters: CategoryFilter[] = [
@@ -34,8 +61,6 @@ export const categoryFilters: CategoryFilter[] = [
   { id: "work", label: "인력" },
   { id: "bus", label: "버스" },
 ];
-
-export const bottomSheetFilters = ["날짜", "시간", "출발 장소"] as const;
 
 export const bottomNavItems: BottomNavItem[] = [
   { id: "map", label: "지도" },
@@ -50,9 +75,8 @@ export const mapHomePosts: MapHomePost[] = [
     id: "post-1",
     detailPostId: "carpool-1",
     category: "ride",
-    dateFilter: "오늘",
+    dayFilters: ["화", "목"],
     timeFilter: "오후",
-    departurePlace: "남성현역",
     createdMinutesAgo: 35,
     author: "다로리인",
     title: "다로리 카페 매주 같이 가실 분 구해요",
@@ -63,14 +87,14 @@ export const mapHomePosts: MapHomePost[] = [
     originName: "다로리 카페",
     createdAgo: "35분 전",
     liked: true,
+    marker: knownPlaceCoordinates["다로리 카페"],
   },
   {
     id: "post-2",
     detailPostId: "job-1",
     category: "work",
-    dateFilter: "오늘",
+    dayFilters: ["화", "목"],
     timeFilter: "오후",
-    departurePlace: "남성현역",
     createdMinutesAgo: 60,
     author: "다로리인",
     title: "농촌 일손과 카페 보조 도울 수 있어요",
@@ -86,9 +110,8 @@ export const mapHomePosts: MapHomePost[] = [
     id: "post-3",
     detailPostId: "carpool-1",
     category: "bus",
-    dateFilter: "오늘",
+    dayFilters: ["화", "목"],
     timeFilter: "오전",
-    departurePlace: "다로리 카페",
     createdMinutesAgo: 120,
     author: "다로리인",
     title: "다로리 카페 매주 같이 가실 분 구해요",
@@ -104,9 +127,8 @@ export const mapHomePosts: MapHomePost[] = [
     id: "post-4",
     detailPostId: "job-1",
     category: "work",
-    dateFilter: "내일",
+    dayFilters: ["수"],
     timeFilter: "오전",
-    departurePlace: "다로리 카페",
     createdMinutesAgo: 240,
     author: "다로리인",
     title: "주말 오전 아이 돌봄과 매장 보조 가능해요",
@@ -122,9 +144,8 @@ export const mapHomePosts: MapHomePost[] = [
     id: "post-5",
     detailPostId: "carpool-1",
     category: "ride",
-    dateFilter: "내일",
+    dayFilters: ["수"],
     timeFilter: "오후",
-    departurePlace: "남성현역",
     createdMinutesAgo: 480,
     author: "다로리인",
     title: "다로리 카페 매주 같이 가실 분 구해요",
@@ -135,6 +156,7 @@ export const mapHomePosts: MapHomePost[] = [
     originName: "남성현역",
     createdAgo: "8시간 전",
     liked: false,
+    marker: knownPlaceCoordinates["남성현역"],
   },
 ];
 
@@ -148,9 +170,8 @@ export function mapDomainPostsToMapHomePosts(posts: Post[]): MapHomePost[] {
         id: `live-${post.id}`,
         detailPostId: post.id,
         category: "work",
-        dateFilter: "오늘",
+        dayFilters: toWeekdayFilters(post.days),
         timeFilter: toTimeFilter(post.startTime),
-        departurePlace: toDeparturePlace(post.placeName),
         createdMinutesAgo,
         author: post.author.nickname,
         title: post.title,
@@ -164,13 +185,16 @@ export function mapDomainPostsToMapHomePosts(posts: Post[]): MapHomePost[] {
       };
     }
 
+    const postWithCoordinate = post as typeof post & {
+      departureCoordinate?: MapHomeCoordinate;
+    };
+
     return {
       id: `live-${post.id}`,
       detailPostId: post.id,
       category: "ride",
-      dateFilter: "오늘",
+      dayFilters: toWeekdayFilters(post.days),
       timeFilter: toTimeFilter(post.startTime),
-      departurePlace: toDeparturePlace(post.departure),
       createdMinutesAgo,
       author: post.author.nickname,
       title: post.title,
@@ -181,6 +205,9 @@ export function mapDomainPostsToMapHomePosts(posts: Post[]): MapHomePost[] {
       originName: post.departure,
       createdAgo: formatCreatedAgo(createdMinutesAgo),
       liked: post.liked,
+      marker:
+        postWithCoordinate.departureCoordinate ??
+        resolveKnownPlaceCoordinate(post.departure),
     };
   });
 }
@@ -213,8 +240,27 @@ function toTimeFilter(startTime: string): MapHomePost["timeFilter"] {
   return Number.isFinite(hour) && hour < 12 ? "오전" : "오후";
 }
 
-function toDeparturePlace(place: string): MapHomePost["departurePlace"] {
-  return place.includes("남성현역") ? "남성현역" : "다로리 카페";
+function toWeekdayFilters(days: readonly string[]): WeekdayFilter[] {
+  return days.filter((day): day is WeekdayFilter =>
+    weekdayFilterOptions.includes(day as WeekdayFilter),
+  );
+}
+
+function resolveKnownPlaceCoordinate(
+  place: string,
+): MapHomeCoordinate | undefined {
+  const placeName = place.trim();
+  const exactCoordinate = knownPlaceCoordinates[placeName];
+
+  if (exactCoordinate) {
+    return exactCoordinate;
+  }
+
+  const matchedPlaceName = Object.keys(knownPlaceCoordinates).find((knownPlace) =>
+    placeName.includes(knownPlace),
+  );
+
+  return matchedPlaceName ? knownPlaceCoordinates[matchedPlaceName] : undefined;
 }
 
 function getCreatedMinutesAgo(createdAt: string, fallbackIndex: number) {
