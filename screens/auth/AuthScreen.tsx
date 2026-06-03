@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
   },
   formLabel: {
     color: colors.black,
-    fontFamily: typography.family.medium,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
   },
