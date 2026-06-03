@@ -196,15 +196,20 @@ export const mockRouteOptions: RouteOption[] = [
 // Happy Bus archive fixtures
 // -----------------------------------------------------------------------------
 //
-// The six routes follow the Figma flow user shared on 2026-05-23: "행복버스
-// 1호선" through "행복버스 6호선", identified visually by a 1-to-6 pager and
-// not by hue. All routes therefore share a single mint color; the numeric
-// position is what distinguishes them.
+// The six routes follow the Figma flow the user shared on 2026-05-26: their
+// display names are the Happy Bus numbers 1 through 6 (numbered, not "line N"),
+// identified visually by the numeric position in the 2x3 selection grid and
+// not by hue. All routes therefore share a single mint color; the number is
+// what distinguishes them. The route `code` stays H1-H6 so the per-route
+// last-sighting matching by code keeps working even though the display name
+// changed.
 //
-// The six stop names come from the Figma frame the user transcribed on
+// The six stop names come from the Figma frames the user transcribed on
 // 2026-05-26. Stop coordinates are placeholder values anchored near the
 // Darori village area (~35.65 N, 128.73 E) and chosen so that stop spacing
-// roughly matches the 300 m snap radius. The coordinates are NOT surveyed.
+// roughly matches the 300 m snap radius. The coordinates are NOT surveyed;
+// they are reused in order from the previous fixture so the snap geometry
+// stays stable across the rename.
 //
 // TODO(field-survey): replace these coordinates with measured values once a
 //                     Darori field survey provides them. Do NOT change the
@@ -214,21 +219,21 @@ export const mockRouteOptions: RouteOption[] = [
 const HAPPY_BUS_COLOR = "#00A866"; // mirrors colors.mintDark in the design tokens
 
 export const mockBusRoutes: BusRoute[] = [
-  { id: "route-happy-1", code: "H1", name: "행복버스 1호선", color: HAPPY_BUS_COLOR },
-  { id: "route-happy-2", code: "H2", name: "행복버스 2호선", color: HAPPY_BUS_COLOR },
-  { id: "route-happy-3", code: "H3", name: "행복버스 3호선", color: HAPPY_BUS_COLOR },
-  { id: "route-happy-4", code: "H4", name: "행복버스 4호선", color: HAPPY_BUS_COLOR },
-  { id: "route-happy-5", code: "H5", name: "행복버스 5호선", color: HAPPY_BUS_COLOR },
-  { id: "route-happy-6", code: "H6", name: "행복버스 6호선", color: HAPPY_BUS_COLOR },
+  { id: "route-happy-1", code: "H1", name: "행복버스 1번", color: HAPPY_BUS_COLOR },
+  { id: "route-happy-2", code: "H2", name: "행복버스 2번", color: HAPPY_BUS_COLOR },
+  { id: "route-happy-3", code: "H3", name: "행복버스 3번", color: HAPPY_BUS_COLOR },
+  { id: "route-happy-4", code: "H4", name: "행복버스 4번", color: HAPPY_BUS_COLOR },
+  { id: "route-happy-5", code: "H5", name: "행복버스 5번", color: HAPPY_BUS_COLOR },
+  { id: "route-happy-6", code: "H6", name: "행복버스 6번", color: HAPPY_BUS_COLOR },
 ];
 
 export const mockBusStops: BusStop[] = [
-  { id: "stop-koaru-bluepin", name: "청도 코아루블루핀", latitude: 35.6474, longitude: 128.7338 },
-  { id: "stop-cheongdo-office", name: "청도군청", latitude: 35.6492, longitude: 128.7355 },
-  { id: "stop-cheongdo-terminal", name: "청도 버스 터미널", latitude: 35.6501, longitude: 128.7370 },
-  { id: "stop-seongjo-apt", name: "성조 아파트 앞", latitude: 35.6480, longitude: 128.7390 },
-  { id: "stop-bumin-apt", name: "부민 아파트", latitude: 35.6450, longitude: 128.7305 },
-  { id: "stop-kindergarten", name: "어린이집", latitude: 35.6520, longitude: 128.7385 },
+  { id: "stop-cheongdo-public-terminal", name: "청도공용버스터미널", latitude: 35.6474, longitude: 128.7338 },
+  { id: "stop-gumiri", name: "구미리", latitude: 35.6492, longitude: 128.7355 },
+  { id: "stop-arae-gumi", name: "아랫구미", latitude: 35.6501, longitude: 128.7370 },
+  { id: "stop-wolgok-2-pakwol", name: "월곡2리(박월)", latitude: 35.6480, longitude: 128.7390 },
+  { id: "stop-gwitturami-boiler", name: "귀뚜라미보일러", latitude: 35.6450, longitude: 128.7305 },
+  { id: "stop-nonggong-entrance", name: "농공단지 입구", latitude: 35.6520, longitude: 128.7385 },
 ];
 
 export type MockBusRouteStop = {
@@ -237,42 +242,43 @@ export type MockBusRouteStop = {
   sequence: number;
 };
 
-// Each route visits three or four stops. The stops are intentionally shared
-// across multiple routes so junction tie-breaks in inferRouteAndStop have a
-// realistic geometry to exercise. Sequence numbers are 1-based per route.
+// H1 visits every stop in one sequence (not a closed loop back to the first
+// stop) so the merged route/stop selection screen defaults to a full six-stop
+// list (the user asked for route 1 to be shown by default). The other routes
+// visit three-stop subsets so the rejection branch
+// and the snap tie-breaks still have varied geometry. The
+// stops are intentionally shared across routes so junction tie-breaks in
+// inferRouteAndStop have a realistic geometry to exercise. Sequence numbers
+// are 1-based per route.
 export const mockBusRouteStops: MockBusRouteStop[] = [
-  // H1: koaru-bluepin -> cheongdo-office -> cheongdo-terminal
-  { routeId: "route-happy-1", stopId: "stop-koaru-bluepin", sequence: 1 },
-  { routeId: "route-happy-1", stopId: "stop-cheongdo-office", sequence: 2 },
-  { routeId: "route-happy-1", stopId: "stop-cheongdo-terminal", sequence: 3 },
-  // H2: visits every stop as a stadium loop. Matches the Figma "행복버스
-  //     2호선" stop-selection frame, where the user can choose any of the
-  //     six stops along the route. Sequence order traces the stadium clockwise:
-  //     top row koaru-bluepin -> cheongdo-office -> cheongdo-terminal, then
-  //     bottom row seongjo-apt -> bumin-apt -> kindergarten.
-  { routeId: "route-happy-2", stopId: "stop-koaru-bluepin", sequence: 1 },
-  { routeId: "route-happy-2", stopId: "stop-cheongdo-office", sequence: 2 },
-  { routeId: "route-happy-2", stopId: "stop-cheongdo-terminal", sequence: 3 },
-  { routeId: "route-happy-2", stopId: "stop-seongjo-apt", sequence: 4 },
-  { routeId: "route-happy-2", stopId: "stop-bumin-apt", sequence: 5 },
-  { routeId: "route-happy-2", stopId: "stop-kindergarten", sequence: 6 },
-  // H3: cheongdo-terminal -> seongjo-apt -> bumin-apt
-  { routeId: "route-happy-3", stopId: "stop-cheongdo-terminal", sequence: 1 },
-  { routeId: "route-happy-3", stopId: "stop-seongjo-apt", sequence: 2 },
-  { routeId: "route-happy-3", stopId: "stop-bumin-apt", sequence: 3 },
-  // H4: seongjo-apt -> bumin-apt -> kindergarten
-  { routeId: "route-happy-4", stopId: "stop-seongjo-apt", sequence: 1 },
-  { routeId: "route-happy-4", stopId: "stop-bumin-apt", sequence: 2 },
-  { routeId: "route-happy-4", stopId: "stop-kindergarten", sequence: 3 },
-  // H5: bumin-apt -> kindergarten -> koaru-bluepin
-  { routeId: "route-happy-5", stopId: "stop-bumin-apt", sequence: 1 },
-  { routeId: "route-happy-5", stopId: "stop-kindergarten", sequence: 2 },
-  { routeId: "route-happy-5", stopId: "stop-koaru-bluepin", sequence: 3 },
-  // H6: kindergarten -> koaru-bluepin -> cheongdo-office -> cheongdo-terminal
-  { routeId: "route-happy-6", stopId: "stop-kindergarten", sequence: 1 },
-  { routeId: "route-happy-6", stopId: "stop-koaru-bluepin", sequence: 2 },
-  { routeId: "route-happy-6", stopId: "stop-cheongdo-office", sequence: 3 },
-  { routeId: "route-happy-6", stopId: "stop-cheongdo-terminal", sequence: 4 },
+  // H1: every stop in order, the default selection list.
+  { routeId: "route-happy-1", stopId: "stop-cheongdo-public-terminal", sequence: 1 },
+  { routeId: "route-happy-1", stopId: "stop-gumiri", sequence: 2 },
+  { routeId: "route-happy-1", stopId: "stop-arae-gumi", sequence: 3 },
+  { routeId: "route-happy-1", stopId: "stop-wolgok-2-pakwol", sequence: 4 },
+  { routeId: "route-happy-1", stopId: "stop-gwitturami-boiler", sequence: 5 },
+  { routeId: "route-happy-1", stopId: "stop-nonggong-entrance", sequence: 6 },
+  // H2: public-terminal -> gumiri -> arae-gumi
+  { routeId: "route-happy-2", stopId: "stop-cheongdo-public-terminal", sequence: 1 },
+  { routeId: "route-happy-2", stopId: "stop-gumiri", sequence: 2 },
+  { routeId: "route-happy-2", stopId: "stop-arae-gumi", sequence: 3 },
+  // H3: arae-gumi -> wolgok-2-pakwol -> gwitturami-boiler
+  { routeId: "route-happy-3", stopId: "stop-arae-gumi", sequence: 1 },
+  { routeId: "route-happy-3", stopId: "stop-wolgok-2-pakwol", sequence: 2 },
+  { routeId: "route-happy-3", stopId: "stop-gwitturami-boiler", sequence: 3 },
+  // H4: wolgok-2-pakwol -> gwitturami-boiler -> nonggong-entrance
+  { routeId: "route-happy-4", stopId: "stop-wolgok-2-pakwol", sequence: 1 },
+  { routeId: "route-happy-4", stopId: "stop-gwitturami-boiler", sequence: 2 },
+  { routeId: "route-happy-4", stopId: "stop-nonggong-entrance", sequence: 3 },
+  // H5: gwitturami-boiler -> nonggong-entrance -> public-terminal
+  { routeId: "route-happy-5", stopId: "stop-gwitturami-boiler", sequence: 1 },
+  { routeId: "route-happy-5", stopId: "stop-nonggong-entrance", sequence: 2 },
+  { routeId: "route-happy-5", stopId: "stop-cheongdo-public-terminal", sequence: 3 },
+  // H6: nonggong-entrance -> public-terminal -> gumiri -> arae-gumi
+  { routeId: "route-happy-6", stopId: "stop-nonggong-entrance", sequence: 1 },
+  { routeId: "route-happy-6", stopId: "stop-cheongdo-public-terminal", sequence: 2 },
+  { routeId: "route-happy-6", stopId: "stop-gumiri", sequence: 3 },
+  { routeId: "route-happy-6", stopId: "stop-arae-gumi", sequence: 4 },
 ];
 
 /**
@@ -300,7 +306,7 @@ export const mockBusSightings: MockBusSightingRaw[] = [
   {
     id: "sighting-1",
     routeId: "route-happy-1",
-    stopId: "stop-koaru-bluepin",
+    stopId: "stop-cheongdo-public-terminal",
     reporterId: "me",
     latitude: 35.6474,
     longitude: 128.7338,
@@ -309,7 +315,7 @@ export const mockBusSightings: MockBusSightingRaw[] = [
   {
     id: "sighting-2",
     routeId: "route-happy-2",
-    stopId: "stop-cheongdo-terminal",
+    stopId: "stop-arae-gumi",
     reporterId: "author-1",
     latitude: 35.6501,
     longitude: 128.7370,
@@ -318,7 +324,7 @@ export const mockBusSightings: MockBusSightingRaw[] = [
   {
     id: "sighting-3",
     routeId: "route-happy-3",
-    stopId: "stop-seongjo-apt",
+    stopId: "stop-wolgok-2-pakwol",
     reporterId: "me",
     latitude: 35.6480,
     longitude: 128.7390,
@@ -327,7 +333,7 @@ export const mockBusSightings: MockBusSightingRaw[] = [
   {
     id: "sighting-4",
     routeId: "route-happy-6",
-    stopId: "stop-kindergarten",
+    stopId: "stop-nonggong-entrance",
     reporterId: "author-1",
     latitude: 35.6520,
     longitude: 128.7385,

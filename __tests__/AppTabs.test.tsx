@@ -36,6 +36,13 @@ describe("App tabs", () => {
     fireEvent.press(screen.getByLabelText("뒤로가기"));
     expect(await screen.findByText("추천 경로")).toBeTruthy();
 
+    // Pushing the record-sighting button opens the BusSightingScreen sub-screen,
+    // and tapping the back affordance returns to the bus tab.
+    fireEvent.press(screen.getByTestId("route-record-sighting-button"));
+    expect(await screen.findByText("방금 버스 봤어요!")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("뒤로가기"));
+    expect(screen.getByText("가장 빠른 노선")).toBeTruthy();
+
     fireEvent.press(screen.getByTestId("route-bottom-nav-posts"));
     expect(screen.getByText("어떤 모집을 시작할까요?")).toBeTruthy();
     expect(screen.getByText("정기 라이딩")).toBeTruthy();

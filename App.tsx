@@ -96,7 +96,6 @@ function AppContent() {
   const [busRouteInfoOpen, setBusRouteInfoOpen] = useState(false);
   const [busArchiveHistoryOpen, setBusArchiveHistoryOpen] = useState(false);
   const [busArrivalTimesOpen, setBusArrivalTimesOpen] = useState(false);
-
   useEffect(() => {
     if (!fontsLoaded || authChecked) {
       return undefined;
@@ -260,6 +259,7 @@ function AppContent() {
       <>
         <BusArrivalTimesScreen
           onBack={() => setBusArrivalTimesOpen(false)}
+          onSelectTab={handleSelectTab}
         />
         <StatusBar style="dark" />
       </>
@@ -273,6 +273,11 @@ function AppContent() {
           onBack={() => setBusSightingOpen(false)}
           onOpenRouteInfo={() => setBusRouteInfoOpen(true)}
           onOpenArrivalTimes={() => setBusArrivalTimesOpen(true)}
+          onOpenArchiveHistory={() => {
+            setBusSightingOpen(false);
+            setBusArchiveHistoryOpen(true);
+          }}
+          onSelectTab={handleSelectTab}
         />
         <StatusBar style="dark" />
       </>
