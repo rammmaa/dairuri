@@ -3,7 +3,7 @@ set -euo pipefail
 
 EC2_HOST="${EC2_HOST:?Set EC2_HOST to the EC2 public DNS or IP}"
 EC2_USER="${EC2_USER:-ec2-user}"
-EC2_KEY="${EC2_KEY:-$HOME/Downloads/darolink.pem}"
+EC2_KEY="${EC2_KEY:-$HOME/Documents/darolink.pem}"
 EC2_APP_DIR="${EC2_APP_DIR:-/home/$EC2_USER/darori}"
 EC2_SERVICE="${EC2_SERVICE:-darori-api}"
 DARORI_API_PORT="${DARORI_API_PORT:-8787}"
@@ -22,4 +22,3 @@ ssh "${SSH_OPTS[@]}" "$EC2_USER@$EC2_HOST" "set -euo pipefail
   printf '\n'
   sudo systemctl is-active '$EC2_SERVICE'
 "
-

@@ -51,8 +51,8 @@ Expected: both commands exit with code `0`.
 Run:
 
 ```bash
-EC2_HOST=ec2-16-184-41-188.ap-northeast-2.compute.amazonaws.com \
-EC2_KEY=/Users/yoons/Downloads/darolink.pem \
+EC2_HOST=ec2-43-203-114-56.ap-northeast-2.compute.amazonaws.com \
+EC2_KEY=/Users/yoons/Documents/darolink.pem \
 ./scripts/deploy-ec2-api.sh
 ```
 
@@ -63,8 +63,8 @@ Expected: output contains `postgres: ok`, `redis: ok`, service status, and `{"ok
 Run:
 
 ```bash
-EC2_HOST=ec2-16-184-41-188.ap-northeast-2.compute.amazonaws.com \
-EC2_KEY=/Users/yoons/Downloads/darolink.pem \
+EC2_HOST=ec2-43-203-114-56.ap-northeast-2.compute.amazonaws.com \
+EC2_KEY=/Users/yoons/Documents/darolink.pem \
 ./scripts/check-ec2-api.sh
 ```
 
@@ -104,4 +104,3 @@ git diff --check
 ```
 
 Expected: command exits with code `0`.
-

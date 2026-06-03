@@ -3,7 +3,7 @@ set -euo pipefail
 
 EC2_HOST="${EC2_HOST:?Set EC2_HOST to the EC2 public DNS or IP}"
 EC2_USER="${EC2_USER:-ec2-user}"
-EC2_KEY="${EC2_KEY:-$HOME/Downloads/darolink.pem}"
+EC2_KEY="${EC2_KEY:-$HOME/Documents/darolink.pem}"
 API_DOMAIN="${API_DOMAIN:-api.dairuri.harammm.me}"
 DARORI_API_PORT="${DARORI_API_PORT:-8787}"
 ENABLE_TLS="${ENABLE_TLS:-false}"

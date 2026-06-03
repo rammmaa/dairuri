@@ -99,7 +99,7 @@ EC2 배포와 점검은 별도 runbook을 기준으로 한다.
 대표 smoke check:
 
 ```bash
-EC2_HOST=ec2-16-184-41-188.ap-northeast-2.compute.amazonaws.com \
+EC2_HOST=ec2-43-203-114-56.ap-northeast-2.compute.amazonaws.com \
 EC2_KEY=/Users/yoons/Documents/darolink.pem \
 ./scripts/check-ec2-api.sh
 ```
