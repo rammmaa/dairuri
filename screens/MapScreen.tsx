@@ -619,12 +619,7 @@ export function MapScreen({
             </View>
           ) : (
             <>
-              <View
-                style={[
-                  styles.sheetFilterBar,
-                  activeFilterGroup !== null && styles.sheetFilterBarExpanded,
-                ]}
-              >
+              <View style={styles.sheetFilterBar}>
                 <View
                   {...sheetPanResponder.panHandlers}
                   accessibilityRole="adjustable"
@@ -636,57 +631,103 @@ export function MapScreen({
                 </View>
                 <View style={styles.sheetFilterGroups}>
                   <View style={styles.sheetFilterControls}>
-                    <FilterChip
-                      label={formatSelectedFilterLabel("요일", selectedDays)}
-                      selected={
-                        activeFilterGroup === "weekday" ||
-                        selectedDays.length > 0
-                      }
-                      showChevron={activeFilterGroup !== "weekday"}
-                      compact
-                      onPress={() => toggleFilterGroup("weekday")}
-                      testID="map-home-filter-weekday"
-                    />
-                    <FilterChip
-                      label={formatSelectedFilterLabel("시간", selectedTimes)}
-                      selected={
-                        activeFilterGroup === "time" ||
-                        selectedTimes.length > 0
-                      }
-                      showChevron={activeFilterGroup !== "time"}
-                      compact
-                      onPress={() => toggleFilterGroup("time")}
-                      testID="map-home-filter-time"
-                    />
+                    <View style={styles.filterControl}>
+                      <FilterChip
+                        label={formatSelectedFilterLabel("요일", selectedDays)}
+                        selected={
+                          activeFilterGroup === "weekday" ||
+                          selectedDays.length > 0
+                        }
+                        showChevron
+                        compact
+                        onPress={() => toggleFilterGroup("weekday")}
+                        testID="map-home-filter-weekday"
+                      />
+                      {activeFilterGroup === "weekday" ? (
+                        <View
+                          style={styles.filterDropdown}
+                          testID="map-home-filter-dropdown-weekday"
+                        >
+                          {weekdayFilterOptions.map((day) => (
+                            <Pressable
+                              key={day}
+                              accessibilityRole="button"
+                              accessibilityLabel={day}
+                              accessibilityState={{
+                                selected: selectedDays.includes(day),
+                              }}
+                              onPress={() => toggleDayFilter(day)}
+                              testID={`map-home-weekday-option-${day}`}
+                              style={({ pressed }) => [
+                                styles.filterDropdownOption,
+                                selectedDays.includes(day) &&
+                                  styles.filterDropdownOptionSelected,
+                                pressed && styles.filterDropdownOptionPressed,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.filterDropdownOptionText,
+                                  selectedDays.includes(day) &&
+                                    styles.filterDropdownOptionTextSelected,
+                                ]}
+                              >
+                                {day}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={styles.filterControl}>
+                      <FilterChip
+                        label={formatSelectedFilterLabel("시간", selectedTimes)}
+                        selected={
+                          activeFilterGroup === "time" ||
+                          selectedTimes.length > 0
+                        }
+                        showChevron
+                        compact
+                        onPress={() => toggleFilterGroup("time")}
+                        testID="map-home-filter-time"
+                      />
+                      {activeFilterGroup === "time" ? (
+                        <View
+                          style={styles.filterDropdown}
+                          testID="map-home-filter-dropdown-time"
+                        >
+                          {timeFilterOptions.map((time) => (
+                            <Pressable
+                              key={time}
+                              accessibilityRole="button"
+                              accessibilityLabel={time}
+                              accessibilityState={{
+                                selected: selectedTimes.includes(time),
+                              }}
+                              onPress={() => toggleTimeFilter(time)}
+                              testID={`map-home-time-option-${time}`}
+                              style={({ pressed }) => [
+                                styles.filterDropdownOption,
+                                selectedTimes.includes(time) &&
+                                  styles.filterDropdownOptionSelected,
+                                pressed && styles.filterDropdownOptionPressed,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.filterDropdownOptionText,
+                                  selectedTimes.includes(time) &&
+                                    styles.filterDropdownOptionTextSelected,
+                                ]}
+                              >
+                                {time}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
                   </View>
-                  {activeFilterGroup === "weekday" ? (
-                    <View style={styles.sheetFilterRow}>
-                      {weekdayFilterOptions.map((day) => (
-                        <FilterChip
-                          key={day}
-                          label={day}
-                          selected={selectedDays.includes(day)}
-                          compact
-                          onPress={() => toggleDayFilter(day)}
-                          testID={`map-home-day-filter-${day}`}
-                        />
-                      ))}
-                    </View>
-                  ) : null}
-                  {activeFilterGroup === "time" ? (
-                    <View style={styles.sheetFilterRow}>
-                      {timeFilterOptions.map((time) => (
-                        <FilterChip
-                          key={time}
-                          label={time}
-                          selected={selectedTimes.includes(time)}
-                          compact
-                          onPress={() => toggleTimeFilter(time)}
-                          testID={`map-home-time-filter-${time}`}
-                        />
-                      ))}
-                    </View>
-                  ) : null}
                 </View>
               </View>
 
@@ -924,9 +965,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 28,
     paddingBottom: 10,
-  },
-  sheetFilterBarExpanded: {
-    height: 116,
+    zIndex: 3,
   },
   dragHandleTouchArea: {
     position: "absolute",
@@ -947,17 +986,60 @@ const styles = StyleSheet.create({
   sheetFilterGroups: {
     width: "100%",
     alignItems: "center",
-    gap: 7,
+    position: "relative",
+    zIndex: 2,
   },
   sheetFilterControls: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 5,
+    maxWidth: "100%",
   },
-  sheetFilterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
+  filterControl: {
+    position: "relative",
+    flexShrink: 1,
+    zIndex: 4,
+  },
+  filterDropdown: {
+    position: "absolute",
+    top: 36,
+    left: 0,
+    right: 0,
+    minWidth: 112,
+    borderWidth: 1,
+    borderColor: colors.gray300,
+    backgroundColor: colors.surface,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 5,
+  },
+  filterDropdownOption: {
+    minHeight: 28,
+    paddingHorizontal: 10,
+    justifyContent: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineStrong,
+    backgroundColor: colors.surface,
+  },
+  filterDropdownOptionSelected: {
+    backgroundColor: colors.blue,
+    borderBottomColor: colors.surface,
+  },
+  filterDropdownOptionPressed: {
+    opacity: 0.82,
+  },
+  filterDropdownOptionText: {
+    color: colors.black,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  filterDropdownOptionTextSelected: {
+    color: colors.surface,
+    fontFamily: typography.family.bold,
   },
   sheetScroll: {
     flex: 1,
