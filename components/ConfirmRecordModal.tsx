@@ -32,8 +32,10 @@ export function ConfirmRecordModal({
     <View style={styles.overlay} testID={testID}>
       <Pressable
         accessibilityRole="button"
-        style={styles.backdrop}
         accessibilityLabel="팝업 닫기"
+        accessibilityState={{ disabled: recording }}
+        disabled={recording}
+        style={styles.backdrop}
         onPress={onCancel}
       />
       <View style={styles.card}>
@@ -56,6 +58,7 @@ export function ConfirmRecordModal({
             style={({ pressed }) => [
               styles.button,
               styles.cancelButton,
+              recording && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
