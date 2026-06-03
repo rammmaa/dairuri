@@ -250,17 +250,16 @@ describe("MapScreen", () => {
     });
     expect(getTestStyle("map-home-filter-weekday").borderColor).toBe(colors.mint);
     expect(getTestStyle("map-home-weekday-option-화").backgroundColor).toBe(
-      colors.blue,
-    );
-    expect(getTestStyle("map-home-weekday-option-화").borderBottomColor).toBe(
       colors.surface,
     );
+    expect(getTestStyle("map-home-weekday-option-화").borderColor).toBe(colors.mint);
+    expect(getTestStyle("map-home-weekday-option-화").borderRadius).toBe(18);
     expect(
       StyleSheet.flatten(
         within(screen.getByTestId("map-home-weekday-option-화")).getByText("화")
           .props.style,
       ).color,
-    ).toBe(colors.surface);
+    ).toBe(colors.mintDark);
     expect(screen.getByText("3")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("map-home-weekday-option-수"));
@@ -285,17 +284,16 @@ describe("MapScreen", () => {
     });
     expect(getTestStyle("map-home-filter-time").borderColor).toBe(colors.mint);
     expect(getTestStyle("map-home-time-option-오전").backgroundColor).toBe(
-      colors.blue,
-    );
-    expect(getTestStyle("map-home-time-option-오전").borderBottomColor).toBe(
       colors.surface,
     );
+    expect(getTestStyle("map-home-time-option-오전").borderColor).toBe(colors.mint);
+    expect(getTestStyle("map-home-time-option-오전").borderRadius).toBe(18);
     expect(
       StyleSheet.flatten(
         within(screen.getByTestId("map-home-time-option-오전")).getByText("오전")
           .props.style,
       ).color,
-    ).toBe(colors.surface);
+    ).toBe(colors.mintDark);
     expect(screen.getByText("2")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("map-home-time-option-오후"));
