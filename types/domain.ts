@@ -68,6 +68,7 @@ export type JobPost = BasePost & {
   profileMode?: "resource";
   placeName: string;
   placeAddress?: string;
+  placeCoordinate?: GeoCoordinate;
   days: Weekday[];
   startTime: string;
   endTime: string;

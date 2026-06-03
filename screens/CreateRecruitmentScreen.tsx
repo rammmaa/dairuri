@@ -37,6 +37,7 @@ import type { PlaceCandidate } from "../types/place";
 
 type RecruitmentType = "ride" | "work";
 type RoutePlaceTarget = "departure" | "destination";
+type PlacePickerTarget = RoutePlaceTarget | "workArea";
 
 export type CreateRecruitmentScreenProps = {
   onCancel?: () => void;
@@ -59,6 +60,10 @@ type ScheduleEntry = {
 };
 
 const weekdays = ["월", "화", "수", "목", "금", "토", "일"] as const;
+const unknownWeekdayOrder = weekdays.length;
+const weekdayOrder = new Map<string, number>(
+  weekdays.map((day, index) => [day, index]),
+);
 
 const workCategories = [
   "외식/음료",
@@ -97,7 +102,7 @@ export function CreateRecruitmentScreen({
   const [screenIndex, setScreenIndex] = useState(0);
   const [selectedType, setSelectedType] = useState<RecruitmentType | null>(null);
   const [placePickerTarget, setPlacePickerTarget] =
-    useState<RoutePlaceTarget | null>(null);
+    useState<PlacePickerTarget | null>(null);
 
   const [departure, setDeparture] = useState("");
   const [destination, setDestination] = useState("");
@@ -117,6 +122,10 @@ export function CreateRecruitmentScreen({
   const [rideDetails, setRideDetails] = useState("");
 
   const [workTitle, setWorkTitle] = useState("");
+  const [workArea, setWorkArea] = useState("");
+  const [workAreaAddress, setWorkAreaAddress] = useState("");
+  const [workAreaCoordinate, setWorkAreaCoordinate] =
+    useState<GeoCoordinate | null>(null);
   const [workTaskCategories, setWorkTaskCategories] = useState<string[]>([]);
   const [workDays, setWorkDays] = useState<string[]>([]);
   const [workStartTime, setWorkStartTime] = useState("");
@@ -135,7 +144,7 @@ export function CreateRecruitmentScreen({
   const accentDark = selectedType === "work" ? colors.yellowText : colors.mintDark;
   const accentLight = selectedType === "work" ? colors.yellowLight : colors.mintLight;
   const branchStepIndex = screenIndex - 1;
-  const totalScreens = selectedType === "work" ? 5 : 6;
+  const totalScreens = 6;
   const progress = selectedType
     ? Math.min((screenIndex + 1) / totalScreens, 1)
     : 0.22;
@@ -172,9 +181,12 @@ export function CreateRecruitmentScreen({
         return hasText(workTitle) && workTaskCategories.length > 0;
       }
       if (branchStepIndex === 1) {
-        return workScheduleEntries.length > 0 && hasText(workPay);
+        return hasText(workArea);
       }
       if (branchStepIndex === 2) {
+        return workScheduleEntries.length > 0 && hasText(workPay);
+      }
+      if (branchStepIndex === 3) {
         return hasText(workDetails) && allAgreementsChecked;
       }
       return true;
@@ -194,6 +206,7 @@ export function CreateRecruitmentScreen({
     screenIndex,
     selectedType,
     workDetails,
+    workArea,
     workPay,
     workScheduleEntries.length,
     workTaskCategories.length,
@@ -216,8 +229,7 @@ export function CreateRecruitmentScreen({
 
     setSubmitError(null);
 
-    const maxIndex = selectedType === "work" ? 4 : 5;
-    if (screenIndex === maxIndex) {
+    if (screenIndex === totalScreens - 1) {
       setSubmitting(true);
       try {
         await createPost(buildCreatePostInput(selectedType));
@@ -245,6 +257,10 @@ export function CreateRecruitmentScreen({
     } else if (placePickerTarget === "destination") {
       setDestination(place.name);
       setDestinationCoordinate(coordinate);
+    } else if (placePickerTarget === "workArea") {
+      setWorkArea(place.name);
+      setWorkAreaAddress(place.address);
+      setWorkAreaCoordinate(coordinate);
     }
 
     setPlacePickerTarget(null);
@@ -281,7 +297,9 @@ export function CreateRecruitmentScreen({
       return;
     }
 
-    setRideScheduleEntries((current) => [...current, entry]);
+    setRideScheduleEntries((current) =>
+      sortScheduleEntries([...current, entry]),
+    );
     setRideDays([]);
     setRideStartTime("");
     setRideEndTime("");
@@ -305,7 +323,9 @@ export function CreateRecruitmentScreen({
       return;
     }
 
-    setWorkScheduleEntries((current) => [...current, entry]);
+    setWorkScheduleEntries((current) =>
+      sortScheduleEntries([...current, entry]),
+    );
     setWorkDays([]);
     setWorkStartTime("");
     setWorkEndTime("");
@@ -319,16 +339,19 @@ export function CreateRecruitmentScreen({
 
   function buildCreatePostInput(type: RecruitmentType): Partial<Post> {
     if (type === "work") {
-      const scheduleLabel = formatScheduleEntries(workScheduleEntries);
-      const firstSchedule = workScheduleEntries[0];
+      const sortedSchedules = sortScheduleEntries(workScheduleEntries);
+      const scheduleLabel = formatScheduleEntries(sortedSchedules);
+      const firstSchedule = sortedSchedules[0];
 
       return {
         type: "job",
         profileMode: "resource",
         title: workTitle.trim(),
         body: workDetails.trim(),
-        placeName: "다로리 일대",
-        days: getScheduleEntryDays(workScheduleEntries) as Weekday[],
+        placeName: workArea.trim(),
+        placeAddress: workAreaAddress.trim() || undefined,
+        placeCoordinate: workAreaCoordinate ?? undefined,
+        days: getScheduleEntryDays(sortedSchedules) as Weekday[],
         startTime: firstSchedule?.startTime ?? "",
         endTime: firstSchedule?.endTime ?? "",
         wageType: "hourly",
@@ -342,7 +365,8 @@ export function CreateRecruitmentScreen({
       };
     }
 
-    const firstSchedule = rideScheduleEntries[0];
+    const sortedSchedules = sortScheduleEntries(rideScheduleEntries);
+    const firstSchedule = sortedSchedules[0];
 
     return {
       type: "carpool",
@@ -352,10 +376,10 @@ export function CreateRecruitmentScreen({
       destination,
       departureCoordinate: departureCoordinate ?? undefined,
       destinationCoordinate: destinationCoordinate ?? undefined,
-      days: getScheduleEntryDays(rideScheduleEntries) as Weekday[],
+      days: getScheduleEntryDays(sortedSchedules) as Weekday[],
       startTime: firstSchedule?.startTime ?? "",
       endTime: firstSchedule?.endTime ?? undefined,
-      scheduleNote: formatScheduleEntries(rideScheduleEntries),
+      scheduleNote: formatScheduleEntries(sortedSchedules),
       seats: parseCurrencyNumber(rideCapacity),
     };
   }
@@ -378,6 +402,12 @@ export function CreateRecruitmentScreen({
           onToggleCategory={toggleWorkTaskCategory}
         />
       ) : branchStepIndex === 1 ? (
+        <WorkAreaStep
+          area={workArea}
+          accent={accent}
+          onOpenPlacePicker={() => setPlacePickerTarget("workArea")}
+        />
+      ) : branchStepIndex === 2 ? (
         <WorkScheduleStep
           selectedDays={workDays}
           startTime={workStartTime}
@@ -399,7 +429,7 @@ export function CreateRecruitmentScreen({
           onRemoveSchedule={handleRemoveWorkSchedule}
           onChangePay={(value) => setWorkPay(formatCurrency(value))}
         />
-      ) : branchStepIndex === 2 ? (
+      ) : branchStepIndex === 3 ? (
         <DetailsStep
           type="work"
           details={workDetails}
@@ -415,9 +445,9 @@ export function CreateRecruitmentScreen({
           accent={accent}
           accentDark={accentDark}
           title={workTitle}
-          routeLabel={formatCategories(workTaskCategories)}
+          routeLabel={workArea}
           scheduleLabel={formatScheduleEntries(workScheduleEntries)}
-          metaLabel="가능 시간"
+          metaLabel={formatCategories(workTaskCategories)}
           detailLabel={formatHourlyPay(workPay)}
         />
       )
@@ -484,7 +514,7 @@ export function CreateRecruitmentScreen({
   const buttonLabel =
     submitting
       ? "등록 중..."
-      : selectedType === "work" && screenIndex === 4
+      : selectedType === "work" && screenIndex === 5
       ? "인재 풀 등록"
       : selectedType === "ride" && screenIndex === 5
         ? "라이드 모집 시작하기"
@@ -497,7 +527,11 @@ export function CreateRecruitmentScreen({
         target={placePickerTarget}
         accent={accent}
         currentValue={
-          placePickerTarget === "departure" ? departure : destination
+          placePickerTarget === "departure"
+            ? departure
+            : placePickerTarget === "destination"
+              ? destination
+              : workArea
         }
         onBack={() => setPlacePickerTarget(null)}
         onSelectPlace={handleSelectPlace}
@@ -917,6 +951,32 @@ function WorkBasicsStep({
   );
 }
 
+type WorkAreaStepProps = {
+  area: string;
+  accent: string;
+  onOpenPlacePicker: () => void;
+};
+
+function WorkAreaStep({
+  area,
+  accent,
+  onOpenPlacePicker,
+}: WorkAreaStepProps) {
+  return (
+    <View style={styles.stepBlock}>
+      <ScreenTitle>활동 가능한 지역을 선택해주세요.</ScreenTitle>
+      <PlaceSelectField
+        label="활동 가능 지역"
+        placeholder="지역 선택"
+        value={area}
+        accent={accent}
+        testID="place-field-work-area"
+        onPress={onOpenPlacePicker}
+      />
+    </View>
+  );
+}
+
 type WorkScheduleStepProps = {
   selectedDays: string[];
   startTime: string;
@@ -1090,7 +1150,7 @@ function ScheduleEditor({
 
       {schedules.length > 0 ? (
         <View style={styles.scheduleList}>
-          {schedules.map((entry) => {
+          {sortScheduleEntries(schedules).map((entry) => {
             const label = formatScheduleEntry(entry);
 
             return (
@@ -1282,7 +1342,7 @@ function ReviewRow({ icon: Icon, color, label }: ReviewRowProps) {
 }
 
 type PlacePickerScreenProps = {
-  target: RoutePlaceTarget;
+  target: PlacePickerTarget;
   accent: string;
   currentValue: string;
   onBack: () => void;
@@ -1301,7 +1361,11 @@ function PlacePickerScreen({
   const [isSearchingPlace, setIsSearchingPlace] = useState(false);
   const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
   const title =
-    target === "departure" ? "지도에서 출발지 선택" : "지도에서 목적지 선택";
+    target === "departure"
+      ? "지도에서 출발지 선택"
+      : target === "destination"
+        ? "지도에서 목적지 선택"
+        : "지도에서 활동 가능 지역 선택";
 
   useEffect(() => {
     let active = true;
@@ -1660,9 +1724,10 @@ function createScheduleEntry(
 ): ScheduleEntry | null {
   const committedStartTime = commitTimeInput(startTime);
   const committedEndTime = commitTimeInput(endTime);
+  const sortedDays = sortWeekdays(days);
 
   if (
-    days.length === 0 ||
+    sortedDays.length === 0 ||
     !hasText(committedStartTime) ||
     !hasText(committedEndTime)
   ) {
@@ -1670,8 +1735,8 @@ function createScheduleEntry(
   }
 
   return {
-    id: `schedule-${index}-${days.join("")}-${committedStartTime}-${committedEndTime}`,
-    days,
+    id: `schedule-${index}-${sortedDays.join("")}-${committedStartTime}-${committedEndTime}`,
+    days: sortedDays,
     startTime: committedStartTime,
     endTime: committedEndTime,
   };
@@ -1690,13 +1755,53 @@ function getScheduleEntryDays(entries: ScheduleEntry[]) {
 }
 
 function formatScheduleEntry(entry: ScheduleEntry) {
-  return `${entry.days.join(" · ")} ${entry.startTime} - ${entry.endTime}`;
+  return `${sortWeekdays(entry.days).join(" · ")} ${entry.startTime} - ${entry.endTime}`;
 }
 
 function formatScheduleEntries(entries: ScheduleEntry[]) {
   return entries.length > 0
-    ? entries.map((entry) => formatScheduleEntry(entry)).join(" · ")
+    ? sortScheduleEntries(entries)
+        .map((entry) => formatScheduleEntry(entry))
+        .join(" · ")
     : "시간 미정";
+}
+
+function sortWeekdays(days: readonly string[]): string[] {
+  return [...days].sort(
+    (firstDay, secondDay) =>
+      getWeekdayOrder(firstDay) - getWeekdayOrder(secondDay),
+  );
+}
+
+function sortScheduleEntries(entries: readonly ScheduleEntry[]): ScheduleEntry[] {
+  return [...entries].sort((firstEntry, secondEntry) => {
+    const firstDayDiff =
+      getFirstScheduleDayOrder(firstEntry) -
+      getFirstScheduleDayOrder(secondEntry);
+
+    if (firstDayDiff !== 0) {
+      return firstDayDiff;
+    }
+
+    const startTimeDiff = firstEntry.startTime.localeCompare(secondEntry.startTime);
+
+    if (startTimeDiff !== 0) {
+      return startTimeDiff;
+    }
+
+    return firstEntry.endTime.localeCompare(secondEntry.endTime);
+  });
+}
+
+function getFirstScheduleDayOrder(entry: ScheduleEntry): number {
+  return sortWeekdays(entry.days).reduce<number>(
+    (minimumOrder, day) => Math.min(minimumOrder, getWeekdayOrder(day)),
+    unknownWeekdayOrder,
+  );
+}
+
+function getWeekdayOrder(day: string): number {
+  return weekdayOrder.get(day) ?? unknownWeekdayOrder;
 }
 
 function formatCategories(categories: string[]) {

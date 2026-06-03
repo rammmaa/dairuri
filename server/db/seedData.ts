@@ -18,6 +18,8 @@ type SeedPostRecord = {
   status: "open" | "closed";
   placeName: string | null;
   placeAddress: string | null;
+  placeLatitude: number | null;
+  placeLongitude: number | null;
   departure: string | null;
   destination: string | null;
   days: Post["days"];

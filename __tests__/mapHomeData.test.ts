@@ -74,4 +74,63 @@ describe("map home fixtures", () => {
       ]),
     );
   });
+
+  it("uses resource profile place coordinates for map markers", () => {
+    const resourcePost = mockPosts.find((post) => post.type === "job");
+
+    expect(resourcePost).toBeTruthy();
+    expect(
+      mapDomainPostsToMapHomePosts([
+        {
+          ...resourcePost!,
+          id: "job-custom-place",
+          placeName: "새 활동 지역",
+          placeCoordinate: {
+            latitude: 35.6512,
+            longitude: 128.7391,
+          },
+        },
+      ]),
+    ).toEqual([
+      expect.objectContaining({
+        detailPostId: "job-custom-place",
+        category: "work",
+        originName: "새 활동 지역",
+        marker: {
+          latitude: 35.6512,
+          longitude: 128.7391,
+        },
+      }),
+    ]);
+  });
+
+  it("uses availability note as the only resource card time label", () => {
+    const resourcePost = mockPosts.find((post) => post.type === "job");
+
+    expect(resourcePost).toBeTruthy();
+    const [card] = mapDomainPostsToMapHomePosts([
+      {
+        ...resourcePost!,
+        availabilityNote: "토 · 화 16:00 - 18:00",
+      },
+    ]);
+
+    expect(card.schedule).toBe("토 · 화 16:00 - 18:00");
+    expect(card.duration).toBeUndefined();
+  });
+
+  it("uses schedule note as the only ride card time label", () => {
+    const ridePost = mockPosts.find((post) => post.type === "carpool");
+
+    expect(ridePost).toBeTruthy();
+    const [card] = mapDomainPostsToMapHomePosts([
+      {
+        ...ridePost!,
+        scheduleNote: "토 · 화 16:00 - 18:00",
+      },
+    ]);
+
+    expect(card.schedule).toBe("토 · 화 16:00 - 18:00");
+    expect(card.duration).toBeUndefined();
+  });
 });

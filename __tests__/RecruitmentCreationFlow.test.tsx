@@ -172,12 +172,31 @@ describe("Recruitment creation flow", () => {
     fireEvent.press(screen.getByText("생산/건설"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
+    expect(screen.getByText("활동 가능한 지역을 선택해주세요.")).toBeTruthy();
+    expect(screen.getByTestId("recruitment-next").props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    fireEvent.press(screen.getByTestId("place-field-work-area"));
+    expect(screen.getByText("지도에서 활동 가능 지역 선택")).toBeTruthy();
+    fireEvent.changeText(screen.getByPlaceholderText("장소 검색"), "청도");
+    await screen.findByTestId("place-result-api-cheongdo-station");
+    expect(screen.getByTestId("place-map-frame").props.accessibilityValue).toEqual({
+      text: "청도역",
+    });
+    fireEvent.press(await screen.findByTestId("place-result-api-cheongdo-station"));
+    expect(screen.getByText("청도역")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("recruitment-next"));
+
     expect(screen.getByText("가능한 시간대를 알려주세요.")).toBeTruthy();
+    fireEvent.press(screen.getByText("수"));
     fireEvent.press(screen.getByText("화"));
+    fireEvent.press(screen.getByText("월"));
+    fireEvent.press(screen.getByText("일"));
+    fireEvent.press(screen.getByText("목"));
     fireEvent.changeText(screen.getByPlaceholderText("시작 시간"), "09:00");
     fireEvent.changeText(screen.getByPlaceholderText("종료 시간"), "15:00");
     fireEvent.press(screen.getByTestId("work-schedule-add"));
-    expect(screen.getByText("화 09:00 - 15:00")).toBeTruthy();
+    expect(screen.getByText("월 · 화 · 수 · 목 · 일 09:00 - 15:00")).toBeTruthy();
     fireEvent.press(screen.getByText("목"));
     fireEvent.changeText(screen.getByPlaceholderText("시작 시간"), "1400");
     fireEvent.changeText(screen.getByPlaceholderText("종료 시간"), "1800");
@@ -196,8 +215,9 @@ describe("Recruitment creation flow", () => {
 
     expect(screen.getByText("마지막으로 확인해주세요.")).toBeTruthy();
     expect(screen.getByText("농촌 일손과 카페 보조 가능")).toBeTruthy();
+    expect(screen.getByText("청도역")).toBeTruthy();
     expect(screen.getByText("유통/판매 · 생산/건설")).toBeTruthy();
-    expect(screen.getByText("화 09:00 - 15:00 · 목 14:00 - 18:00")).toBeTruthy();
+    expect(screen.getByText("월 · 화 · 수 · 목 · 일 09:00 - 15:00 · 목 14:00 - 18:00")).toBeTruthy();
     expect(screen.getByText("시간당 123,123원")).toBeTruthy();
     expect(screen.getByText("인재 풀 등록")).toBeTruthy();
 
@@ -210,14 +230,20 @@ describe("Recruitment creation flow", () => {
           profileMode: "resource",
           title: "농촌 일손과 카페 보조 가능",
           body: "카운터와 농번기 일손을 도울 수 있어요.",
+          placeName: "청도역",
+          placeAddress: "경북 청도군 청도읍 청화로",
+          placeCoordinate: {
+            latitude: 35.6474,
+            longitude: 128.7338,
+          },
           wageType: "hourly",
           wageAmount: 123123,
           availableTasks: ["유통/판매", "생산/건설"],
           preferredPay: "시간당 123,123원",
-          days: ["화", "목"],
+          days: ["월", "화", "수", "목", "일"],
           startTime: "09:00",
           endTime: "15:00",
-          availabilityNote: "화 09:00 - 15:00 · 목 14:00 - 18:00",
+          availabilityNote: "월 · 화 · 수 · 목 · 일 09:00 - 15:00 · 목 14:00 - 18:00",
         }),
       );
     });
@@ -233,6 +259,10 @@ describe("Recruitment creation flow", () => {
     fireEvent.changeText(screen.getByPlaceholderText("나를 소개하는 제목"), "농촌 일손과 카페 보조 가능");
     fireEvent.press(screen.getByText("유통/판매"));
     fireEvent.press(screen.getByText("생산/건설"));
+    fireEvent.press(screen.getByTestId("recruitment-next"));
+    fireEvent.press(screen.getByTestId("place-field-work-area"));
+    fireEvent.changeText(screen.getByPlaceholderText("장소 검색"), "청도");
+    fireEvent.press(await screen.findByTestId("place-result-api-cheongdo-station"));
     fireEvent.press(screen.getByTestId("recruitment-next"));
 
     const startTimeInput = screen.getByPlaceholderText("시작 시간");

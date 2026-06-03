@@ -157,7 +157,7 @@ describe("Auth flow", () => {
     fireEvent.press(screen.getByTestId("license-capture-button"));
     await waitFor(() => {
       expect(ImagePicker.launchCameraAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ base64: true }),
+        expect.objectContaining({ base64: false }),
       );
     });
     expect(screen.getByTestId("license-photo-preview").props.source).toEqual({

@@ -40,7 +40,7 @@ export type MapHomePost = {
   title: string;
   schedule: string;
   purpose: string;
-  duration: string;
+  duration?: string;
   originLabel: string;
   originName: string;
   createdAgo: string;
@@ -163,7 +163,6 @@ export const mapHomePosts: MapHomePost[] = [
 export function mapDomainPostsToMapHomePosts(posts: Post[]): MapHomePost[] {
   return posts.map((post, index) => {
     const createdMinutesAgo = getCreatedMinutesAgo(post.createdAt, index);
-    const schedule = formatSchedule(post.days, post.startTime);
 
     if (post.type === "job") {
       return {
@@ -175,13 +174,15 @@ export function mapDomainPostsToMapHomePosts(posts: Post[]): MapHomePost[] {
         createdMinutesAgo,
         author: post.author.nickname,
         title: post.title,
-        schedule,
+        schedule:
+          post.availabilityNote ??
+          formatSchedule(post.days, post.startTime, post.endTime),
         purpose: formatResourcePurpose(post),
-        duration: post.availabilityNote ?? formatTimeRange(post.startTime, post.endTime),
         originLabel: "활동 가능 지역",
         originName: post.placeName,
         createdAgo: formatCreatedAgo(createdMinutesAgo),
         liked: post.liked,
+        marker: post.placeCoordinate ?? resolveKnownPlaceCoordinate(post.placeName),
       };
     }
 
@@ -198,9 +199,10 @@ export function mapDomainPostsToMapHomePosts(posts: Post[]): MapHomePost[] {
       createdMinutesAgo,
       author: post.author.nickname,
       title: post.title,
-      schedule,
+      schedule:
+        post.scheduleNote ??
+        formatSchedule(post.days, post.startTime, post.endTime),
       purpose: "라이드",
-      duration: post.endTime ? formatTimeRange(post.startTime, post.endTime) : "시간 협의",
       originLabel: "출발지",
       originName: post.departure,
       createdAgo: formatCreatedAgo(createdMinutesAgo),
@@ -220,10 +222,10 @@ function formatResourcePurpose(post: JobPost) {
   return post.jobCategory ?? "가능 업무";
 }
 
-function formatSchedule(days: readonly string[], startTime: string) {
+function formatSchedule(days: readonly string[], startTime: string, endTime?: string) {
   const dayLabel = days.length > 0 ? days.join(" - ") : "요일 협의";
 
-  return `${dayLabel} ❘ ${startTime || "시간 협의"}`;
+  return `${dayLabel} ❘ ${formatTimeRange(startTime, endTime)}`;
 }
 
 function formatTimeRange(startTime: string, endTime?: string) {

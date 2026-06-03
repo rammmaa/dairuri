@@ -90,6 +90,8 @@ create table if not exists posts (
   status post_status not null default 'open',
   place_name text,
   place_address text,
+  place_latitude numeric(9, 6),
+  place_longitude numeric(9, 6),
   departure text,
   destination text,
   days text[] not null default '{}',
