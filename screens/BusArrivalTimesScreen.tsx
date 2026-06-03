@@ -50,8 +50,14 @@ export function BusArrivalTimesScreen({
         setStops(loadedStops);
         setRouteStops(loadedRouteStops);
         // Default to H1 so the stop list is never empty, mirroring the
-        // selection screen default.
-        setChosenRouteId((current) => current ?? loadedRoutes[0]?.id ?? null);
+        // selection screen default. Pick it by code so a live API that returns
+        // routes out of order still defaults correctly; fall back to the first
+        // route only if H1 is missing.
+        const defaultRouteId =
+          loadedRoutes.find((route) => route.code === "H1")?.id ??
+          loadedRoutes[0]?.id ??
+          null;
+        setChosenRouteId((current) => current ?? defaultRouteId);
       })
       .catch((error) => {
         if (cancelled) return;

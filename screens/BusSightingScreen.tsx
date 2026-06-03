@@ -294,9 +294,13 @@ export function BusSightingScreen({
 
   const handleConfirmReject = () => {
     setRecordError(null);
-    // Default the route to H1 (the first route) so the stop list is never
-    // empty; the user asked for route 1 to be preselected on entry.
-    setChosenRouteId((current) => current ?? routes[0]?.id ?? null);
+    // Default the route to H1 so the stop list is never empty (the user asked
+    // for route 1 to be preselected on entry). Pick it by code so a live API
+    // that returns routes out of order still defaults correctly; fall back to
+    // the first route only if H1 is missing.
+    const defaultRouteId =
+      routes.find((route) => route.code === "H1")?.id ?? routes[0]?.id ?? null;
+    setChosenRouteId((current) => current ?? defaultRouteId);
     setChosenStopId(null);
     setFlowState("selection");
   };

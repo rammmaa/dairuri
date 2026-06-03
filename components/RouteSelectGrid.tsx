@@ -27,11 +27,15 @@ export function RouteSelectGrid({
     <View style={styles.grid}>
       {routes.map((route, index) => {
         const selected = route.id === selectedRouteId;
+        // Derive the displayed number from the route code (H1 -> 1) so the
+        // label stays correct even if the route list arrives out of order from
+        // a live API; fall back to the position when the code has no digits.
+        const routeNumber = Number(route.code.replace(/[^0-9]/g, "")) || index + 1;
         return (
           <Pressable
             key={route.id}
             accessibilityRole="button"
-            accessibilityLabel={`${index + 1}번 노선${selected ? " 선택됨" : ""}`}
+            accessibilityLabel={`${routeNumber}번 노선${selected ? " 선택됨" : ""}`}
             accessibilityState={{ selected }}
             onPress={() => onSelect(route.id)}
             testID={testIDPrefix ? `${testIDPrefix}-${route.code}` : undefined}
@@ -48,7 +52,7 @@ export function RouteSelectGrid({
                 selected ? styles.chipTextSelected : styles.chipTextDeselected,
               ]}
             >
-              {index + 1}번
+              {routeNumber}번
             </Text>
           </Pressable>
         );
