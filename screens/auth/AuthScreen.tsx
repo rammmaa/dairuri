@@ -25,7 +25,10 @@ import { ScreenTitle } from "../../components/ScreenTitle";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
-import { formatKoreanPhoneNumberInput } from "../../data/phoneNumberFormat";
+import {
+  formatKoreanPhoneNumberInput,
+  normalizeKoreanPhoneNumber,
+} from "../../data/phoneNumberFormat";
 import {
   checkLoginIdAvailability,
   confirmPhoneVerification,
@@ -88,7 +91,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
         loginId: signupDraft.loginId.trim(),
         nickname: signupDraft.name.trim(),
         realName: signupDraft.name.trim(),
-        phone: signupDraft.phone.trim(),
+        phone: normalizeKoreanPhoneNumber(signupDraft.phone),
         password: signupDraft.password,
         driverType: role === "driver" ? "driver" : "nonDriver",
         vehicle,
@@ -153,7 +156,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     setAuthError(null);
     try {
       const result = await requestPhoneVerification({
-        phone: signupDraft.phone.trim(),
+        phone: normalizeKoreanPhoneNumber(signupDraft.phone),
       });
       setPhoneVerification({
         code: result.debugCode ?? "",
@@ -195,7 +198,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       setPhoneVerification({
         ...phoneVerification,
         status: "verified",
-        verifiedPhone: result.phone,
+        verifiedPhone: normalizeKoreanPhoneNumber(result.phone),
         verifiedToken: result.verifiedToken,
       });
     } catch (error) {
@@ -250,7 +253,10 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       onBack={() => setStep("login")}
       onRoleChange={setRole}
       onDraftChange={(nextDraft) => {
-        if (nextDraft.phone.trim() !== signupDraft.phone.trim()) {
+        if (
+          normalizeKoreanPhoneNumber(nextDraft.phone) !==
+          normalizeKoreanPhoneNumber(signupDraft.phone)
+        ) {
           setPhoneVerification({ code: "", status: "idle" });
         }
         if (nextDraft.loginId.trim() !== signupDraft.loginId.trim()) {
@@ -1095,7 +1101,9 @@ function validateSignupDraft(
     return "아이디 중복 확인을 완료해주세요.";
   }
 
-  if (!draft.phone.trim()) {
+  const normalizedPhone = normalizeKoreanPhoneNumber(draft.phone);
+
+  if (!normalizedPhone) {
     return "전화번호를 입력해주세요.";
   }
 
@@ -1109,7 +1117,8 @@ function validateSignupDraft(
 
   if (
     !phoneVerification?.verifiedToken ||
-    phoneVerification.verifiedPhone !== draft.phone.trim()
+    normalizeKoreanPhoneNumber(phoneVerification.verifiedPhone ?? "") !==
+      normalizedPhone
   ) {
     return "전화번호 인증을 완료해주세요.";
   }
