@@ -242,9 +242,10 @@ export type MockBusRouteStop = {
   sequence: number;
 };
 
-// H1 visits every stop as a loop so the merged route/stop selection screen
-// defaults to a full six-stop list (the user asked for route 1 to be shown by
-// default). The other routes visit three-stop subsets so the rejection branch
+// H1 visits every stop in one sequence (not a closed loop back to the first
+// stop) so the merged route/stop selection screen defaults to a full six-stop
+// list (the user asked for route 1 to be shown by default). The other routes
+// visit three-stop subsets so the rejection branch
 // and the snap tie-breaks still have varied geometry. The
 // stops are intentionally shared across routes so junction tie-breaks in
 // inferRouteAndStop have a realistic geometry to exercise. Sequence numbers

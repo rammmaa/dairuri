@@ -376,6 +376,7 @@ export function BusSightingScreen({
           chosenRouteId={chosenRouteId}
           chosenStopId={chosenStopId}
           stopsForRoute={stopsForChosenRoute}
+          recordError={recordError}
           onPickRoute={handlePickRoute}
           onPickStop={handlePickStop}
         />
@@ -635,6 +636,7 @@ function RouteAndStopSelectView({
   chosenRouteId,
   chosenStopId,
   stopsForRoute,
+  recordError,
   onPickRoute,
   onPickStop,
 }: {
@@ -642,6 +644,7 @@ function RouteAndStopSelectView({
   chosenRouteId: string | null;
   chosenStopId: string | null;
   stopsForRoute: BusStop[];
+  recordError: string | null;
   onPickRoute: (routeId: string) => void;
   onPickStop: (stopId: string) => void;
 }) {
@@ -659,6 +662,15 @@ function RouteAndStopSelectView({
           행복버스 정류장 선택
         </Text>
       </View>
+
+      {/* A failed "기록 확정" leaves the confirm modal open and sets this; once
+          the user dismisses the modal the error stays visible here, above the
+          scrolling stop list. */}
+      {recordError ? (
+        <Text style={[styles.errorText, styles.selectionError]}>
+          {recordError}
+        </Text>
+      ) : null}
 
       <ScrollView
         style={styles.stopScroll}
@@ -894,6 +906,10 @@ const styles = StyleSheet.create({
   sectionLabelSpaced: {
     marginTop: 18,
     marginBottom: 0,
+  },
+  selectionError: {
+    paddingHorizontal: spacing.screenX,
+    textAlign: "left",
   },
   stopScroll: {
     flex: 1,

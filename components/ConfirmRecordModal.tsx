@@ -31,6 +31,7 @@ export function ConfirmRecordModal({
   return (
     <View style={styles.overlay} testID={testID}>
       <Pressable
+        accessibilityRole="button"
         style={styles.backdrop}
         accessibilityLabel="팝업 닫기"
         onPress={onCancel}
