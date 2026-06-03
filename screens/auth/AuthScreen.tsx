@@ -41,6 +41,9 @@ import type { SignupInput } from "../../types/domain";
 type AuthStep = "login" | "signup" | "license-camera" | "driver-details";
 type SignupRole = "driver" | "rider";
 
+const AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER = 1.08;
+const AUTH_HEADER_TITLE_MAX_FONT_SIZE_MULTIPLIER = 1;
+
 export type AuthScreenProps = {
   onComplete: () => void;
 };
@@ -502,6 +505,7 @@ function SignupFormScreen({
               placeholderTextColor={colors.gray300}
               keyboardType="default"
               autoCapitalize="none"
+              maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
               testID="signup-login-id-input"
               style={[styles.inputBox, styles.emailInput, styles.textInput]}
             />
@@ -524,6 +528,7 @@ function SignupFormScreen({
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.82}
+                maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
                 style={[
                   styles.placeholder,
                   loginIdCheck.status === "available" && styles.checkInputTextVerified,
@@ -553,6 +558,7 @@ function SignupFormScreen({
               placeholder="010-0000-0000"
               placeholderTextColor={colors.gray300}
               keyboardType="phone-pad"
+              maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
               testID="signup-phone-input"
               style={[styles.inputBox, styles.phoneInput, styles.textInput]}
             />
@@ -576,6 +582,7 @@ function SignupFormScreen({
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.82}
+                maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
                 style={styles.verificationButtonText}
               >
                 {phoneVerification.status === "verified"
@@ -594,6 +601,7 @@ function SignupFormScreen({
                 placeholder="인증번호 6자리"
                 placeholderTextColor={colors.gray300}
                 keyboardType="phone-pad"
+                maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
                 testID="signup-phone-code-input"
                 style={[styles.inputBox, styles.phoneInput, styles.textInput]}
               />
@@ -622,6 +630,7 @@ function SignupFormScreen({
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   minimumFontScale={0.82}
+                  maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
                   style={styles.verificationButtonText}
                 >
                   {phoneVerificationSubmitting === "confirm" ? "확인 중" : "확인"}
@@ -874,10 +883,21 @@ type AuthHeaderProps = {
 function AuthHeader({ title, onBack }: AuthHeaderProps) {
   return (
     <View style={styles.authHeader}>
-      <Pressable accessibilityRole="button" onPress={onBack}>
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={onBack}
+        style={styles.authHeaderBackButton}
+      >
         <ChevronLeft size={20} color={colors.black} strokeWidth={2.3} />
       </Pressable>
-      <ScreenTitle style={styles.authHeaderTitle} numberOfLines={1}>
+      <ScreenTitle
+        testID="auth-header-title"
+        style={styles.authHeaderTitle}
+        numberOfLines={1}
+        adjustsFontSizeToFit={false}
+        maxFontSizeMultiplier={AUTH_HEADER_TITLE_MAX_FONT_SIZE_MULTIPLIER}
+      >
         {title}
       </ScreenTitle>
     </View>
@@ -921,6 +941,7 @@ function AuthField({
           editable={editable}
           keyboardType={keyboardType}
           autoCapitalize="none"
+          maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
           testID={testID}
           style={styles.authTextInput}
         />
@@ -960,6 +981,7 @@ function SecureTextInputBox({
         placeholder={placeholder}
         placeholderTextColor={colors.gray300}
         autoCapitalize="none"
+        maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
         testID={testID}
         style={styles.authTextInput}
       />
@@ -1287,9 +1309,9 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.base,
   },
   authHeader: {
-    height: 80,
+    height: 88,
     paddingLeft: 27,
-    paddingTop: 47,
+    paddingTop: 46,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
@@ -1298,9 +1320,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  authHeaderBackButton: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   authHeaderTitle: {
     flex: 1,
     minWidth: 0,
+    color: colors.black,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.base,
+    lineHeight: 20,
   },
   signupContent: {
     paddingHorizontal: 27,

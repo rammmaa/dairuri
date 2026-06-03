@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { StyleSheet } from "react-native";
 
 import App from "../App";
+import { typography } from "../constants/typography";
 
 describe("Auth flow", () => {
   it("walks through signup, camera permission, manual license info, and enters the app", async () => {
@@ -27,6 +28,17 @@ describe("Auth flow", () => {
 
     fireEvent.press(screen.getByTestId("auth-signup-link"));
     expect(screen.getByText("성함")).toBeTruthy();
+    const signupHeaderTitleStyle = StyleSheet.flatten(
+      screen.getByTestId("auth-header-title").props.style,
+    );
+    expect(screen.getByTestId("auth-header-title").props.adjustsFontSizeToFit).toBe(
+      false,
+    );
+    expect(screen.getByTestId("auth-header-title").props.maxFontSizeMultiplier).toBe(
+      1,
+    );
+    expect(signupHeaderTitleStyle.fontSize).toBe(typography.size.base);
+    expect(signupHeaderTitleStyle.lineHeight).toBe(20);
     expect(screen.getByText("운전자")).toBeTruthy();
     expect(screen.getByTestId("signup-login-id-input").props.placeholder).toBe(
       "아이디",
@@ -57,12 +69,19 @@ describe("Auth flow", () => {
     expect(screen.getByTestId("signup-phone-input").props.value).toBe(
       "010-1234-5678",
     );
+    expect(screen.getByTestId("signup-phone-input").props.maxFontSizeMultiplier).toBe(
+      1.08,
+    );
     expect(
       screen.getByTestId("signup-phone-request-code-text").props.numberOfLines,
     ).toBe(1);
     expect(
       screen.getByTestId("signup-phone-request-code-text").props.adjustsFontSizeToFit,
     ).toBe(true);
+    expect(
+      screen.getByTestId("signup-phone-request-code-text").props
+        .maxFontSizeMultiplier,
+    ).toBe(1.08);
     expect(screen.getByTestId("signup-password-input").props.secureTextEntry).toBe(
       true,
     );
@@ -92,6 +111,10 @@ describe("Auth flow", () => {
     expect(
       screen.getByTestId("signup-phone-confirm-code-text").props.adjustsFontSizeToFit,
     ).toBe(true);
+    expect(
+      screen.getByTestId("signup-phone-confirm-code-text").props
+        .maxFontSizeMultiplier,
+    ).toBe(1.08);
     fireEvent.press(screen.getByTestId("signup-phone-confirm-code"));
     await waitFor(() => {
       expect(screen.getByText("전화번호 인증 완료")).toBeTruthy();
