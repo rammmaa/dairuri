@@ -177,6 +177,7 @@ export default function App() {
       <>
         <BusArrivalTimesScreen
           onBack={() => setBusArrivalTimesOpen(false)}
+          onSelectTab={handleSelectTab}
         />
         <StatusBar style="dark" />
       </>
@@ -190,6 +191,11 @@ export default function App() {
           onBack={() => setBusSightingOpen(false)}
           onOpenRouteInfo={() => setBusRouteInfoOpen(true)}
           onOpenArrivalTimes={() => setBusArrivalTimesOpen(true)}
+          onOpenArchiveHistory={() => {
+            setBusSightingOpen(false);
+            setBusArchiveHistoryOpen(true);
+          }}
+          onSelectTab={handleSelectTab}
         />
         <StatusBar style="dark" />
       </>
