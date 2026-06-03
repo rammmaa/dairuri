@@ -514,6 +514,10 @@ function SignupFormScreen({
               ]}
             >
               <Text
+                testID="signup-login-id-check-text"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
                 style={[
                   styles.placeholder,
                   loginIdCheck.status === "available" && styles.checkInputTextVerified,
@@ -561,7 +565,13 @@ function SignupFormScreen({
               ]}
               onPress={onRequestPhoneCode}
             >
-              <Text style={styles.verificationButtonText}>
+              <Text
+                testID="signup-phone-request-code-text"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+                style={styles.verificationButtonText}
+              >
                 {phoneVerification.status === "verified"
                   ? "완료"
                   : phoneVerificationSubmitting === "request"
@@ -601,7 +611,13 @@ function SignupFormScreen({
                 ]}
                 onPress={onConfirmPhoneCode}
               >
-                <Text style={styles.verificationButtonText}>
+                <Text
+                  testID="signup-phone-confirm-code-text"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.82}
+                  style={styles.verificationButtonText}
+                >
                   {phoneVerificationSubmitting === "confirm" ? "확인 중" : "확인"}
                 </Text>
               </Pressable>

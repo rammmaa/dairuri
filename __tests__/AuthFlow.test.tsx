@@ -46,11 +46,23 @@ describe("Auth flow", () => {
     await waitFor(() => {
       expect(screen.getByText("사용 가능한 아이디입니다.")).toBeTruthy();
     });
+    expect(screen.getByTestId("signup-login-id-check-text").props.numberOfLines).toBe(
+      1,
+    );
+    expect(
+      screen.getByTestId("signup-login-id-check-text").props.adjustsFontSizeToFit,
+    ).toBe(true);
 
     fireEvent.changeText(screen.getByTestId("signup-phone-input"), "01012345678");
     expect(screen.getByTestId("signup-phone-input").props.value).toBe(
       "010-1234-5678",
     );
+    expect(
+      screen.getByTestId("signup-phone-request-code-text").props.numberOfLines,
+    ).toBe(1);
+    expect(
+      screen.getByTestId("signup-phone-request-code-text").props.adjustsFontSizeToFit,
+    ).toBe(true);
     expect(screen.getByTestId("signup-password-input").props.secureTextEntry).toBe(
       true,
     );
@@ -74,6 +86,12 @@ describe("Auth flow", () => {
     fireEvent.press(screen.getByTestId("signup-phone-request-code"));
     expect(await screen.findByTestId("signup-phone-code-input")).toBeTruthy();
     expect(screen.getByText("인증번호를 전송했어요.")).toBeTruthy();
+    expect(
+      screen.getByTestId("signup-phone-confirm-code-text").props.numberOfLines,
+    ).toBe(1);
+    expect(
+      screen.getByTestId("signup-phone-confirm-code-text").props.adjustsFontSizeToFit,
+    ).toBe(true);
     fireEvent.press(screen.getByTestId("signup-phone-confirm-code"));
     await waitFor(() => {
       expect(screen.getByText("전화번호 인증 완료")).toBeTruthy();

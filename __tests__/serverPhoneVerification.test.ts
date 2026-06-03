@@ -82,7 +82,7 @@ describe("server phone verification", () => {
           from: "010-1234-5678",
         },
         to: "01012345678",
-        text: "[다이루리] 인증번호는 654321입니다.",
+        text: "[다로링크] 인증번호는 654321입니다.",
       }),
     );
   });
@@ -127,6 +127,54 @@ describe("server phone verification", () => {
       expiresAt: "2026-05-27T00:10:00.000Z",
       debugCode: "135790",
     });
+  });
+
+  it("does not require SMS delivery when production debug codes are enabled", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.PHONE_VERIFICATION_DEBUG_CODE_ENABLED = "true";
+    setSolapiEnv();
+    const query = jest.fn().mockResolvedValue({ rows: [] });
+    jest.mocked(getPostgresPool).mockReturnValue({ query } as never);
+    jest
+      .mocked(sendSolapiSms)
+      .mockRejectedValue(new Error("solapi sms delivery failed: 403"));
+
+    await expect(
+      requestPhoneVerification(
+        { phone: "010-5555-7777" },
+        {
+          code: "135790",
+          id: "phone-verification-debug-skip-sms",
+          now: new Date("2026-05-27T00:00:00.000Z"),
+        },
+      ),
+    ).resolves.toEqual({
+      verificationId: "phone-verification-debug-skip-sms",
+      expiresAt: "2026-05-27T00:10:00.000Z",
+      debugCode: "135790",
+    });
+    expect(sendSolapiSms).not.toHaveBeenCalled();
+  });
+
+  it("uses the Darolink service name in verification messages", async () => {
+    setSolapiEnv();
+    const query = jest.fn().mockResolvedValue({ rows: [] });
+    jest.mocked(getPostgresPool).mockReturnValue({ query } as never);
+
+    await requestPhoneVerification(
+      { phone: "010-1234-5678" },
+      {
+        code: "654321",
+        id: "phone-verification-brand",
+        now: new Date("2026-05-27T00:00:00.000Z"),
+      },
+    );
+
+    expect(sendSolapiSms).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: "[다로링크] 인증번호는 654321입니다.",
+      }),
+    );
   });
 
   it("confirms a valid code and returns a signup proof token", async () => {

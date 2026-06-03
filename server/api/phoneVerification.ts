@@ -229,7 +229,11 @@ function createVerificationCode() {
 }
 
 async function deliverPhoneVerificationCode(phone: string, code: string) {
-  const text = `[다이루리] 인증번호는 ${code}입니다.`;
+  if (isPhoneVerificationDebugCodeEnabled()) {
+    return;
+  }
+
+  const text = `[다로링크] 인증번호는 ${code}입니다.`;
   let config: ReturnType<typeof readSolapiSmsConfig>;
 
   try {
