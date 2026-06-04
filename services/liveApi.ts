@@ -31,6 +31,7 @@ import * as mockApi from "./mockApi";
 
 function shouldUseWebTestFallback() {
   return (
+    process.env.NODE_ENV !== "production" &&
     process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH === "true" &&
     !getAuthToken()
   );
