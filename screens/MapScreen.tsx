@@ -120,17 +120,6 @@ function mapPostsToPreviewMarkers(
   return [...markersById.values()];
 }
 
-function formatSelectedFilterLabel(
-  defaultLabel: string,
-  selectedValues: readonly string[],
-) {
-  if (selectedValues.length === 0) {
-    return defaultLabel;
-  }
-
-  return selectedValues.join(", ");
-}
-
 export function MapScreen({
   onSelectTab,
   onOpenPost,
@@ -271,9 +260,11 @@ export function MapScreen({
 
   const toggleDayFilter = (day: WeekdayFilter) => {
     setSelectedDays((current) => toggleFilterValue(current, day));
+    setActiveFilterGroup(null);
   };
   const toggleTimeFilter = (time: TimeFilter) => {
     setSelectedTimes((current) => toggleFilterValue(current, time));
+    setActiveFilterGroup(null);
   };
   const toggleFilterGroup = (group: Exclude<ActiveFilterGroup, null>) => {
     setActiveFilterGroup((current) => (current === group ? null : group));
@@ -633,7 +624,7 @@ export function MapScreen({
                   <View style={styles.sheetFilterControls}>
                     <View style={styles.filterControl}>
                       <FilterChip
-                        label={formatSelectedFilterLabel("요일", selectedDays)}
+                        label="요일"
                         selected={
                           activeFilterGroup === "weekday" ||
                           selectedDays.length > 0
@@ -681,7 +672,7 @@ export function MapScreen({
                     </View>
                     <View style={styles.filterControl}>
                       <FilterChip
-                        label={formatSelectedFilterLabel("시간", selectedTimes)}
+                        label="시간"
                         selected={
                           activeFilterGroup === "time" ||
                           selectedTimes.length > 0

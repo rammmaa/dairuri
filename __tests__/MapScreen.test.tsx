@@ -251,6 +251,11 @@ describe("MapScreen", () => {
     expect(screen.getByTestId("map-home-weekday-option-화")).toBeTruthy();
     expect(screen.queryByTestId("map-home-filter-dropdown-time")).toBeNull();
     fireEvent.press(screen.getByTestId("map-home-weekday-option-화"));
+    expect(screen.queryByTestId("map-home-filter-dropdown-weekday")).toBeNull();
+    expect(screen.getByText("요일")).toBeTruthy();
+    expect(screen.getByText("3")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
     expect(
       screen.getByTestId("map-home-weekday-option-화").props.accessibilityState,
     ).toMatchObject({
@@ -269,15 +274,18 @@ describe("MapScreen", () => {
           .props.style,
       ).color,
     ).toBe(colors.surface);
-    expect(screen.getByText("3")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("map-home-weekday-option-수"));
+    expect(screen.queryByTestId("map-home-filter-dropdown-weekday")).toBeNull();
+    expect(screen.getByText("요일")).toBeTruthy();
+    expect(screen.getByText("5")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
     expect(
       screen.getByTestId("map-home-weekday-option-수").props.accessibilityState,
     ).toMatchObject({
       selected: true,
     });
-    expect(screen.getByText("5")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("map-home-filter-time"));
     expect(screen.queryByTestId("map-home-filter-dropdown-weekday")).toBeNull();
@@ -292,6 +300,11 @@ describe("MapScreen", () => {
     expect(getTestStyle("map-home-filter-dropdown-time").overflow).toBe("hidden");
     expect(screen.getByTestId("map-home-time-option-오전")).toBeTruthy();
     fireEvent.press(screen.getByTestId("map-home-time-option-오전"));
+    expect(screen.queryByTestId("map-home-filter-dropdown-time")).toBeNull();
+    expect(screen.getByText("시간")).toBeTruthy();
+    expect(screen.getByText("2")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
     expect(
       screen.getByTestId("map-home-time-option-오전").props.accessibilityState,
     ).toMatchObject({
@@ -310,15 +323,18 @@ describe("MapScreen", () => {
           .props.style,
       ).color,
     ).toBe(colors.surface);
-    expect(screen.getByText("2")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("map-home-time-option-오후"));
+    expect(screen.queryByTestId("map-home-filter-dropdown-time")).toBeNull();
+    expect(screen.getByText("시간")).toBeTruthy();
+    expect(screen.getByText("5")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
     expect(
       screen.getByTestId("map-home-time-option-오후").props.accessibilityState,
     ).toMatchObject({
       selected: true,
     });
-    expect(screen.getByText("5")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("map-home-sort-filter"));
     expect(screen.getByText("최신순")).toBeTruthy();
@@ -382,17 +398,27 @@ describe("MapScreen", () => {
 
     fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
     fireEvent.press(screen.getByTestId("map-home-weekday-option-화"));
+    expect(screen.queryByTestId("map-home-weekday-option-화")).toBeNull();
+    expect(screen.getByText("요일")).toBeTruthy();
 
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
     expect(
       screen.getByTestId("map-home-weekday-option-화").props.accessibilityState,
     ).toMatchObject({
       selected: true,
     });
+    fireEvent.press(screen.getByTestId("map-home-weekday-option-화"));
 
     fireEvent.press(screen.getByTestId("map-home-filter-time"));
     fireEvent.press(screen.getByTestId("map-home-time-option-오전"));
-    fireEvent.press(screen.getByTestId("map-home-time-option-오후"));
+    expect(screen.queryByTestId("map-home-time-option-오전")).toBeNull();
+    expect(screen.getByText("시간")).toBeTruthy();
 
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    fireEvent.press(screen.getByTestId("map-home-time-option-오후"));
+    expect(screen.queryByTestId("map-home-time-option-오후")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
     expect(
       screen.getByTestId("map-home-time-option-오전").props.accessibilityState,
     ).toMatchObject({
@@ -405,7 +431,9 @@ describe("MapScreen", () => {
     });
 
     fireEvent.press(screen.getByTestId("map-home-time-option-오전"));
+    expect(screen.queryByTestId("map-home-time-option-오전")).toBeNull();
 
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
     expect(
       screen.getByTestId("map-home-time-option-오전").props.accessibilityState,
     ).toMatchObject({
