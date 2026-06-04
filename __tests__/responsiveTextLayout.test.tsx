@@ -1,7 +1,9 @@
 import { StyleSheet } from "react-native";
 import { render, screen, fireEvent } from "@testing-library/react-native";
 
+import { AppButton } from "../components/AppButton";
 import { Header } from "../components/Header";
+import { TextInputField } from "../components/TextInputField";
 import { CreateRecruitmentScreen } from "../screens/CreateRecruitmentScreen";
 import { searchPlaceCandidates } from "../services/places";
 
@@ -81,5 +83,28 @@ describe("responsive text layout", () => {
     const mondayLabel = screen.getByText("월");
     expect(mondayLabel.props.numberOfLines).toBe(1);
     expect(mondayLabel.props.adjustsFontSizeToFit).toBe(true);
+  });
+
+  it("caps shared button and input text scaling explicitly", () => {
+    render(
+      <>
+        <AppButton label="채팅방으로 이동하기" />
+        <TextInputField
+          label="상세 설명"
+          value=""
+          onChangeText={() => undefined}
+          testID="shared-text-input"
+        />
+      </>,
+    );
+
+    const buttonText = screen.getByText("채팅방으로 이동하기");
+    expect(buttonText.props.numberOfLines).toBe(1);
+    expect(buttonText.props.adjustsFontSizeToFit).toBe(true);
+    expect(buttonText.props.maxFontSizeMultiplier).toBe(1.08);
+    expect(screen.getByText("상세 설명").props.maxFontSizeMultiplier).toBe(1.08);
+    expect(screen.getByTestId("shared-text-input").props.maxFontSizeMultiplier).toBe(
+      1.08,
+    );
   });
 });

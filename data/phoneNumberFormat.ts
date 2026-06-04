@@ -1,5 +1,9 @@
+export function normalizeKoreanPhoneNumber(value: string) {
+  return value.replace(/\D/g, "");
+}
+
 export function formatKoreanPhoneNumberInput(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
+  const digits = normalizeKoreanPhoneNumber(value).slice(0, 11);
 
   if (digits.length <= 3) {
     return digits;

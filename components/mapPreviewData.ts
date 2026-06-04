@@ -12,8 +12,8 @@ export type MapPreviewMarker = {
 };
 
 export const defaultMapPreviewCamera: MapPreviewCamera = {
-  latitude: 37.5572,
-  longitude: 126.9246,
+  latitude: 35.6482,
+  longitude: 128.7358,
   zoom: 15,
 };
 
@@ -21,19 +21,19 @@ export const mapPreviewMarkers: MapPreviewMarker[] = [
   {
     id: "cafe",
     label: "카페",
-    latitude: 37.5572,
-    longitude: 126.9246,
+    latitude: 35.6482,
+    longitude: 128.7358,
   },
   {
     id: "bus",
     label: "정류장",
-    latitude: 37.5591,
-    longitude: 126.9272,
+    latitude: 35.6474,
+    longitude: 128.7338,
   },
   {
     id: "library",
     label: "도서관",
-    latitude: 37.5606,
-    longitude: 126.9228,
+    latitude: 35.6501,
+    longitude: 128.737,
   },
 ];

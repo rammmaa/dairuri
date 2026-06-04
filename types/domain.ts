@@ -5,6 +5,11 @@ export type Weekday = "월" | "화" | "수" | "목" | "금" | "토" | "일";
 export type ApplicationStatus = "pending" | "accepted" | "rejected";
 export type ChatMessageType = "text" | "system" | "postCard" | "image";
 
+export type GeoCoordinate = {
+  latitude: number;
+  longitude: number;
+};
+
 export type DriverVerification = {
   licenseVerified: boolean;
   insuranceVerified: boolean;
@@ -48,9 +53,12 @@ export type CarpoolPost = BasePost & {
   type: "carpool";
   departure: string;
   destination: string;
+  departureCoordinate?: GeoCoordinate;
+  destinationCoordinate?: GeoCoordinate;
   days: Weekday[];
   startTime: string;
   endTime?: string;
+  scheduleNote?: string;
   price?: number;
   seats?: number;
 };
@@ -60,6 +68,7 @@ export type JobPost = BasePost & {
   profileMode?: "resource";
   placeName: string;
   placeAddress?: string;
+  placeCoordinate?: GeoCoordinate;
   days: Weekday[];
   startTime: string;
   endTime: string;

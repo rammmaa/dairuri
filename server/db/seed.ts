@@ -80,16 +80,18 @@ async function main() {
         `
           insert into posts (
             id, type, title, body, author_id, image_urls, status,
-            place_name, place_address, departure, destination, days,
+            place_name, place_address, place_latitude, place_longitude,
+            departure, destination, days,
             start_time, end_time, wage_type, wage_amount, job_category,
             profile_mode, available_tasks, employment_types, preferred_pay,
             availability_note, contact_note, price, seats, created_at
           ) values (
             $1, $2, $3, $4, $5, $6, $7,
-            $8, $9, $10, $11, $12,
-            $13, $14, $15, $16, $17,
-            $18, $19, $20, $21,
-            $22, $23, $24, $25, $26
+            $8, $9, $10, $11,
+            $12, $13, $14,
+            $15, $16, $17, $18, $19,
+            $20, $21, $22, $23,
+            $24, $25, $26, $27, $28
           )
           on conflict (id) do update set
             type = excluded.type,
@@ -100,6 +102,8 @@ async function main() {
             status = excluded.status,
             place_name = excluded.place_name,
             place_address = excluded.place_address,
+            place_latitude = excluded.place_latitude,
+            place_longitude = excluded.place_longitude,
             departure = excluded.departure,
             destination = excluded.destination,
             days = excluded.days,
@@ -128,6 +132,8 @@ async function main() {
           post.status,
           post.placeName,
           post.placeAddress,
+          post.placeLatitude,
+          post.placeLongitude,
           post.departure,
           post.destination,
           post.days,
@@ -259,10 +265,16 @@ async function main() {
     for (const link of records.busRouteStops) {
       await client.query(
         `
+          delete from bus_route_stops
+          where route_id = $1
+            and (stop_id = $2 or sequence = $3)
+        `,
+        [link.routeId, link.stopId, link.sequence],
+      );
+      await client.query(
+        `
           insert into bus_route_stops (route_id, stop_id, sequence)
           values ($1, $2, $3)
-          on conflict (route_id, stop_id) do update set
-            sequence = excluded.sequence
         `,
         [link.routeId, link.stopId, link.sequence],
       );
