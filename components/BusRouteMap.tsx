@@ -1,5 +1,5 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Polyline } from "react-native-svg";
+import Svg, { Circle, G, Polygon, Polyline } from "react-native-svg";
 
 import { colors } from "../constants/colors";
 import { typography } from "../constants/typography";
@@ -171,6 +171,21 @@ export function BusRouteMap({
       .join(" "),
   );
 
+  // A few direction arrows along the route so the travel direction reads at a
+  // glance. Sampled at ~1/4, 1/2, 3/4 of the segments to avoid clutter.
+  const segmentCount = projected.length - 1;
+  const arrows = (segmentCount >= 1 ? [0.25, 0.5, 0.75] : [])
+    .map((fraction) => Math.min(segmentCount - 1, Math.floor(fraction * segmentCount)))
+    .filter((value, index, all) => all.indexOf(value) === index)
+    .map((index) => {
+      const a = projected[index];
+      const b = projected[index + 1];
+      const midX = (a.x + b.x) / 2;
+      const midY = (a.y + b.y) / 2;
+      const deg = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+      return { key: `arrow-${index}`, midX, midY, deg };
+    });
+
   return (
     <View
       style={[styles.surface, { width, height }]}
@@ -210,27 +225,71 @@ export function BusRouteMap({
           strokeLinejoin="round"
           fill="none"
         />
+        {arrows.map((arrow) => (
+          <Polygon
+            key={arrow.key}
+            points={`${arrow.midX - 4},${arrow.midY - 3.5} ${arrow.midX + 5},${arrow.midY} ${arrow.midX - 4},${arrow.midY + 3.5}`}
+            fill={colors.red}
+            transform={`rotate(${arrow.deg} ${arrow.midX} ${arrow.midY})`}
+          />
+        ))}
         {projected.map((p, index) => {
           const highlighted = p.stop.id === highlightedStopId;
           const isStart = markEndpoints && index === 0;
           const isEnd = markEndpoints && index === projected.length - 1;
-          const fill = highlighted
-            ? colors.yellow
-            : isStart
-              ? colors.mintDark
-              : isEnd
-                ? colors.red
-                : colors.surface;
-          const radius = highlighted || isStart || isEnd ? 7 : 4.5;
+          // Marker convention from the Figma route-info frames: the origin is
+          // a large filled circle, the terminus is a double ring, a normal
+          // stop is a small circle, and the recording stop is the yellow pin.
+          if (highlighted) {
+            return (
+              <Circle
+                key={p.stop.id}
+                cx={p.x}
+                cy={p.y}
+                r={8}
+                fill={colors.yellow}
+                stroke={colors.black}
+                strokeWidth={2.4}
+              />
+            );
+          }
+          if (isStart) {
+            return (
+              <Circle
+                key={p.stop.id}
+                cx={p.x}
+                cy={p.y}
+                r={8}
+                fill={colors.mintDark}
+                stroke={colors.surface}
+                strokeWidth={2}
+              />
+            );
+          }
+          if (isEnd) {
+            return (
+              <G key={p.stop.id}>
+                <Circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={9}
+                  fill={colors.surface}
+                  stroke={colors.red}
+                  strokeWidth={2.2}
+                />
+                <Circle cx={p.x} cy={p.y} r={4} fill={colors.red} />
+              </G>
+            );
+          }
           return (
             <Circle
               key={p.stop.id}
               cx={p.x}
               cy={p.y}
-              r={radius}
-              fill={fill}
-              stroke={highlighted ? colors.black : colors.red}
-              strokeWidth={highlighted ? 2.4 : 1.8}
+              r={4.5}
+              fill={colors.surface}
+              stroke={colors.red}
+              strokeWidth={1.8}
             />
           );
         })}

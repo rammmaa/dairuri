@@ -1,3 +1,4 @@
+import { Bus } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   ScrollView,
@@ -10,11 +11,14 @@ import {
 import { BusRouteMap } from "../components/BusRouteMap";
 import { Header } from "../components/Header";
 import { RouteChip } from "../components/RouteChip";
-import { RouteSelectGrid } from "../components/RouteSelectGrid";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
-import { busRouteInfo } from "../data/busRouteInfo";
+import {
+  busOperatorContacts,
+  busSchedule,
+  type BusScheduleEntry,
+} from "../data/busSchedule";
 import { getBusRouteStops, getBusRoutes, getBusStops } from "../services/api";
 import type { BusRoute, BusRouteStop, BusStop } from "../types/domain";
 
@@ -22,13 +26,14 @@ export type BusRouteInfoScreenProps = {
   onBack?: () => void;
 };
 
-const MAP_HEIGHT = 230;
+const MAP_HEIGHT = 220;
 
 /**
  * "청도 행복버스" route-info screen reached from the (i) icon in the bus archive
- * header (2026-06-06 frames). Shows a route picker, the selected route drawn on
- * a real map (start / end emphasized, the other routes faint underneath), the
- * route's schedule, and its full stop sequence. Replaces the ComingSoon stub.
+ * header (2026-06-06 frames). Shows the whole Happy Bus network on a real map,
+ * then scrolls through every route's timetable - the circular route (순환선) and
+ * the round-trip routes (일방향선) - with each route's stop list, and the
+ * operator contact numbers at the bottom. Replaces the ComingSoon stub.
  */
 export function BusRouteInfoScreen({ onBack }: BusRouteInfoScreenProps) {
   const { width } = useWindowDimensions();
@@ -37,7 +42,6 @@ export function BusRouteInfoScreen({ onBack }: BusRouteInfoScreenProps) {
   const [routes, setRoutes] = useState<BusRoute[]>([]);
   const [stops, setStops] = useState<BusStop[]>([]);
   const [routeStops, setRouteStops] = useState<BusRouteStop[]>([]);
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,13 +51,6 @@ export function BusRouteInfoScreen({ onBack }: BusRouteInfoScreenProps) {
         setRoutes(loadedRoutes);
         setStops(loadedStops);
         setRouteStops(loadedRouteStops);
-        setSelectedRouteId(
-          (current) =>
-            current ??
-            loadedRoutes.find((route) => route.code === "H1")?.id ??
-            loadedRoutes[0]?.id ??
-            null,
-        );
       })
       .catch((error) => {
         if (cancelled) return;
@@ -64,22 +61,26 @@ export function BusRouteInfoScreen({ onBack }: BusRouteInfoScreenProps) {
     };
   }, []);
 
-  const selectedRoute = useMemo(
-    () => routes.find((route) => route.id === selectedRouteId) ?? null,
-    [routes, selectedRouteId],
+  const stopsByRoute = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const route of routes) {
+      const names = routeStops
+        .filter((link) => link.routeId === route.id)
+        .sort((a, b) => a.sequence - b.sequence)
+        .map((link) => stops.find((stop) => stop.id === link.stopId)?.name)
+        .filter((name): name is string => Boolean(name));
+      map.set(route.id, names.join(" - "));
+    }
+    return map;
+  }, [routes, routeStops, stops]);
+
+  const firstRouteId = routes[0]?.id ?? null;
+  const otherRouteIds = routes.slice(1).map((route) => route.id);
+  const circular = routes.filter(
+    (route) => busSchedule[route.id]?.category === "순환선",
   );
-  const info = selectedRouteId ? busRouteInfo[selectedRouteId] : null;
-  const orderedStops = useMemo<BusStop[]>(() => {
-    if (!selectedRouteId) return [];
-    return routeStops
-      .filter((link) => link.routeId === selectedRouteId)
-      .sort((a, b) => a.sequence - b.sequence)
-      .map((link) => stops.find((stop) => stop.id === link.stopId))
-      .filter((stop): stop is BusStop => Boolean(stop));
-  }, [selectedRouteId, routeStops, stops]);
-  const otherRouteIds = useMemo(
-    () => routes.map((route) => route.id).filter((id) => id !== selectedRouteId),
-    [routes, selectedRouteId],
+  const oneWay = routes.filter(
+    (route) => busSchedule[route.id]?.category === "일방향선",
   );
 
   return (
@@ -89,18 +90,18 @@ export function BusRouteInfoScreen({ onBack }: BusRouteInfoScreenProps) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.sectionLabel}>행복버스 노선 선택 (1번 - 6번)</Text>
-        <RouteSelectGrid
-          routes={routes}
-          selectedRouteId={selectedRouteId}
-          onSelect={setSelectedRouteId}
-          testIDPrefix="route-info-chip"
-        />
+        <View style={styles.titleRow}>
+          <View>
+            <Text style={styles.bigTitle}>청도</Text>
+            <Text style={styles.subTitle}>행복버스</Text>
+          </View>
+          <Bus size={34} color={colors.yellowText} strokeWidth={2.2} />
+        </View>
 
-        {selectedRouteId ? (
+        {firstRouteId ? (
           <View style={styles.mapWrap}>
             <BusRouteMap
-              routeId={selectedRouteId}
+              routeId={firstRouteId}
               stops={stops}
               routeStops={routeStops}
               width={mapWidth}
@@ -110,72 +111,126 @@ export function BusRouteInfoScreen({ onBack }: BusRouteInfoScreenProps) {
             />
             <View style={styles.legendRow}>
               <Legend color={colors.mintDark} label="기점" />
-              <Legend color={colors.red} label="종점" />
+              <Legend color={colors.red} label="종점" double />
               <Legend color={colors.gray400} label="다른 노선" />
             </View>
           </View>
         ) : null}
 
-        {selectedRoute && info ? (
-          <View style={styles.infoCard}>
-            <RouteChip label={selectedRoute.name} />
-            <View style={styles.infoTable}>
-              <InfoRow label="기점" value={info.origin} />
-              <InfoRow label="종점" value={info.terminus} />
-              <InfoRow label="첫차" value={info.firstBus} />
-              <InfoRow label="막차" value={info.lastBus} />
-              <InfoRow label="배차간격" value={info.runsPerDay} />
-              <InfoRow label="운수사" value={info.operator} />
-              <InfoRow label="인가대수" value={info.vehicles} />
-            </View>
-          </View>
+        {circular.length > 0 ? (
+          <SectionHeader title="순환선" note="1일 3회 순환 운행" />
         ) : null}
+        {circular.map((route) => (
+          <RouteScheduleBlock
+            key={route.id}
+            route={route}
+            schedule={busSchedule[route.id]}
+            stopsText={stopsByRoute.get(route.id) ?? ""}
+          />
+        ))}
 
-        {orderedStops.length > 0 ? (
-          <View style={styles.stopsCard}>
-            <Text style={styles.stopsTitle}>정류장 ({orderedStops.length}개)</Text>
-            {orderedStops.map((stop, index) => (
-              <View key={stop.id} style={styles.stopRow}>
-                <View style={styles.stopMarkerCol}>
-                  <View
-                    style={[
-                      styles.stopLine,
-                      index === 0 && styles.stopLineHidden,
-                    ]}
-                  />
-                  <View style={styles.stopDot} />
-                  <View
-                    style={[
-                      styles.stopLine,
-                      index === orderedStops.length - 1 && styles.stopLineHidden,
-                    ]}
-                  />
-                </View>
-                <Text style={styles.stopName} numberOfLines={1}>
-                  {stop.name}
-                </Text>
-              </View>
-            ))}
-          </View>
+        {oneWay.length > 0 ? (
+          <SectionHeader title="일방향선" note="1일 3회 왕복 운행" />
         ) : null}
+        {oneWay.map((route) => (
+          <RouteScheduleBlock
+            key={route.id}
+            route={route}
+            schedule={busSchedule[route.id]}
+            stopsText={stopsByRoute.get(route.id) ?? ""}
+          />
+        ))}
+
+        <View style={styles.contactCard}>
+          <Text style={styles.contactTitle}>버스운행 관련 문의 전화</Text>
+          {busOperatorContacts.map((line) => (
+            <Text key={line} style={styles.contactLine}>
+              {"•"} {line}
+            </Text>
+          ))}
+        </View>
       </ScrollView>
     </View>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function SectionHeader({ title, note }: { title: string; note: string }) {
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={styles.sectionNote}>{note}</Text>
     </View>
   );
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
+function RouteScheduleBlock({
+  route,
+  schedule,
+  stopsText,
+}: {
+  route: BusRoute;
+  schedule?: BusScheduleEntry;
+  stopsText: string;
+}) {
+  if (!schedule) return null;
+  return (
+    <View style={styles.routeBlock}>
+      <View style={styles.routeBlockHeader}>
+        <RouteChip label={route.name} />
+        <Text style={styles.segment}>{schedule.segment}</Text>
+      </View>
+
+      <View style={styles.table}>
+        <View style={[styles.tr, styles.theadRow]}>
+          <Text style={[styles.cell, styles.labelCell, styles.th]}>구분</Text>
+          <Text style={[styles.cell, styles.stopCell, styles.th]} numberOfLines={1}>
+            {schedule.durationNote}
+          </Text>
+          <Text style={[styles.cell, styles.timeCell, styles.th]}>1회</Text>
+          <Text style={[styles.cell, styles.timeCell, styles.th]}>2회</Text>
+          <Text style={[styles.cell, styles.timeCell, styles.th]}>3회</Text>
+        </View>
+        {schedule.rows.map((row, index) => (
+          <View key={`${row.label}-${index}`} style={styles.tr}>
+            <Text style={[styles.cell, styles.labelCell]}>{row.label}</Text>
+            <Text style={[styles.cell, styles.stopCell]} numberOfLines={1}>
+              {row.stop}
+            </Text>
+            {row.times.map((time, i) => (
+              <Text key={i} style={[styles.cell, styles.timeCell]}>
+                {time}
+              </Text>
+            ))}
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.routeLineRow}>
+        <Text style={styles.routeLineLabel}>노선</Text>
+        <Text style={styles.routeLineText}>{stopsText}</Text>
+      </View>
+    </View>
+  );
+}
+
+function Legend({
+  color,
+  label,
+  double,
+}: {
+  color: string;
+  label: string;
+  double?: boolean;
+}) {
   return (
     <View style={styles.legend}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <View
+        style={[
+          styles.legendDot,
+          { backgroundColor: double ? colors.surface : color },
+          double && { borderWidth: 2.5, borderColor: color },
+        ]}
+      />
       <Text style={styles.legendText}>{label}</Text>
     </View>
   );
@@ -189,17 +244,27 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.screenX,
     paddingTop: 16,
-    paddingBottom: 32,
+    paddingBottom: 40,
   },
-  sectionLabel: {
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bigTitle: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.title,
+    lineHeight: typography.lineHeight.title,
+  },
+  subTitle: {
     color: colors.grayText,
     fontFamily: typography.family.semibold,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
-    marginBottom: 10,
+    fontSize: typography.size.base,
+    lineHeight: typography.lineHeight.base,
   },
   mapWrap: {
-    marginTop: 16,
+    marginTop: 14,
     alignItems: "center",
   },
   legendRow: {
@@ -213,9 +278,9 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   legendDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
   },
   legendText: {
     color: colors.grayText,
@@ -223,91 +288,124 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     lineHeight: typography.lineHeight.xs,
   },
-  infoCard: {
-    marginTop: 18,
-    padding: 16,
-    borderRadius: 16,
+  sectionHeader: {
+    marginTop: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  sectionTitle: {
+    color: colors.black,
+    fontFamily: typography.family.bold,
+    fontSize: typography.size.lg,
+    lineHeight: typography.lineHeight.lg,
+  },
+  sectionNote: {
+    color: colors.grayText,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  routeBlock: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    alignItems: "center",
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    elevation: 2,
   },
-  infoTable: {
-    marginTop: 14,
-    width: "100%",
-    gap: 10,
-  },
-  infoRow: {
+  routeBlockHeader: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
   },
-  infoLabel: {
-    width: 64,
+  segment: {
+    flex: 1,
+    color: colors.slate,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+  },
+  table: {
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  tr: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  theadRow: {
+    backgroundColor: colors.gray50,
+  },
+  cell: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    color: colors.black,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.xs,
+    textAlign: "center",
+  },
+  th: {
     color: colors.grayText,
+    fontFamily: typography.family.semibold,
+  },
+  labelCell: {
+    width: 36,
+    borderRightWidth: 1,
+    borderRightColor: colors.line,
+  },
+  stopCell: {
+    flex: 1,
+    textAlign: "left",
+    borderRightWidth: 1,
+    borderRightColor: colors.line,
+  },
+  timeCell: {
+    width: 46,
+  },
+  routeLineRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    gap: 8,
+  },
+  routeLineLabel: {
+    width: 30,
+    color: colors.grayText,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.sm,
+  },
+  routeLineText: {
+    flex: 1,
+    color: colors.slate,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.xs,
+    lineHeight: typography.lineHeight.sm,
+  },
+  contactCard: {
+    marginTop: 26,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.gray50,
+  },
+  contactTitle: {
+    color: colors.black,
     fontFamily: typography.family.semibold,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
+    marginBottom: 6,
   },
-  infoValue: {
-    flex: 1,
-    color: colors.black,
+  contactLine: {
+    color: colors.slate,
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
-  },
-  stopsCard: {
-    marginTop: 18,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: colors.gray50,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  stopsTitle: {
-    color: colors.black,
-    fontFamily: typography.family.bold,
-    fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    marginBottom: 8,
-  },
-  stopRow: {
-    minHeight: 40,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  stopMarkerCol: {
-    width: 20,
-    alignSelf: "stretch",
-    alignItems: "center",
-  },
-  stopLine: {
-    flex: 1,
-    width: 2,
-    backgroundColor: colors.mint,
-  },
-  stopLineHidden: {
-    backgroundColor: "transparent",
-  },
-  stopDot: {
-    width: 11,
-    height: 11,
-    borderRadius: 5.5,
-    borderWidth: 2,
-    borderColor: colors.mintDark,
-    backgroundColor: colors.surface,
-  },
-  stopName: {
-    flex: 1,
-    color: colors.black,
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.sm,
-    lineHeight: typography.lineHeight.sm,
   },
 });
