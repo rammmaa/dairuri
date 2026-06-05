@@ -32,7 +32,7 @@ describe("server seed data", () => {
       "route-happy-6",
     ]);
     expect(records.busStops.map((stop) => stop.id)).toContain("stop-cheongdo-public-terminal");
-    expect(records.busStops).toHaveLength(6);
+    expect(records.busStops).toHaveLength(41);
     expect(records.busRouteStops.length).toBeGreaterThanOrEqual(18);
     expect(records.busSightings.map((sighting) => sighting.id)).toEqual(
       expect.arrayContaining(["sighting-1", "sighting-2"]),

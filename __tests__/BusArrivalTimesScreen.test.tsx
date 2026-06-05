@@ -57,16 +57,17 @@ describe("BusArrivalTimesScreen", () => {
     });
     await screen.findByText("버스 시간");
 
-    const countTimes = () =>
-      screen.queryAllByTestId(/^arrival-time-\d+$/).length;
-    const weekdayCount = countTimes();
+    // The source timetable runs 3 times a day and does not vary by weekday, so
+    // selecting another weekday highlights that chip while the list stays put.
+    expect(screen.queryAllByTestId(/^arrival-time-\d+$/)).toHaveLength(3);
 
-    // Weekends return a shorter (4-entry) list per the placeholder schedule.
     fireEvent.press(screen.getByTestId("arrival-weekday-일"));
     await waitFor(() => {
-      expect(countTimes()).toBe(4);
+      expect(
+        screen.getByTestId("arrival-weekday-일").props.accessibilityState,
+      ).toMatchObject({ selected: true });
     });
-    expect(weekdayCount).toBeGreaterThan(4);
+    expect(screen.queryAllByTestId(/^arrival-time-\d+$/)).toHaveLength(3);
   });
 
   it("back from the detail returns to selection, then back calls onBack", async () => {
