@@ -66,9 +66,9 @@ describe("mock domain service", () => {
 });
 
 describe("mock Happy Bus fixtures", () => {
-  it("exposes six Happy Bus routes, six stops, and historical sightings", () => {
+  it("exposes six Happy Bus routes, the real stop catalog, and historical sightings", () => {
     expect(mockBusRoutes).toHaveLength(6);
-    expect(mockBusStops).toHaveLength(6);
+    expect(mockBusStops).toHaveLength(41);
     expect(mockBusSightings.length).toBeGreaterThanOrEqual(3);
     expect(mockBusSightings.length).toBeLessThanOrEqual(6);
   });
@@ -89,15 +89,19 @@ describe("mock Happy Bus fixtures", () => {
     expect(distinctColors.size).toBe(1);
   });
 
-  it("uses the six stop names sourced from the Figma frame", () => {
-    expect(mockBusStops.map((stop) => stop.name)).toEqual([
+  it("includes the real Cheongdo Happy Bus stop names", () => {
+    const names = mockBusStops.map((stop) => stop.name);
+    for (const expected of [
       "청도공용버스터미널",
-      "구미리",
-      "아랫구미",
-      "월곡2리(박월)",
-      "귀뚜라미보일러",
-      "농공단지 입구",
-    ]);
+      "청도시장",
+      "동곡공용버스터미널",
+      "범곡1리복지회관",
+      "신봉리(홍도)",
+      "삼계",
+      "안송읍",
+    ]) {
+      expect(names).toContain(expected);
+    }
   });
 
   it("assigns a unique sequence within each route", () => {

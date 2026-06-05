@@ -8,7 +8,7 @@ import {
 import { mockReporterLabel } from "../services/busArchiveCore";
 import { resetMockDatabase } from "../services/mockDb";
 
-const NEAREST_TERMINAL_COORDS = { latitude: 35.6474, longitude: 128.7338 };
+const NEAREST_TERMINAL_COORDS = { latitude: 35.6413, longitude: 128.7464 };
 
 describe("mock Happy Bus archive API", () => {
   // The mock connection is a module-level singleton that accumulates writes
@@ -73,28 +73,30 @@ describe("mock Happy Bus archive API", () => {
   });
 
   it("snaps to the nearest stop on the requested route even when the reporter is slightly off", async () => {
-    // ~70 m east of 아랫구미 (35.6501, 128.7370). Still on H1, which visits
-    // every stop including 아랫구미.
+    // ~30 m from 구미리 (35.6435, 128.7510), nearer than the terminal or
+    // 아랫구미. Still on H1, which visits 구미리.
     const recorded = await recordBusSighting({
       routeId: "route-happy-1",
-      latitude: 35.65015,
-      longitude: 128.7378,
+      latitude: 35.6437,
+      longitude: 128.7513,
     });
-    expect(recorded.stopId).toBe("stop-arae-gumi");
+    expect(recorded.stopId).toBe("stop-gumiri");
   });
 
   it("records the selected stop when the user manually overrides the nearest stop", async () => {
+    // 안송읍 is on H6 but far from the terminal; the manual override records it
+    // anyway instead of snapping to the nearest stop.
     const recorded = await recordBusSighting({
       routeId: "route-happy-6",
-      stopId: "stop-arae-gumi",
+      stopId: "stop-ansongeup",
       latitude: NEAREST_TERMINAL_COORDS.latitude,
       longitude: NEAREST_TERMINAL_COORDS.longitude,
     });
 
-    expect(recorded.stopId).toBe("stop-arae-gumi");
+    expect(recorded.stopId).toBe("stop-ansongeup");
 
-    const araeGumiSightings = await getStopSightings("stop-arae-gumi");
-    expect(araeGumiSightings[0]?.id).toBe(recorded.id);
+    const ansongSightings = await getStopSightings("stop-ansongeup");
+    expect(ansongSightings[0]?.id).toBe(recorded.id);
   });
 
   it("rejects when the reporter is too far from every stop on the route", async () => {

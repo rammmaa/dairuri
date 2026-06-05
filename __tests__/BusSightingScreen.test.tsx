@@ -32,7 +32,7 @@ const mockedWatchPosition = Location.watchPositionAsync as jest.MockedFunction<
 
 // Coordinates of 청도공용버스터미널 (id: stop-cheongdo-public-terminal).
 // Inference picks the lowest-code route that visits this stop, which is H1.
-const NEAREST_STOP_COORDS = { latitude: 35.6474, longitude: 128.7338 };
+const NEAREST_STOP_COORDS = { latitude: 35.6413, longitude: 128.7464 };
 
 function grantPermissionWithLocation(coords = NEAREST_STOP_COORDS) {
   mockedRequestPermissions.mockResolvedValue({
@@ -213,7 +213,7 @@ describe("BusSightingScreen", () => {
     });
     await screen.findByText("노선/정류장 선택");
 
-    // H2 visits only three stops (no 농공단지 입구).
+    // H2 (청도읍 -> 화양 범곡) does not visit 농공단지 입구, but does visit 부민아파트.
     fireEvent.press(screen.getByTestId("bus-sighting-route-chip-H2"));
     await waitFor(() => {
       expect(
@@ -221,10 +221,10 @@ describe("BusSightingScreen", () => {
       ).toBeNull();
     });
     expect(
-      screen.getByTestId("bus-sighting-stop-row-stop-arae-gumi"),
+      screen.getByTestId("bus-sighting-stop-row-stop-bumin-apt"),
     ).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("bus-sighting-stop-row-stop-arae-gumi"));
+    fireEvent.press(screen.getByTestId("bus-sighting-stop-row-stop-bumin-apt"));
     expect(
       await screen.findByTestId("bus-sighting-confirm-record-modal"),
     ).toBeTruthy();
@@ -267,8 +267,8 @@ describe("BusSightingScreen", () => {
     // Arrive at 청도공용버스터미널, then drift to 구미리 (which has no seed
     // sighting). The recorded sighting must use the press-time coordinate, so
     // it lands on the terminal and never on 구미리.
-    const terminal = { latitude: 35.6474, longitude: 128.7338 };
-    const drift = { latitude: 35.6492, longitude: 128.7355 }; // 구미리
+    const terminal = { latitude: 35.6413, longitude: 128.7464 };
+    const drift = { latitude: 35.6435, longitude: 128.7510 }; // 구미리
 
     let positionCallback:
       | ((event: {
