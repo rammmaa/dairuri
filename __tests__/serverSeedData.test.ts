@@ -4,7 +4,8 @@ describe("server seed data", () => {
   it("maps mock domain records to stable PostgreSQL seed records", () => {
     const records = createSeedRecords();
 
-    expect(records.users.map((user) => user.id)).toEqual(["me", "author-1"]);
+    expect(records.users).toEqual([]);
+    expect(records.vehicles).toEqual([]);
     expect(records.posts).toEqual([]);
     expect(records.postLikes).toEqual([]);
     expect(records.applications).toEqual([]);
@@ -13,18 +14,10 @@ describe("server seed data", () => {
     expect(records.chatRoomParticipants).toEqual([]);
   });
 
-  it("keeps only the APK login seed user credentialed", () => {
+  it("does not seed APK login credentials", () => {
     const records = createSeedRecords();
 
-    expect(records.users.find((user) => user.id === "me")).toMatchObject({
-      loginId: "rammma",
-      phone: "010-0000-0000",
-      email: "test@example.com",
-      licenseVerified: true,
-      insuranceVerified: true,
-      passwordHash: expect.stringMatching(/^scrypt:[^:]+:[0-9a-f]+$/),
-    });
-    expect(records.users.find((user) => user.id === "author-1")?.passwordHash).toBeNull();
+    expect(records.users.some((user) => user.passwordHash)).toBe(false);
   });
 
   it("includes Happy Bus seed records", () => {
@@ -47,9 +40,7 @@ describe("server seed data", () => {
     for (const sighting of records.busSightings) {
       // seed never carries the read-time reporter_label
       expect(sighting).not.toHaveProperty("reporterLabel");
-      expect(typeof sighting.reporterId === "string" || sighting.reporterId === null).toBe(
-        true,
-      );
+      expect(sighting.reporterId).toBeNull();
     }
   });
 

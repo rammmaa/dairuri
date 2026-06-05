@@ -15,7 +15,10 @@ import { BottomNav } from "../components/BottomNav";
 import { CurrentLocationIcon } from "../components/CurrentLocationIcon";
 import { FilterChip } from "../components/FilterChip";
 import { MapPreview } from "../components/MapPreview";
-import type { MapPreviewCamera } from "../components/mapPreviewData";
+import type {
+  MapPreviewCamera,
+  MapPreviewMarker,
+} from "../components/mapPreviewData";
 import { RecruitmentCard } from "../components/RecruitmentCard";
 import { colors } from "../constants/colors";
 import {
@@ -26,13 +29,16 @@ import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import {
   bottomNavItems,
-  bottomSheetFilters,
   categoryFilters,
   mapDomainPostsToMapHomePosts,
   mapHomePosts,
+  timeFilterOptions,
+  weekdayFilterOptions,
   type CategoryFilter,
   type BottomNavItem,
   type MapHomePost,
+  type TimeFilter,
+  type WeekdayFilter,
 } from "../data/mapHome";
 import {
   createPagedListState,
@@ -60,14 +66,12 @@ const BUS_ARCHIVE_UNKNOWN_LOCATION_LABEL = "확인 중";
 const BUS_ARCHIVE_CURRENT_LOCATION_LABEL = "현재 위치";
 const BUS_ARCHIVE_ROUTE_FONT_SIZE = 48;
 const BUS_ARCHIVE_ROUTE_LINE_HEIGHT = 56;
-type DateFilter = MapHomePost["dateFilter"] | null;
-type TimeFilter = MapHomePost["timeFilter"] | null;
-type DepartureFilter = MapHomePost["departurePlace"] | null;
 type BusSighting = {
   id: string;
   timeLabel: string;
   locationLabel: string;
 };
+type ActiveFilterGroup = "weekday" | "time" | null;
 
 function clampSheetTop(top: number, expandedTop = SHEET_EXPANDED_TOP) {
   return Math.min(SHEET_COLLAPSED_TOP, Math.max(expandedTop, top));
@@ -81,6 +85,41 @@ function formatBusArchiveClock(date: Date) {
   )}`;
 }
 
+function toggleFilterValue<T extends string>(
+  values: readonly T[],
+  value: T,
+): T[] {
+  return values.includes(value)
+    ? values.filter((currentValue) => currentValue !== value)
+    : [...values, value];
+}
+
+function mapPostsToPreviewMarkers(
+  posts: readonly MapHomePost[],
+): MapPreviewMarker[] {
+  const markersById = new Map<string, MapPreviewMarker>();
+
+  for (const post of posts) {
+    if (!post.marker) {
+      continue;
+    }
+
+    const markerId = `${post.category}-${post.detailPostId}`;
+    if (markersById.has(markerId)) {
+      continue;
+    }
+
+    markersById.set(markerId, {
+      id: markerId,
+      label: post.title,
+      latitude: post.marker.latitude,
+      longitude: post.marker.longitude,
+    });
+  }
+
+  return [...markersById.values()];
+}
+
 export function MapScreen({
   onSelectTab,
   onOpenPost,
@@ -90,9 +129,10 @@ export function MapScreen({
 }: MapScreenProps) {
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryFilter["id"] | null>(null);
-  const [dateFilter, setDateFilter] = useState<DateFilter>(null);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>(null);
-  const [departureFilter, setDepartureFilter] = useState<DepartureFilter>(null);
+  const [selectedDays, setSelectedDays] = useState<WeekdayFilter[]>([]);
+  const [selectedTimes, setSelectedTimes] = useState<TimeFilter[]>([]);
+  const [activeFilterGroup, setActiveFilterGroup] =
+    useState<ActiveFilterGroup>(null);
   const [sortMode, setSortMode] = useState<MapPostSortMode>("default");
   const [visibleCount, setVisibleCount] = useState(POST_PAGE_SIZE);
   const [sheetTop, setSheetTop] = useState(SHEET_DEFAULT_TOP);
@@ -122,19 +162,17 @@ export function MapScreen({
     return filterAndSortMapPosts(recruitmentPosts, {
       filters: {
         category: selectedCategory,
-        date: dateFilter,
-        time: timeFilter,
-        departure: departureFilter,
+        days: selectedDays,
+        times: selectedTimes,
       },
       sortMode,
     });
   }, [
-    dateFilter,
-    departureFilter,
     recruitmentPosts,
     selectedCategory,
+    selectedDays,
+    selectedTimes,
     sortMode,
-    timeFilter,
   ]);
   const pagedPosts = createPagedListState(filteredPosts, {
     visibleCount,
@@ -142,10 +180,14 @@ export function MapScreen({
   });
   const visiblePosts = pagedPosts.visibleItems;
   const hasMorePosts = pagedPosts.hasMore;
+  const mapMarkers = useMemo(
+    () => mapPostsToPreviewMarkers(filteredPosts),
+    [filteredPosts],
+  );
 
   useEffect(() => {
     setVisibleCount(POST_PAGE_SIZE);
-  }, [dateFilter, departureFilter, selectedCategory, sortMode, timeFilter]);
+  }, [selectedCategory, selectedDays, selectedTimes, sortMode]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -216,18 +258,16 @@ export function MapScreen({
     };
   }, [searchOpen, searchQuery]);
 
-  const cycleDateFilter = () => {
-    setDateFilter((current) =>
-      current === null ? "오늘" : current === "오늘" ? "내일" : null,
-    );
+  const toggleDayFilter = (day: WeekdayFilter) => {
+    setSelectedDays((current) => toggleFilterValue(current, day));
+    setActiveFilterGroup(null);
   };
-  const cycleTimeFilter = () => {
-    setTimeFilter((current) =>
-      current === null ? "오후" : current === "오후" ? "오전" : null,
-    );
+  const toggleTimeFilter = (time: TimeFilter) => {
+    setSelectedTimes((current) => toggleFilterValue(current, time));
+    setActiveFilterGroup(null);
   };
-  const toggleDepartureFilter = () => {
-    setDepartureFilter((current) => (current === "남성현역" ? null : "남성현역"));
+  const toggleFilterGroup = (group: Exclude<ActiveFilterGroup, null>) => {
+    setActiveFilterGroup((current) => (current === group ? null : group));
   };
   const cycleSortMode = () => {
     setSortMode((current) =>
@@ -390,6 +430,7 @@ export function MapScreen({
         <MapPreview
           style={styles.mapPreview}
           camera={focusedCamera ?? undefined}
+          markers={mapMarkers}
           onMarkerPress={onSelectMapMarker}
         />
 
@@ -579,39 +620,105 @@ export function MapScreen({
                 >
                   <View style={styles.handle} />
                 </View>
-                <View style={styles.sheetFilterRow}>
-                  {bottomSheetFilters.map((label) => {
-                    const isDeparturePlace = label === "출발 장소";
-                    const isDate = label === "날짜";
-                    const isTime = label === "시간";
-                    const selectedLabel = isDate
-                      ? dateFilter
-                      : isTime
-                        ? timeFilter
-                        : isDeparturePlace
-                          ? departureFilter
-                          : null;
-
-                    return (
+                <View style={styles.sheetFilterGroups}>
+                  <View style={styles.sheetFilterControls}>
+                    <View style={styles.filterControl}>
                       <FilterChip
-                        key={label}
-                        label={selectedLabel ?? label}
-                        selected={selectedLabel !== null}
-                        showChevron={selectedLabel === null}
-                        showClose={selectedLabel !== null}
-                        onPress={
-                          isDate
-                            ? cycleDateFilter
-                            : isTime
-                              ? cycleTimeFilter
-                              : isDeparturePlace
-                                ? toggleDepartureFilter
-                                : undefined
+                        label="요일"
+                        selected={
+                          activeFilterGroup === "weekday" ||
+                          selectedDays.length > 0
                         }
-                        testID={`map-home-filter-${label}`}
+                        showChevron
+                        compact
+                        onPress={() => toggleFilterGroup("weekday")}
+                        testID="map-home-filter-weekday"
                       />
-                    );
-                  })}
+                      {activeFilterGroup === "weekday" ? (
+                        <View
+                          style={styles.filterDropdown}
+                          testID="map-home-filter-dropdown-weekday"
+                        >
+                          {weekdayFilterOptions.map((day) => (
+                            <Pressable
+                              key={day}
+                              accessibilityRole="button"
+                              accessibilityLabel={day}
+                              accessibilityState={{
+                                selected: selectedDays.includes(day),
+                              }}
+                              onPress={() => toggleDayFilter(day)}
+                              testID={`map-home-weekday-option-${day}`}
+                              style={({ pressed }) => [
+                                styles.filterDropdownOption,
+                                selectedDays.includes(day) &&
+                                  styles.filterDropdownOptionSelected,
+                                pressed && styles.filterDropdownOptionPressed,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.filterDropdownOptionText,
+                                  selectedDays.includes(day) &&
+                                    styles.filterDropdownOptionTextSelected,
+                                ]}
+                              >
+                                {day}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={styles.filterControl}>
+                      <FilterChip
+                        label="시간"
+                        selected={
+                          activeFilterGroup === "time" ||
+                          selectedTimes.length > 0
+                        }
+                        showChevron
+                        compact
+                        onPress={() => toggleFilterGroup("time")}
+                        testID="map-home-filter-time"
+                      />
+                      {activeFilterGroup === "time" ? (
+                        <View
+                          style={styles.filterDropdown}
+                          testID="map-home-filter-dropdown-time"
+                        >
+                          {timeFilterOptions.map((time) => (
+                            <Pressable
+                              key={time}
+                              accessibilityRole="button"
+                              accessibilityLabel={time}
+                              accessibilityState={{
+                                selected: selectedTimes.includes(time),
+                              }}
+                              onPress={() => toggleTimeFilter(time)}
+                              testID={`map-home-time-option-${time}`}
+                              style={({ pressed }) => [
+                                styles.filterDropdownOption,
+                                selectedTimes.includes(time) &&
+                                  styles.filterDropdownOptionSelected,
+                                pressed && styles.filterDropdownOptionPressed,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.filterDropdownOptionText,
+                                  selectedTimes.includes(time) &&
+                                    styles.filterDropdownOptionTextSelected,
+                                ]}
+                              >
+                                {time}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
                 </View>
               </View>
 
@@ -847,7 +954,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 14,
+    paddingTop: 28,
+    paddingBottom: 10,
+    zIndex: 3,
   },
   dragHandleTouchArea: {
     position: "absolute",
@@ -865,10 +974,65 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.stone,
   },
-  sheetFilterRow: {
-    flexDirection: "row",
+  sheetFilterGroups: {
+    width: "100%",
     alignItems: "center",
+    position: "relative",
+    zIndex: 2,
+  },
+  sheetFilterControls: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 5,
+    maxWidth: "100%",
+  },
+  filterControl: {
+    position: "relative",
+    flexShrink: 1,
+    zIndex: 4,
+  },
+  filterDropdown: {
+    position: "absolute",
+    top: 36,
+    left: 0,
+    right: 0,
+    minWidth: 112,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.gray300,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 5,
+  },
+  filterDropdownOption: {
+    minHeight: 36,
+    paddingHorizontal: 10,
+    justifyContent: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineStrong,
+    backgroundColor: colors.surface,
+  },
+  filterDropdownOptionSelected: {
+    backgroundColor: colors.blue,
+    borderBottomColor: colors.surface,
+  },
+  filterDropdownOptionPressed: {
+    opacity: 0.82,
+  },
+  filterDropdownOptionText: {
+    color: colors.black,
+    fontFamily: typography.family.regular,
+    fontSize: typography.size.sm,
+    lineHeight: typography.lineHeight.sm,
+  },
+  filterDropdownOptionTextSelected: {
+    color: colors.surface,
+    fontFamily: typography.family.bold,
   },
   sheetScroll: {
     flex: 1,

@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "rea
 import { colors } from "../constants/colors";
 import { typography } from "../constants/typography";
 
+const TEXT_MAX_FONT_SIZE_MULTIPLIER = 1.08;
+
 export type AppButtonVariant = "primary" | "yellow" | "danger" | "ghost" | "outline";
 export type AppButtonSize = "large" | "medium" | "small";
 
@@ -52,6 +54,7 @@ export function AppButton({
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.86}
+        maxFontSizeMultiplier={TEXT_MAX_FONT_SIZE_MULTIPLIER}
       >
         {label}
       </Text>

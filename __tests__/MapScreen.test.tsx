@@ -45,6 +45,14 @@ function createPanEvent(previousPageY: number, currentPageY: number) {
   };
 }
 
+function getTestStyle(testID: string) {
+  const rawStyle = screen.getByTestId(testID).props.style;
+  const resolvedStyle =
+    typeof rawStyle === "function" ? rawStyle({ pressed: false }) : rawStyle;
+
+  return StyleSheet.flatten(resolvedStyle);
+}
+
 describe("MapScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -111,7 +119,7 @@ describe("MapScreen", () => {
     expect(screen.getAllByTestId("category-current-location-icon")).toHaveLength(3);
   });
 
-  it("exposes no-op-safe map search and location callbacks without app pins", () => {
+  it("exposes map search, location callbacks, and ride pins", () => {
     const handleSearchPress = jest.fn();
     const handleCurrentLocationPress = jest.fn();
     const handleMarkerPress = jest.fn();
@@ -126,11 +134,12 @@ describe("MapScreen", () => {
 
     fireEvent.press(screen.getByTestId("map-home-search-button"));
     fireEvent.press(screen.getByTestId("map-home-current-location-button"));
+    fireEvent.press(screen.getByTestId("map-preview-marker-ride-carpool-1"));
 
     expect(handleSearchPress).toHaveBeenCalledTimes(1);
     expect(handleCurrentLocationPress).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("map-preview-marker-cafe")).toBeNull();
-    expect(handleMarkerPress).not.toHaveBeenCalled();
+    expect(handleMarkerPress).toHaveBeenCalledWith("ride-carpool-1");
   });
 
   it("opens a real map search field from the home search bar", () => {
@@ -207,7 +216,7 @@ describe("MapScreen", () => {
     }
   });
 
-  it("filters map posts by category and cycles date, time, and sort controls", () => {
+  it("filters map posts by category and multi-selects weekday and time controls", () => {
     render(<MapScreen />);
 
     expect(screen.getByText("5")).toBeTruthy();
@@ -221,11 +230,111 @@ describe("MapScreen", () => {
     fireEvent.press(screen.getByTestId("map-home-category-work"));
     expect(screen.getByText("5")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("map-home-filter-날짜"));
-    expect(screen.getByText("오늘")).toBeTruthy();
+    expect(screen.getByText("요일")).toBeTruthy();
+    expect(screen.getByText("시간")).toBeTruthy();
+    expect(screen.queryByText("출발 장소")).toBeNull();
+    expect(screen.queryByTestId("map-home-weekday-option-화")).toBeNull();
+    expect(screen.queryByTestId("map-home-time-option-오전")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("map-home-filter-시간"));
-    expect(screen.getByText("오후")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
+    expect(screen.getByTestId("map-home-filter-dropdown-weekday")).toBeTruthy();
+    expect(getTestStyle("map-home-filter-dropdown-weekday").left).toBe(0);
+    expect(getTestStyle("map-home-filter-dropdown-weekday").right).toBe(0);
+    expect(getTestStyle("map-home-filter-dropdown-weekday").gap).toBeUndefined();
+    expect(getTestStyle("map-home-filter-dropdown-weekday").backgroundColor).toBe(
+      colors.surface,
+    );
+    expect(getTestStyle("map-home-filter-dropdown-weekday").borderRadius).toBe(18);
+    expect(getTestStyle("map-home-filter-dropdown-weekday").overflow).toBe(
+      "hidden",
+    );
+    expect(screen.getByTestId("map-home-weekday-option-화")).toBeTruthy();
+    expect(screen.queryByTestId("map-home-filter-dropdown-time")).toBeNull();
+    fireEvent.press(screen.getByTestId("map-home-weekday-option-화"));
+    expect(screen.queryByTestId("map-home-filter-dropdown-weekday")).toBeNull();
+    expect(screen.getByText("요일")).toBeTruthy();
+    expect(screen.getByText("3")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
+    expect(
+      screen.getByTestId("map-home-weekday-option-화").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    expect(getTestStyle("map-home-filter-weekday").borderColor).toBe(colors.mint);
+    expect(getTestStyle("map-home-weekday-option-화").backgroundColor).toBe(
+      colors.blue,
+    );
+    expect(getTestStyle("map-home-weekday-option-화").borderBottomColor).toBe(
+      colors.surface,
+    );
+    expect(
+      StyleSheet.flatten(
+        within(screen.getByTestId("map-home-weekday-option-화")).getByText("화")
+          .props.style,
+      ).color,
+    ).toBe(colors.surface);
+
+    fireEvent.press(screen.getByTestId("map-home-weekday-option-수"));
+    expect(screen.queryByTestId("map-home-filter-dropdown-weekday")).toBeNull();
+    expect(screen.getByText("요일")).toBeTruthy();
+    expect(screen.getByText("5")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
+    expect(
+      screen.getByTestId("map-home-weekday-option-수").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    expect(screen.queryByTestId("map-home-filter-dropdown-weekday")).toBeNull();
+    expect(screen.getByTestId("map-home-filter-dropdown-time")).toBeTruthy();
+    expect(getTestStyle("map-home-filter-dropdown-time").left).toBe(0);
+    expect(getTestStyle("map-home-filter-dropdown-time").right).toBe(0);
+    expect(getTestStyle("map-home-filter-dropdown-time").gap).toBeUndefined();
+    expect(getTestStyle("map-home-filter-dropdown-time").backgroundColor).toBe(
+      colors.surface,
+    );
+    expect(getTestStyle("map-home-filter-dropdown-time").borderRadius).toBe(18);
+    expect(getTestStyle("map-home-filter-dropdown-time").overflow).toBe("hidden");
+    expect(screen.getByTestId("map-home-time-option-오전")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("map-home-time-option-오전"));
+    expect(screen.queryByTestId("map-home-filter-dropdown-time")).toBeNull();
+    expect(screen.getByText("시간")).toBeTruthy();
+    expect(screen.getByText("2")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    expect(
+      screen.getByTestId("map-home-time-option-오전").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    expect(getTestStyle("map-home-filter-time").borderColor).toBe(colors.mint);
+    expect(getTestStyle("map-home-time-option-오전").backgroundColor).toBe(
+      colors.blue,
+    );
+    expect(getTestStyle("map-home-time-option-오전").borderBottomColor).toBe(
+      colors.surface,
+    );
+    expect(
+      StyleSheet.flatten(
+        within(screen.getByTestId("map-home-time-option-오전")).getByText("오전")
+          .props.style,
+      ).color,
+    ).toBe(colors.surface);
+
+    fireEvent.press(screen.getByTestId("map-home-time-option-오후"));
+    expect(screen.queryByTestId("map-home-filter-dropdown-time")).toBeNull();
+    expect(screen.getByText("시간")).toBeTruthy();
+    expect(screen.getByText("5")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    expect(
+      screen.getByTestId("map-home-time-option-오후").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
 
     fireEvent.press(screen.getByTestId("map-home-sort-filter"));
     expect(screen.getByText("최신순")).toBeTruthy();
@@ -278,27 +387,61 @@ describe("MapScreen", () => {
     ).toBe(56);
   });
 
-  it("toggles the departure place bottom filter chip selection", () => {
+  it("toggles weekday and time filter chips independently", () => {
     render(<MapScreen />);
 
-    expect(screen.getByText("날짜")).toBeTruthy();
+    expect(screen.getByText("요일")).toBeTruthy();
     expect(screen.getByText("시간")).toBeTruthy();
-    const departureChip = screen.getByLabelText("출발 장소");
+    expect(screen.queryByLabelText("출발 장소")).toBeNull();
+    expect(screen.queryByTestId("map-home-weekday-option-화")).toBeNull();
+    expect(screen.queryByTestId("map-home-time-option-오전")).toBeNull();
 
-    fireEvent.press(departureChip);
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
+    fireEvent.press(screen.getByTestId("map-home-weekday-option-화"));
+    expect(screen.queryByTestId("map-home-weekday-option-화")).toBeNull();
+    expect(screen.getByText("요일")).toBeTruthy();
 
-    const selectedDepartureChip = screen.getByLabelText("남성현역");
-    expect(screen.getAllByText("남성현역").length).toBeGreaterThan(0);
-    expect(selectedDepartureChip.props.accessibilityState).toMatchObject({
+    fireEvent.press(screen.getByTestId("map-home-filter-weekday"));
+    expect(
+      screen.getByTestId("map-home-weekday-option-화").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    fireEvent.press(screen.getByTestId("map-home-weekday-option-화"));
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    fireEvent.press(screen.getByTestId("map-home-time-option-오전"));
+    expect(screen.queryByTestId("map-home-time-option-오전")).toBeNull();
+    expect(screen.getByText("시간")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    fireEvent.press(screen.getByTestId("map-home-time-option-오후"));
+    expect(screen.queryByTestId("map-home-time-option-오후")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    expect(
+      screen.getByTestId("map-home-time-option-오전").props.accessibilityState,
+    ).toMatchObject({
+      selected: true,
+    });
+    expect(
+      screen.getByTestId("map-home-time-option-오후").props.accessibilityState,
+    ).toMatchObject({
       selected: true,
     });
 
-    fireEvent.press(selectedDepartureChip);
+    fireEvent.press(screen.getByTestId("map-home-time-option-오전"));
+    expect(screen.queryByTestId("map-home-time-option-오전")).toBeNull();
 
-    expect(screen.getByText("출발 장소")).toBeTruthy();
-    expect(screen.getByLabelText("출발 장소").props.accessibilityState).toMatchObject({
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    expect(
+      screen.getByTestId("map-home-time-option-오전").props.accessibilityState,
+    ).toMatchObject({
       selected: false,
     });
+
+    fireEvent.press(screen.getByTestId("map-home-filter-time"));
+    expect(screen.queryByTestId("map-home-time-option-오전")).toBeNull();
   });
 
   it("moves the bottom sheet when the drag handle is moved by touch", () => {

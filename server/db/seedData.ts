@@ -1,12 +1,10 @@
 import {
-  mockAuthor,
   mockBusRoutes,
   mockBusRouteStops,
   mockBusSightings,
   mockBusStops,
-  mockMe,
 } from "../../data/mockDomain";
-import type { Application, DriverType, Post } from "../../types/domain";
+import type { Application, Post } from "../../types/domain";
 
 export type SeedRecords = ReturnType<typeof createSeedRecords>;
 
@@ -20,6 +18,8 @@ type SeedPostRecord = {
   status: "open" | "closed";
   placeName: string | null;
   placeAddress: string | null;
+  placeLatitude: number | null;
+  placeLongitude: number | null;
   departure: string | null;
   destination: string | null;
   days: Post["days"];
@@ -75,36 +75,30 @@ type SeedPostLikeRecord = {
   userId: string;
 };
 
-const TEST_USER_PASSWORD_HASH =
-  "scrypt:dairuri-seed-password-v1:88964ec5d4efb02f1031402ac773835e474f677a1b51da422d455fa944c1902a442da6bd84fdd90ebf34d8cd2793508c1109db6e2775146a3690ca2e8b1315b8";
-
 export function createSeedRecords() {
-  const users = [mockMe, mockAuthor].map((user) => ({
-    id: user.id,
-    loginId: user.loginId ?? null,
-    nickname: user.nickname,
-    realName: user.realName ?? null,
-    phone: user.phone ?? `${user.id}@darori.local`,
-    email: user.email ?? null,
-    avatarUrl: user.avatarUrl ?? null,
-    area: user.area ?? null,
-    temperature: user.temperature,
-    driverType: toDatabaseDriverType(user.driverType),
-    licenseVerified: user.driverVerification?.licenseVerified ?? false,
-    insuranceVerified: user.driverVerification?.insuranceVerified ?? false,
-    driverVerifiedAt: user.driverVerification?.verifiedAt ?? null,
-    passwordHash: user.id === mockMe.id ? TEST_USER_PASSWORD_HASH : null,
-  }));
-
-  const vehicles = [mockMe, mockAuthor]
-    .filter((user) => user.vehicle)
-    .map((user) => ({
-      id: `${user.id}-vehicle`,
-      userId: user.id,
-      plateNumber: user.vehicle?.plateNumber ?? "",
-      modelName: user.vehicle?.modelName ?? null,
-      imageUrls: user.vehicle?.images ?? [],
-    }));
+  const users: Array<{
+    id: string;
+    loginId: string | null;
+    nickname: string;
+    realName: string | null;
+    phone: string;
+    email: string | null;
+    avatarUrl: string | null;
+    area: string | null;
+    temperature: number;
+    driverType: "driver" | "non_driver";
+    licenseVerified: boolean;
+    insuranceVerified: boolean;
+    driverVerifiedAt: string | null;
+    passwordHash: string | null;
+  }> = [];
+  const vehicles: Array<{
+    id: string;
+    userId: string;
+    plateNumber: string;
+    modelName: string | null;
+    imageUrls: string[];
+  }> = [];
 
   const posts: SeedPostRecord[] = [];
   const postLikes: SeedPostLikeRecord[] = [];
@@ -137,7 +131,7 @@ export function createSeedRecords() {
     id: sighting.id,
     routeId: sighting.routeId,
     stopId: sighting.stopId,
-    reporterId: sighting.reporterId,
+    reporterId: null,
     latitude: sighting.latitude,
     longitude: sighting.longitude,
     createdAt: sighting.createdAt,
@@ -157,8 +151,4 @@ export function createSeedRecords() {
     busRouteStops,
     busSightings,
   };
-}
-
-function toDatabaseDriverType(driverType: DriverType) {
-  return driverType === "driver" ? "driver" : "non_driver";
 }

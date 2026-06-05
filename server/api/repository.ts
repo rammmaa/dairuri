@@ -58,6 +58,8 @@ type PostRow = {
   created_at: Date;
   place_name: string | null;
   place_address: string | null;
+  place_latitude: string | number | null;
+  place_longitude: string | number | null;
   departure: string | null;
   destination: string | null;
   days: string[];
@@ -155,6 +157,10 @@ type CreatePostInput = Partial<Post> & {
   availabilityNote?: string;
   contactNote?: string;
   placeAddress?: string;
+  placeCoordinate?: {
+    latitude: number;
+    longitude: number;
+  };
   placeName?: string;
   price?: number;
   seats?: number;
@@ -179,6 +185,8 @@ export type CreatePostRecord = {
   status: DatabasePostStatus;
   placeName: string | null;
   placeAddress: string | null;
+  placeLatitude: number | null;
+  placeLongitude: number | null;
   departure: string | null;
   destination: string | null;
   days: Post["days"];
@@ -326,7 +334,7 @@ export async function authenticateUser(input: LoginInput): Promise<AuthSession> 
   const row = rows[0];
 
   if (!row?.password_hash || !verifyPassword(password, row.password_hash)) {
-    throw new RepositoryAuthorizationError("invalid credentials");
+    throw new RepositoryAuthorizationError("아이디 또는 비밀번호를 확인해주세요.");
   }
 
   return createAuthSessionForUser(mapUserRow(row));
@@ -657,16 +665,18 @@ export async function createPost(
     `
       insert into posts (
         id, type, title, body, author_id, image_urls, status,
-        place_name, place_address, departure, destination, days,
+        place_name, place_address, place_latitude, place_longitude,
+        departure, destination, days,
         start_time, end_time, wage_type, wage_amount, job_category,
         profile_mode, available_tasks, employment_types, preferred_pay,
         availability_note, contact_note, price, seats, created_at
       ) values (
         $1, $2, $3, $4, $5, $6, $7,
-        $8, $9, $10, $11, $12,
-        $13, $14, $15, $16, $17,
-        $18, $19, $20, $21,
-        $22, $23, $24, $25, $26
+        $8, $9, $10, $11,
+        $12, $13, $14,
+        $15, $16, $17, $18, $19,
+        $20, $21, $22, $23,
+        $24, $25, $26, $27, $28
       )
     `,
     [
@@ -679,6 +689,8 @@ export async function createPost(
       record.status,
       record.placeName,
       record.placeAddress,
+      record.placeLatitude,
+      record.placeLongitude,
       record.departure,
       record.destination,
       record.days,
@@ -730,6 +742,7 @@ export function normalizeCreatePostInput(
 
   if (input.type === "job") {
     const placeName = optionalPostText(input.placeName, "placeName");
+    const placeCoordinate = optionalCoordinate(input.placeCoordinate, "placeCoordinate");
     const wageAmount = optionalNumber(input.wageAmount, "wageAmount");
     if (!placeName || wageAmount == null) {
       throw new CreatePostInputError("job post requires placeName and wageAmount");
@@ -740,6 +753,8 @@ export function normalizeCreatePostInput(
       type: "job",
       placeName,
       placeAddress: optionalPostText(input.placeAddress, "placeAddress"),
+      placeLatitude: placeCoordinate?.latitude ?? null,
+      placeLongitude: placeCoordinate?.longitude ?? null,
       departure: null,
       destination: null,
       wageType: optionalWageType(input.wageType) ?? "hourly",
@@ -767,6 +782,8 @@ export function normalizeCreatePostInput(
     type: "carpool",
     placeName: null,
     placeAddress: null,
+    placeLatitude: null,
+    placeLongitude: null,
     departure,
     destination,
     wageType: null,
@@ -1566,6 +1583,10 @@ function mapPostRow(row: PostRow): Post {
       type: "job",
       placeName: row.place_name ?? "",
       placeAddress: row.place_address ?? undefined,
+      placeCoordinate: toOptionalCoordinate(
+        row.place_latitude,
+        row.place_longitude,
+      ),
       days: row.days as Post["days"],
       startTime: row.start_time ?? "",
       endTime: row.end_time ?? "",
@@ -1659,6 +1680,27 @@ function mapDriverVerification(row: {
   };
 }
 
+function toOptionalCoordinate(
+  latitude: string | number | null,
+  longitude: string | number | null,
+) {
+  if (latitude == null || longitude == null) {
+    return undefined;
+  }
+
+  const parsedLatitude = Number(latitude);
+  const parsedLongitude = Number(longitude);
+
+  if (!Number.isFinite(parsedLatitude) || !Number.isFinite(parsedLongitude)) {
+    return undefined;
+  }
+
+  return {
+    latitude: parsedLatitude,
+    longitude: parsedLongitude,
+  };
+}
+
 function requiredText(value: unknown, fieldName: string) {
   const trimmed = optionalPostText(value, fieldName);
   if (!trimmed) {
@@ -1696,6 +1738,57 @@ function optionalNumber(value: unknown, fieldName: string) {
   }
 
   return value;
+}
+
+function optionalCoordinate(
+  value: unknown,
+  fieldName: string,
+): { latitude: number; longitude: number } | null {
+  if (value == null) {
+    return null;
+  }
+
+  if (typeof value !== "object") {
+    throw new CreatePostInputError(`${fieldName} must be a coordinate`);
+  }
+
+  const coordinate = value as { latitude?: unknown; longitude?: unknown };
+  const latitude = optionalCoordinateNumber(
+    coordinate.latitude,
+    `${fieldName}.latitude`,
+    -90,
+    90,
+  );
+  const longitude = optionalCoordinateNumber(
+    coordinate.longitude,
+    `${fieldName}.longitude`,
+    -180,
+    180,
+  );
+
+  if (latitude == null || longitude == null) {
+    throw new CreatePostInputError(`${fieldName} requires latitude and longitude`);
+  }
+
+  return { latitude, longitude };
+}
+
+function optionalCoordinateNumber(
+  value: unknown,
+  fieldName: string,
+  minimum: number,
+  maximum: number,
+) {
+  const numberValue = optionalNumber(value, fieldName);
+  if (numberValue == null) {
+    return null;
+  }
+
+  if (numberValue < minimum || numberValue > maximum) {
+    throw new CreatePostInputError(`${fieldName} out of range`);
+  }
+
+  return numberValue;
 }
 
 function optionalTextArray(value: unknown, fieldName: string) {

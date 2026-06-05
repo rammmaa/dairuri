@@ -1,9 +1,11 @@
 describe("liveApi web test fallback", () => {
+  const originalNodeEnv = process.env.NODE_ENV;
   const originalSkipAuth = process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH;
   const originalTestToken = process.env.EXPO_PUBLIC_DARORI_TEST_AUTH_TOKEN;
   const originalFetch = global.fetch;
 
   afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
     process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH = originalSkipAuth;
     process.env.EXPO_PUBLIC_DARORI_TEST_AUTH_TOKEN = originalTestToken;
     global.fetch = originalFetch;
@@ -81,5 +83,25 @@ describe("liveApi web test fallback", () => {
       expect.arrayContaining([expect.objectContaining({ id: createdPost.id })]),
     );
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not use mock data in production when skip-auth has no token", async () => {
+    jest.resetModules();
+    process.env.NODE_ENV = "production";
+    process.env.EXPO_PUBLIC_DARORI_SKIP_AUTH = "true";
+    process.env.EXPO_PUBLIC_DARORI_TEST_AUTH_TOKEN = "";
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    });
+
+    const { getPosts } = require("../services/liveApi");
+
+    await expect(getPosts()).resolves.toEqual([]);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://api.dairuri.harammm.me/posts",
+      expect.any(Object),
+    );
   });
 });

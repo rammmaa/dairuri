@@ -7,7 +7,7 @@ web and APK builds call that API directly through
 
 ## Current Target
 
-- EC2 host: `ec2-16-184-41-188.ap-northeast-2.compute.amazonaws.com`
+- EC2 host: `ec2-43-203-114-56.ap-northeast-2.compute.amazonaws.com`
 - EC2 user: `ec2-user`
 - App directory: `/home/ec2-user/darori`
 - API port: `8787`
@@ -54,9 +54,9 @@ the EC2 API domain above; the EC2 API connects to private RDS/Valkey.
 ## Deploy
 
 ```bash
-chmod 400 /Users/yoons/Downloads/darolink.pem
-EC2_HOST=ec2-16-184-41-188.ap-northeast-2.compute.amazonaws.com \
-EC2_KEY=/Users/yoons/Downloads/darolink.pem \
+chmod 400 /Users/yoons/Documents/darolink.pem
+EC2_HOST=ec2-43-203-114-56.ap-northeast-2.compute.amazonaws.com \
+EC2_KEY=/Users/yoons/Documents/darolink.pem \
 ./scripts/deploy-ec2-api.sh
 ```
 
@@ -76,8 +76,8 @@ Then it creates and restarts the `darori-api` systemd service.
 ## Smoke Check
 
 ```bash
-EC2_HOST=ec2-16-184-41-188.ap-northeast-2.compute.amazonaws.com \
-EC2_KEY=/Users/yoons/Downloads/darolink.pem \
+EC2_HOST=ec2-43-203-114-56.ap-northeast-2.compute.amazonaws.com \
+EC2_KEY=/Users/yoons/Documents/darolink.pem \
 ./scripts/check-ec2-api.sh
 ```
 
@@ -98,10 +98,11 @@ APK and web production builds call the EC2 API directly through:
 https://api.dairuri.harammm.me
 ```
 
-Create this DNS record:
+The domain currently uses Porkbun nameservers. Create or update this DNS record
+in Porkbun DNS:
 
 ```text
-api.dairuri.harammm.me  A  16.184.41.188
+api.dairuri.harammm.me  A  43.203.114.56
 ```
 
 Then open EC2 inbound:
@@ -114,8 +115,8 @@ HTTPS 443  0.0.0.0/0
 Configure nginx on EC2:
 
 ```bash
-EC2_HOST=ec2-16-184-41-188.ap-northeast-2.compute.amazonaws.com \
-EC2_KEY=/Users/yoons/Downloads/darolink.pem \
+EC2_HOST=ec2-43-203-114-56.ap-northeast-2.compute.amazonaws.com \
+EC2_KEY=/Users/yoons/Documents/darolink.pem \
 API_DOMAIN=api.dairuri.harammm.me \
 ENABLE_TLS=true \
 ./scripts/configure-ec2-api-nginx.sh
@@ -137,7 +138,7 @@ PostgreSQL-backed post list.
 ## Operations
 
 ```bash
-ssh -i /Users/yoons/Downloads/darolink.pem ec2-user@ec2-16-184-41-188.ap-northeast-2.compute.amazonaws.com
+ssh -i /Users/yoons/Documents/darolink.pem ec2-user@ec2-43-203-114-56.ap-northeast-2.compute.amazonaws.com
 sudo systemctl status darori-api
 sudo journalctl -u darori-api -f
 sudo systemctl restart darori-api

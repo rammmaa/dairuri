@@ -1,10 +1,14 @@
-import type { CategoryFilter, MapHomePost } from "./mapHome";
+import type {
+  CategoryFilter,
+  MapHomePost,
+  TimeFilter,
+  WeekdayFilter,
+} from "./mapHome";
 
 export type MapPostFilters = {
   category?: CategoryFilter["id"] | null;
-  date?: MapHomePost["dateFilter"] | null;
-  time?: MapHomePost["timeFilter"] | null;
-  departure?: MapHomePost["departurePlace"] | null;
+  days?: readonly WeekdayFilter[] | null;
+  times?: readonly TimeFilter[] | null;
 };
 
 export type MapPostSortMode = "default" | "latest" | "oldest";
@@ -26,20 +30,25 @@ export function filterAndSortMapPosts(
   posts: readonly MapHomePost[],
   { filters, sortMode }: MapPostListOptions,
 ) {
+  const selectedDays = filters.days ?? [];
+  const selectedTimes = filters.times ?? [];
+
   const filteredPosts = posts.filter((post) => {
     if (filters.category && post.category !== filters.category) {
       return false;
     }
 
-    if (filters.date && post.dateFilter !== filters.date) {
+    if (
+      selectedDays.length > 0 &&
+      !post.dayFilters.some((day) => selectedDays.includes(day))
+    ) {
       return false;
     }
 
-    if (filters.time && post.timeFilter !== filters.time) {
-      return false;
-    }
-
-    if (filters.departure && post.departurePlace !== filters.departure) {
+    if (
+      selectedTimes.length > 0 &&
+      !selectedTimes.includes(post.timeFilter)
+    ) {
       return false;
     }
 

@@ -1,5 +1,6 @@
 import {
   authenticateUser,
+  checkLoginIdAvailability,
   registerUser,
 } from "../server/api/repository";
 import { consumePhoneVerificationProof } from "../server/api/phoneVerification";
@@ -32,11 +33,24 @@ describe("server auth repository", () => {
         identifier: "010-1234-5678",
         password: "password123",
       }),
-    ).rejects.toThrow("invalid credentials");
+    ).rejects.toThrow("아이디 또는 비밀번호를 확인해주세요.");
 
     expect(query).toHaveBeenCalledWith(expect.stringContaining("regexp_replace"), [
       "010-1234-5678",
       "01012345678",
+    ]);
+  });
+
+  it("reports login IDs as unavailable when they already exist", async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [{ exists: true }] });
+    jest.mocked(getPostgresPool).mockReturnValue({ query } as never);
+
+    await expect(checkLoginIdAvailability("test_user")).resolves.toEqual({
+      available: false,
+    });
+
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("where login_id = $1"), [
+      "test_user",
     ]);
   });
 

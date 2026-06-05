@@ -19,6 +19,7 @@ import type {
   UpdateUserProfileInput,
   UserProfile,
 } from "../types/domain";
+import { normalizeKoreanPhoneNumber } from "../data/phoneNumberFormat";
 import { clearPersistedAuthSession, persistAuthSession } from "./authSession";
 import {
   BusSightingInputError,
@@ -58,10 +59,11 @@ export async function login(input: LoginInput): Promise<AuthSession> {
 
 export async function signup(input: SignupInput): Promise<AuthSession> {
   await delay(60);
+  const phone = normalizeKoreanPhoneNumber(input.phone);
   if (
     !input.loginId.trim() ||
     !input.nickname.trim() ||
-    !input.phone.trim() ||
+    !phone ||
     input.password.length < 8
   ) {
     throw new Error("회원가입 정보를 확인해주세요.");
@@ -71,14 +73,14 @@ export async function signup(input: SignupInput): Promise<AuthSession> {
   if (
     !phoneVerification?.token ||
     phoneVerification.token !== input.phoneVerification.token ||
-    phoneVerification.phone !== input.phone
+    phoneVerification.phone !== phone
   ) {
     throw new Error("전화번호 인증을 완료해주세요.");
   }
 
   const database = connectMockDatabase();
   const existing = database.users.find(
-    (user) => user.phone === input.phone || user.loginId === input.loginId,
+    (user) => user.phone === phone || user.loginId === input.loginId,
   );
   const user: UserProfile =
     existing ??
@@ -87,7 +89,7 @@ export async function signup(input: SignupInput): Promise<AuthSession> {
       loginId: input.loginId,
       nickname: input.nickname,
       realName: input.realName,
-      phone: input.phone,
+      phone,
       email: input.email,
       avatarUrl: undefined,
       area: "다로리",
@@ -134,7 +136,7 @@ export async function requestPhoneVerification(
   input: PhoneVerificationStartInput,
 ): Promise<PhoneVerificationStartResult> {
   await delay(20);
-  const phone = input.phone.trim();
+  const phone = normalizeKoreanPhoneNumber(input.phone);
   if (!phone) {
     throw new Error("전화번호를 입력해주세요.");
   }

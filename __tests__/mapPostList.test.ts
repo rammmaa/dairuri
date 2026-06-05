@@ -9,14 +9,26 @@ describe("map post list helpers", () => {
     const posts = filterAndSortMapPosts(mapHomePosts, {
       filters: {
         category: "work",
-        date: "오늘",
-        time: "오후",
-        departure: "남성현역",
+        days: ["화"],
+        times: ["오후"],
       },
       sortMode: "latest",
     });
 
     expect(posts.map((post) => post.id)).toEqual(["post-2"]);
+
+    const multiSelectedPosts = filterAndSortMapPosts(mapHomePosts, {
+      filters: {
+        days: ["화", "수"],
+        times: ["오전"],
+      },
+      sortMode: "latest",
+    });
+
+    expect(multiSelectedPosts.map((post) => post.id)).toEqual([
+      "post-3",
+      "post-4",
+    ]);
 
     const oldestFirst = filterAndSortMapPosts(mapHomePosts, {
       filters: {},

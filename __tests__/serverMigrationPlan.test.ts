@@ -97,6 +97,27 @@ describe("server database migration plan", () => {
       ]),
     );
   });
+
+  it("ships a cleanup migration for mock login seed accounts", async () => {
+    const migrations = await readSchemaMigrations();
+
+    expect(migrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "009_remove_mock_seed_accounts",
+          sql: expect.stringContaining("delete from users"),
+        }),
+      ]),
+    );
+  });
+
+  it("refreshes seeded bus route-stop links across both unique constraints", async () => {
+    const seedSource = await readFile("server/db/seed.ts", "utf8");
+
+    expect(seedSource).toMatch(
+      /delete from bus_route_stops[\s\S]*where route_id = \$1[\s\S]*\(stop_id = \$2 or sequence = \$3\)/,
+    );
+  });
 });
 
 describe("readSchemaMigrations", () => {

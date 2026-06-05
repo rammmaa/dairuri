@@ -13,6 +13,8 @@ export type RecruitmentCardProps = {
 };
 
 export function RecruitmentCard({ post, onPress, testID }: RecruitmentCardProps) {
+  const duration = post.duration?.trim();
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -38,7 +40,9 @@ export function RecruitmentCard({ post, onPress, testID }: RecruitmentCardProps)
         <View style={styles.metaBlock}>
           <MetaRow color={colors.mintDark} icon={Clock3} label={post.schedule} />
           <MetaRow color={colors.grayIcon} icon={BriefcaseBusiness} label={post.purpose} />
-          <MetaRow color={colors.grayIcon} icon={Timer} label={post.duration} />
+          {duration ? (
+            <MetaRow color={colors.grayIcon} icon={Timer} label={duration} />
+          ) : null}
         </View>
       </View>
 

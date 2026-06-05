@@ -10,6 +10,8 @@ import {
 import { colors } from "../constants/colors";
 import { typography } from "../constants/typography";
 
+const TEXT_MAX_FONT_SIZE_MULTIPLIER = 1.08;
+
 export type TextInputFieldProps = {
   label?: string;
   placeholder?: string;
@@ -36,7 +38,17 @@ export function TextInputField({
 }: TextInputFieldProps) {
   return (
     <View style={styles.root}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? (
+        <Text
+          style={styles.label}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.86}
+          maxFontSizeMultiplier={TEXT_MAX_FONT_SIZE_MULTIPLIER}
+        >
+          {label}
+        </Text>
+      ) : null}
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -46,11 +58,19 @@ export function TextInputField({
         keyboardType={keyboardType}
         multiline={multiline}
         textAlignVertical={multiline ? "top" : "center"}
+        maxFontSizeMultiplier={TEXT_MAX_FONT_SIZE_MULTIPLIER}
         testID={testID}
         style={[styles.input, multiline && styles.textarea]}
         {...inputProps}
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text
+          style={styles.error}
+          maxFontSizeMultiplier={TEXT_MAX_FONT_SIZE_MULTIPLIER}
+        >
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }

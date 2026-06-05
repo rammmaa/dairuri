@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
+import * as ImagePicker from "expo-image-picker";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +19,7 @@ import {
   ChevronLeft,
   Eye,
   EyeOff,
+  Image as ImageIcon,
   ShieldCheck,
   UserRound,
 } from "lucide-react-native";
@@ -25,7 +28,10 @@ import { ScreenTitle } from "../../components/ScreenTitle";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
-import { formatKoreanPhoneNumberInput } from "../../data/phoneNumberFormat";
+import {
+  formatKoreanPhoneNumberInput,
+  normalizeKoreanPhoneNumber,
+} from "../../data/phoneNumberFormat";
 import {
   checkLoginIdAvailability,
   confirmPhoneVerification,
@@ -37,6 +43,12 @@ import type { SignupInput } from "../../types/domain";
 
 type AuthStep = "login" | "signup" | "license-camera" | "driver-details";
 type SignupRole = "driver" | "rider";
+type UploadedPhoto = {
+  uri: string;
+};
+
+const AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER = 1.08;
+const AUTH_HEADER_TITLE_MAX_FONT_SIZE_MULTIPLIER = 1;
 
 export type AuthScreenProps = {
   onComplete: () => void;
@@ -60,6 +72,9 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     code: "",
     status: "idle",
   });
+  const [driverLicensePhoto, setDriverLicensePhoto] = useState<UploadedPhoto | null>(
+    null,
+  );
   const [authError, setAuthError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [phoneVerificationSubmitting, setPhoneVerificationSubmitting] = useState<
@@ -81,6 +96,11 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       return;
     }
 
+    if (role === "driver" && !driverLicensePhoto) {
+      setAuthError("운전면허증 사진을 등록해주세요.");
+      return;
+    }
+
     setSubmitting(true);
     setAuthError(null);
     try {
@@ -88,7 +108,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
         loginId: signupDraft.loginId.trim(),
         nickname: signupDraft.name.trim(),
         realName: signupDraft.name.trim(),
-        phone: signupDraft.phone.trim(),
+        phone: normalizeKoreanPhoneNumber(signupDraft.phone),
         password: signupDraft.password,
         driverType: role === "driver" ? "driver" : "nonDriver",
         vehicle,
@@ -153,7 +173,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     setAuthError(null);
     try {
       const result = await requestPhoneVerification({
-        phone: signupDraft.phone.trim(),
+        phone: normalizeKoreanPhoneNumber(signupDraft.phone),
       });
       setPhoneVerification({
         code: result.debugCode ?? "",
@@ -195,7 +215,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       setPhoneVerification({
         ...phoneVerification,
         status: "verified",
-        verifiedPhone: result.phone,
+        verifiedPhone: normalizeKoreanPhoneNumber(result.phone),
         verifiedToken: result.verifiedToken,
       });
     } catch (error) {
@@ -219,8 +239,19 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   if (step === "license-camera") {
     return (
       <LicenseCameraScreen
+        photo={driverLicensePhoto}
         onBack={() => setStep("signup")}
-        onManual={() => setStep("driver-details")}
+        onPhotoPicked={(photo) => {
+          setDriverLicensePhoto(photo);
+          setAuthError(null);
+        }}
+        onNext={() => {
+          if (!driverLicensePhoto) {
+            setAuthError("운전면허증 사진을 등록해주세요.");
+            return;
+          }
+          setStep("driver-details");
+        }}
       />
     );
   }
@@ -229,6 +260,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     return (
       <DriverDetailsScreen
         draft={signupDraft}
+        licensePhoto={driverLicensePhoto}
         submitting={submitting}
         errorMessage={authError}
         onBack={() => setStep("license-camera")}
@@ -250,7 +282,10 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       onBack={() => setStep("login")}
       onRoleChange={setRole}
       onDraftChange={(nextDraft) => {
-        if (nextDraft.phone.trim() !== signupDraft.phone.trim()) {
+        if (
+          normalizeKoreanPhoneNumber(nextDraft.phone) !==
+          normalizeKoreanPhoneNumber(signupDraft.phone)
+        ) {
           setPhoneVerification({ code: "", status: "idle" });
         }
         if (nextDraft.loginId.trim() !== signupDraft.loginId.trim()) {
@@ -290,7 +325,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       }}
       onDenyCamera={() => {
         setCameraModalVisible(false);
-        setStep("driver-details");
+        setAuthError("운전자 가입은 운전면허증 사진 등록이 필요해요.");
       }}
     />
   );
@@ -346,7 +381,7 @@ function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
       await login({ identifier: identifier.trim(), password });
       onLogin();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "로그인에 실패했어요.");
+      setErrorMessage(getLoginErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -496,6 +531,7 @@ function SignupFormScreen({
               placeholderTextColor={colors.gray300}
               keyboardType="default"
               autoCapitalize="none"
+              maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
               testID="signup-login-id-input"
               style={[styles.inputBox, styles.emailInput, styles.textInput]}
             />
@@ -508,14 +544,21 @@ function SignupFormScreen({
               style={({ pressed }) => [
                 styles.inputBox,
                 styles.checkInput,
+                styles.loginIdCheckButton,
                 loginIdCheck.status === "available" && styles.verifiedButton,
                 loginIdCheck.status === "checking" && styles.disabledButton,
                 pressed && styles.pressed,
               ]}
             >
               <Text
+                testID="signup-login-id-check-text"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+                maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
                 style={[
                   styles.placeholder,
+                  styles.loginIdCheckText,
                   loginIdCheck.status === "available" && styles.checkInputTextVerified,
                 ]}
               >
@@ -543,6 +586,7 @@ function SignupFormScreen({
               placeholder="010-0000-0000"
               placeholderTextColor={colors.gray300}
               keyboardType="phone-pad"
+              maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
               testID="signup-phone-input"
               style={[styles.inputBox, styles.phoneInput, styles.textInput]}
             />
@@ -561,7 +605,14 @@ function SignupFormScreen({
               ]}
               onPress={onRequestPhoneCode}
             >
-              <Text style={styles.verificationButtonText}>
+              <Text
+                testID="signup-phone-request-code-text"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+                maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
+                style={styles.verificationButtonText}
+              >
                 {phoneVerification.status === "verified"
                   ? "완료"
                   : phoneVerificationSubmitting === "request"
@@ -578,6 +629,7 @@ function SignupFormScreen({
                 placeholder="인증번호 6자리"
                 placeholderTextColor={colors.gray300}
                 keyboardType="phone-pad"
+                maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
                 testID="signup-phone-code-input"
                 style={[styles.inputBox, styles.phoneInput, styles.textInput]}
               />
@@ -601,7 +653,14 @@ function SignupFormScreen({
                 ]}
                 onPress={onConfirmPhoneCode}
               >
-                <Text style={styles.verificationButtonText}>
+                <Text
+                  testID="signup-phone-confirm-code-text"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.82}
+                  maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
+                  style={styles.verificationButtonText}
+                >
                   {phoneVerificationSubmitting === "confirm" ? "확인 중" : "확인"}
                 </Text>
               </Pressable>
@@ -674,36 +733,196 @@ function SignupFormScreen({
 }
 
 type LicenseCameraScreenProps = {
+  photo: UploadedPhoto | null;
   onBack: () => void;
-  onManual: () => void;
+  onPhotoPicked: (photo: UploadedPhoto) => void;
+  onNext: () => void;
 };
 
-function LicenseCameraScreen({ onBack, onManual }: LicenseCameraScreenProps) {
+function LicenseCameraScreen({
+  photo,
+  onBack,
+  onPhotoPicked,
+  onNext,
+}: LicenseCameraScreenProps) {
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [pickingSource, setPickingSource] = useState<"camera" | "library" | null>(
+    null,
+  );
+  const canContinue = Boolean(photo) && !pickingSource;
+
+  const pickLicensePhoto = async (source: "camera" | "library") => {
+    if (pickingSource) {
+      return;
+    }
+
+    setPickingSource(source);
+    setStatusMessage(null);
+
+    try {
+      const permission =
+        source === "camera"
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        setStatusMessage(
+          source === "camera"
+            ? "카메라 권한이 필요해요."
+            : "사진 접근 권한이 필요해요.",
+        );
+        return;
+      }
+
+      const result =
+        source === "camera"
+          ? await ImagePicker.launchCameraAsync({
+              mediaTypes: ["images"],
+              quality: 0.72,
+              base64: false,
+              allowsEditing: false,
+            })
+          : await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ["images"],
+              quality: 0.72,
+              base64: false,
+              allowsEditing: false,
+            });
+
+      if (result.canceled) {
+        setStatusMessage("사진 등록을 취소했어요.");
+        return;
+      }
+
+      const pickedPhoto = getPickedPhotoPayload(result.assets[0]);
+      if (!pickedPhoto) {
+        setStatusMessage("사진을 등록하지 못했어요.");
+        return;
+      }
+
+      onPhotoPicked(pickedPhoto);
+      setStatusMessage("운전면허증 사진이 등록되었어요.");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "사진을 등록하지 못했어요.",
+      );
+    } finally {
+      setPickingSource(null);
+    }
+  };
+
   return (
     <KeyboardAwareAuthShell>
       <AuthHeader title="회원가입" onBack={onBack} />
-      <View style={styles.cameraContent}>
+      <ScrollView
+        style={styles.signupScroll}
+        contentContainerStyle={styles.cameraContent}
+        showsVerticalScrollIndicator={false}
+      >
         <ScreenTitle>
           점선 내에 운전면허증이 보이도록{"\n"}카메라를 옮겨주세요.
         </ScreenTitle>
-        <View style={styles.licenseFrame} />
+        <View style={styles.licenseFrame}>
+          {photo ? (
+            <Image
+              source={{ uri: photo.uri }}
+              style={styles.licensePhotoPreview}
+              testID="license-photo-preview"
+            />
+          ) : (
+            <View style={styles.licensePhotoPlaceholder}>
+              <Camera size={32} color={colors.gray300} strokeWidth={2.2} />
+            </View>
+          )}
+        </View>
         <Text style={styles.cameraHint}>
           빛 반사가 생기면 인식이 어려워요!{"\n"}평지에 놓고 찍는 것을 권장드려요.
         </Text>
+        <View style={styles.licenseActionRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: Boolean(pickingSource) }}
+            disabled={Boolean(pickingSource)}
+            testID="license-capture-button"
+            onPress={() => {
+              void pickLicensePhoto("camera");
+            }}
+            style={({ pressed }) => [
+              styles.licenseActionButton,
+              pickingSource === "camera" && styles.disabledButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Camera size={18} color={colors.surface} strokeWidth={2.2} />
+            <Text style={styles.licenseActionText}>
+              {pickingSource === "camera" ? "촬영 중" : "촬영하기"}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: Boolean(pickingSource) }}
+            disabled={Boolean(pickingSource)}
+            testID="license-upload-button"
+            onPress={() => {
+              void pickLicensePhoto("library");
+            }}
+            style={({ pressed }) => [
+              styles.licenseActionButton,
+              styles.licenseUploadButton,
+              pickingSource === "library" && styles.disabledButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <ImageIcon size={18} color={colors.mint} strokeWidth={2.2} />
+            <Text style={[styles.licenseActionText, styles.licenseUploadText]}>
+              {pickingSource === "library" ? "업로드 중" : "사진 업로드"}
+            </Text>
+          </Pressable>
+        </View>
+        {statusMessage ? (
+          <Text
+            testID="license-status"
+            style={[
+              styles.verificationStatusText,
+              statusMessage.includes("필요") ||
+              statusMessage.includes("못") ||
+              statusMessage.includes("취소")
+                ? styles.errorText
+                : null,
+            ]}
+          >
+            {statusMessage}
+          </Text>
+        ) : null}
         <Pressable
           accessibilityRole="button"
-          testID="manual-license-link"
-          onPress={onManual}
+          accessibilityState={{ disabled: !canContinue }}
+          disabled={!canContinue}
+          testID="license-next"
+          onPress={onNext}
+          style={({ pressed }) => [
+            styles.formSubmitButton,
+            canContinue && styles.primaryBottomButton,
+            !canContinue && styles.disabledButton,
+            pressed && styles.pressed,
+          ]}
         >
-          <Text style={styles.manualLink}>수동으로 정보 입력하기</Text>
+          <Text
+            style={
+              canContinue ? styles.primaryBottomButtonText : styles.bottomButtonText
+            }
+          >
+            다음
+          </Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </KeyboardAwareAuthShell>
   );
 }
 
 type DriverDetailsScreenProps = {
   draft: SignupDraft;
+  licensePhoto: UploadedPhoto | null;
   submitting: boolean;
   errorMessage: string | null;
   onBack: () => void;
@@ -712,6 +931,7 @@ type DriverDetailsScreenProps = {
 
 function DriverDetailsScreen({
   draft,
+  licensePhoto,
   submitting,
   errorMessage,
   onBack,
@@ -723,7 +943,7 @@ function DriverDetailsScreen({
   const [modelName, setModelName] = useState(
     process.env.NODE_ENV === "test" ? "다로리 카" : "",
   );
-  const vehicleReady = plateNumber.trim().length > 0;
+  const vehicleReady = plateNumber.trim().length > 0 && Boolean(licensePhoto);
 
   return (
     <KeyboardAwareAuthShell testID="driver-details-keyboard-avoiding-view">
@@ -766,7 +986,17 @@ function DriverDetailsScreen({
         </View>
         <View style={styles.fieldGroup}>
           <Text style={styles.formLabel}>면허 정보</Text>
-          <View style={styles.licenseInfoBox} />
+          <View style={styles.licenseInfoBox}>
+            {licensePhoto ? (
+              <Image
+                source={{ uri: licensePhoto.uri }}
+                style={styles.licenseInfoImage}
+                testID="driver-license-photo-preview"
+              />
+            ) : (
+              <Text style={styles.placeholder}>운전면허증 사진 필요</Text>
+            )}
+          </View>
         </View>
         <View style={styles.fieldGroup}>
           <Text style={styles.formLabel}>차량 정보</Text>
@@ -852,10 +1082,21 @@ type AuthHeaderProps = {
 function AuthHeader({ title, onBack }: AuthHeaderProps) {
   return (
     <View style={styles.authHeader}>
-      <Pressable accessibilityRole="button" onPress={onBack}>
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={onBack}
+        style={styles.authHeaderBackButton}
+      >
         <ChevronLeft size={20} color={colors.black} strokeWidth={2.3} />
       </Pressable>
-      <ScreenTitle style={styles.authHeaderTitle} numberOfLines={1}>
+      <ScreenTitle
+        testID="auth-header-title"
+        style={styles.authHeaderTitle}
+        numberOfLines={1}
+        adjustsFontSizeToFit={false}
+        maxFontSizeMultiplier={AUTH_HEADER_TITLE_MAX_FONT_SIZE_MULTIPLIER}
+      >
         {title}
       </ScreenTitle>
     </View>
@@ -899,6 +1140,7 @@ function AuthField({
           editable={editable}
           keyboardType={keyboardType}
           autoCapitalize="none"
+          maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
           testID={testID}
           style={styles.authTextInput}
         />
@@ -938,6 +1180,7 @@ function SecureTextInputBox({
         placeholder={placeholder}
         placeholderTextColor={colors.gray300}
         autoCapitalize="none"
+        maxFontSizeMultiplier={AUTH_TEXT_MAX_FONT_SIZE_MULTIPLIER}
         testID={testID}
         style={styles.authTextInput}
       />
@@ -1079,7 +1322,9 @@ function validateSignupDraft(
     return "아이디 중복 확인을 완료해주세요.";
   }
 
-  if (!draft.phone.trim()) {
+  const normalizedPhone = normalizeKoreanPhoneNumber(draft.phone);
+
+  if (!normalizedPhone) {
     return "전화번호를 입력해주세요.";
   }
 
@@ -1093,7 +1338,8 @@ function validateSignupDraft(
 
   if (
     !phoneVerification?.verifiedToken ||
-    phoneVerification.verifiedPhone !== draft.phone.trim()
+    normalizeKoreanPhoneNumber(phoneVerification.verifiedPhone ?? "") !==
+      normalizedPhone
   ) {
     return "전화번호 인증을 완료해주세요.";
   }
@@ -1111,6 +1357,28 @@ function validateLoginIdDraft(loginId: string) {
   }
 
   return null;
+}
+
+function getLoginErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) {
+    return "로그인에 실패했어요.";
+  }
+
+  return /invalid credentials/i.test(error.message)
+    ? "아이디 또는 비밀번호를 확인해주세요."
+    : error.message;
+}
+
+function getPickedPhotoPayload(
+  asset: ImagePicker.ImagePickerAsset | undefined,
+): UploadedPhoto | null {
+  if (!asset) {
+    return null;
+  }
+
+  return {
+    uri: asset.uri,
+  };
 }
 
 function formatPhoneLikeIdentifierInput(value: string) {
@@ -1155,7 +1423,7 @@ const styles = StyleSheet.create({
   },
   formLabel: {
     color: colors.black,
-    fontFamily: typography.family.medium,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
   },
@@ -1262,9 +1530,9 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.base,
   },
   authHeader: {
-    height: 80,
+    height: 88,
     paddingLeft: 27,
-    paddingTop: 47,
+    paddingTop: 46,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
@@ -1273,9 +1541,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  authHeaderBackButton: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   authHeaderTitle: {
     flex: 1,
     minWidth: 0,
+    color: colors.black,
+    fontFamily: typography.family.semibold,
+    fontSize: typography.size.base,
+    lineHeight: 20,
   },
   signupContent: {
     paddingHorizontal: 27,
@@ -1297,6 +1575,13 @@ const styles = StyleSheet.create({
     width: 108,
     alignItems: "center",
     justifyContent: "center",
+  },
+  loginIdCheckButton: {
+    backgroundColor: colors.mint,
+  },
+  loginIdCheckText: {
+    color: colors.surface,
+    fontFamily: typography.family.semibold,
   },
   phoneInput: {
     flex: 1,
@@ -1420,7 +1705,8 @@ const styles = StyleSheet.create({
   cameraContent: {
     paddingHorizontal: 20,
     paddingTop: 36,
-    gap: 44,
+    paddingBottom: 36,
+    gap: 24,
   },
   licenseFrame: {
     height: 176,
@@ -1428,6 +1714,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: colors.gray400,
+    backgroundColor: colors.gray50,
+    overflow: "hidden",
+  },
+  licensePhotoPreview: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  licensePhotoPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   cameraHint: {
     color: colors.gray400,
@@ -1436,14 +1734,33 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: "right",
   },
-  manualLink: {
-    marginTop: 18,
-    color: colors.gray300,
-    fontFamily: typography.family.medium,
+  licenseActionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  licenseActionButton: {
+    flex: 1,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  licenseUploadButton: {
+    borderWidth: 1,
+    borderColor: colors.mint,
+    backgroundColor: colors.surface,
+  },
+  licenseActionText: {
+    color: colors.surface,
+    fontFamily: typography.family.semibold,
     fontSize: typography.size.base,
     lineHeight: typography.lineHeight.base,
-    textAlign: "center",
-    textDecorationLine: "underline",
+  },
+  licenseUploadText: {
+    color: colors.mint,
   },
   detailsScroll: {
     flex: 1,
@@ -1458,6 +1775,14 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 12,
     backgroundColor: colors.gray50,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  licenseInfoImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   smallLabel: {
     marginLeft: 6,
