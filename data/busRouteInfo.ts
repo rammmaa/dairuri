@@ -1,6 +1,6 @@
 // Per-route metadata for the route-info screen. Source: namu.wiki Cheongdo
 // Happy Bus, transcribed by the user 2026-06-06. All routes run 3 times a day
-// (1일 3회), operated by 청도버스 with 통합 2대.
+// (3 runs/day), operated by Cheongdo Bus with 2 shared vehicles.
 export type BusRouteInfo = {
   routeId: string;
   origin: string;

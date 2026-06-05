@@ -9,7 +9,7 @@ describe("getBusArrivalTimes", () => {
     const first = getBusArrivalTimes("route-happy-1", "stop-gumiri", "월");
     const second = getBusArrivalTimes("route-happy-1", "stop-gumiri", "월");
 
-    expect(first).toHaveLength(3); // 1일 3회
+    expect(first).toHaveLength(3); // 3 runs/day
     expect(first).toEqual(second); // deterministic
     expect([...first].sort()).toEqual(first); // already ascending
   });

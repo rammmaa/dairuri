@@ -73,8 +73,8 @@ describe("mock Happy Bus archive API", () => {
   });
 
   it("snaps to the nearest stop on the requested route even when the reporter is slightly off", async () => {
-    // ~30 m from 구미리 (35.6435, 128.7510), nearer than the terminal or
-    // 아랫구미. Still on H1, which visits 구미리.
+    // ~30 m from gumiri (35.6435, 128.7510), nearer than the terminal or
+    // arae-gumi. Still on H1, which visits gumiri.
     const recorded = await recordBusSighting({
       routeId: "route-happy-1",
       latitude: 35.6437,
@@ -84,7 +84,7 @@ describe("mock Happy Bus archive API", () => {
   });
 
   it("records the selected stop when the user manually overrides the nearest stop", async () => {
-    // 안송읍 is on H6 but far from the terminal; the manual override records it
+    // ansongeup is on H6 but far from the terminal; the manual override records it
     // anyway instead of snapping to the nearest stop.
     const recorded = await recordBusSighting({
       routeId: "route-happy-6",

@@ -30,7 +30,7 @@ const mockedWatchPosition = Location.watchPositionAsync as jest.MockedFunction<
   typeof Location.watchPositionAsync
 >;
 
-// Coordinates of 청도공용버스터미널 (id: stop-cheongdo-public-terminal).
+// Coordinates of the Cheongdo terminal (id: stop-cheongdo-public-terminal).
 // Inference picks the lowest-code route that visits this stop, which is H1.
 const NEAREST_STOP_COORDS = { latitude: 35.6413, longitude: 128.7464 };
 
@@ -213,7 +213,8 @@ describe("BusSightingScreen", () => {
     });
     await screen.findByText("노선/정류장 선택");
 
-    // H2 (청도읍 -> 화양 범곡) does not visit 농공단지 입구, but does visit 부민아파트.
+    // H2 (Cheongdo-eup -> Hwayang Beomgok) does not visit the nonggong-entrance
+    // stop, but does visit bumin-apt.
     fireEvent.press(screen.getByTestId("bus-sighting-route-chip-H2"));
     await waitFor(() => {
       expect(
@@ -264,11 +265,11 @@ describe("BusSightingScreen", () => {
   });
 
   it("commits the location frozen at bus-button press, not the latest watched location", async () => {
-    // Arrive at 청도공용버스터미널, then drift to 구미리 (which has no seed
+    // Arrive at the terminal, then drift to gumiri (which has no seed
     // sighting). The recorded sighting must use the press-time coordinate, so
-    // it lands on the terminal and never on 구미리.
+    // it lands on the terminal and never on gumiri.
     const terminal = { latitude: 35.6413, longitude: 128.7464 };
-    const drift = { latitude: 35.6435, longitude: 128.7510 }; // 구미리
+    const drift = { latitude: 35.6435, longitude: 128.7510 }; // gumiri
 
     let positionCallback:
       | ((event: {
@@ -336,7 +337,7 @@ describe("BusSightingScreen", () => {
     });
     await screen.findByTestId("bus-sighting-confirmed-modal");
 
-    // The freeze worked if the new sighting landed on the terminal and 구미리
+    // The freeze worked if the new sighting landed on the terminal and gumiri
     // gained nothing despite being the post-drift nearest stop.
     const gumiriSightings = await getStopSightings("stop-gumiri");
     expect(gumiriSightings.length).toBe(0);

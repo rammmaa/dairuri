@@ -11,8 +11,8 @@ describe("BusRouteInfoScreen", () => {
       expect(screen.getByTestId(`route-info-chip-${code}`)).toBeTruthy();
     }
 
-    // H1 schedule (real data) is shown by default. "첫차" is unique to the info
-    // table (the map legend only has 기점 / 종점 / 다른 노선).
+    // H1 schedule (real data) is shown by default. The "first bus" label is
+    // unique to the info table (the map legend only has start / end / others).
     expect(await screen.findByText("첫차")).toBeTruthy();
     expect(screen.getByText("07:50")).toBeTruthy(); // H1 first bus
     expect(screen.getByText("16:50")).toBeTruthy(); // H1 last bus
@@ -30,7 +30,7 @@ describe("BusRouteInfoScreen", () => {
       fireEvent.press(h5);
     });
 
-    // H5 runs 동곡 -> 운문 삼계 with a 08:10 first bus.
+    // H5 runs Donggok -> Unmun Samgye with a 08:10 first bus.
     expect(await screen.findByText("08:10")).toBeTruthy();
     expect(screen.getAllByText(/삼계/).length).toBeGreaterThan(0);
     expect(screen.getByText("정류장 (6개)")).toBeTruthy();
