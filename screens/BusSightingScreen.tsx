@@ -12,11 +12,11 @@ import * as Location from "expo-location";
 
 import { BottomNav } from "../components/BottomNav";
 import { BusArrivalTimesEntry } from "../components/BusArrivalTimesEntry";
+import { BusRouteMap } from "../components/BusRouteMap";
 import { ConfirmRecordModal } from "../components/ConfirmRecordModal";
 import { ConfirmedModal } from "../components/ConfirmedModal";
 import { Header } from "../components/Header";
 import { RouteChip } from "../components/RouteChip";
-import { RouteMapPreview } from "../components/RouteMapPreview";
 import { RouteSelectGrid } from "../components/RouteSelectGrid";
 import { StopRailList } from "../components/StopRailList";
 import { colors } from "../constants/colors";
@@ -62,7 +62,7 @@ type LocationStatus = "loading" | "granted" | "denied" | "error";
 type FlowState = "recorder" | "confirmation" | "selection";
 
 const LOCATION_DISTANCE_INTERVAL_M = 10;
-const CONFIRMATION_MAP_HEIGHT = 150;
+const CONFIRMATION_MAP_HEIGHT = 190;
 const PHONE_MAX_WIDTH = 430;
 const CARD_HORIZONTAL_PADDING = 14;
 
@@ -572,15 +572,13 @@ function ConfirmationView({
         </View>
 
         <View style={styles.mapTile}>
-          <RouteMapPreview
+          <BusRouteMap
             routeId={inference.route.id}
             stops={stops}
             routeStops={routeStops}
             width={mapWidth}
             height={CONFIRMATION_MAP_HEIGHT}
-            layout="geographic"
             highlightedStopId={inference.stop.id}
-            showLabels
           />
         </View>
       </View>
