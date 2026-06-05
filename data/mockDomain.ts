@@ -204,15 +204,15 @@ export const mockRouteOptions: RouteOption[] = [
 // last-sighting matching by code keeps working even though the display name
 // changed.
 //
-// The six stop names come from the Figma frames the user transcribed on
-// 2026-05-26. Stop coordinates are placeholder values anchored near the
-// Darori village area (~35.65 N, 128.73 E) and chosen so that stop spacing
-// roughly matches the 300 m snap radius. The coordinates are NOT surveyed;
-// they are reused in order from the previous fixture so the snap geometry
-// stays stable across the rename.
+// The stop names and route compositions are the real Cheongdo Happy Bus data
+// (source: namu.wiki, transcribed by the user 2026-06-06; see
+// docs/superpowers/specs/2026-06-06-bus-archive-real-route-data.md). Coordinates
+// for the town and terminal anchors are geocoded from OpenStreetMap Nominatim;
+// the small rural stops between anchors are interpolated along each route, so
+// anchors are real geography and intermediate stops are approximate.
 //
-// TODO(field-survey): replace these coordinates with measured values once a
-//                     Darori field survey provides them. Do NOT change the
+// TODO(field-survey): replace the interpolated coordinates with measured values
+//                     when a survey provides them. Do NOT change the
 //                     002_bus_archive migration; only update this fixture and
 //                     server/db/seedData.ts which derives from it.
 
@@ -228,12 +228,54 @@ export const mockBusRoutes: BusRoute[] = [
 ];
 
 export const mockBusStops: BusStop[] = [
-  { id: "stop-cheongdo-public-terminal", name: "청도공용버스터미널", latitude: 35.6474, longitude: 128.7338 },
-  { id: "stop-gumiri", name: "구미리", latitude: 35.6492, longitude: 128.7355 },
-  { id: "stop-arae-gumi", name: "아랫구미", latitude: 35.6501, longitude: 128.7370 },
-  { id: "stop-wolgok-2-pakwol", name: "월곡2리(박월)", latitude: 35.6480, longitude: 128.7390 },
-  { id: "stop-gwitturami-boiler", name: "귀뚜라미보일러", latitude: 35.6450, longitude: 128.7305 },
-  { id: "stop-nonggong-entrance", name: "농공단지 입구", latitude: 35.6520, longitude: 128.7385 },
+  // Shared anchors / terminals (real coordinates from OSM Nominatim).
+  { id: "stop-cheongdo-public-terminal", name: "청도공용버스터미널", latitude: 35.6413, longitude: 128.7464 },
+  { id: "stop-cheongdo-market", name: "청도시장", latitude: 35.6420, longitude: 128.7440 },
+  { id: "stop-donggok-terminal", name: "동곡공용버스터미널", latitude: 35.6993, longitude: 128.8823 },
+  // H1 loop near 청도읍 (interpolated around the terminal).
+  { id: "stop-gumiri", name: "구미리", latitude: 35.6435, longitude: 128.7510 },
+  { id: "stop-arae-gumi", name: "아랫구미", latitude: 35.6450, longitude: 128.7548 },
+  { id: "stop-wolgok-2-pakwol", name: "월곡2리(박월)", latitude: 35.6470, longitude: 128.7585 },
+  { id: "stop-gwitturami-boiler", name: "귀뚜라미보일러", latitude: 35.6495, longitude: 128.7560 },
+  { id: "stop-nonggong-entrance", name: "농공단지 입구", latitude: 35.6510, longitude: 128.7520 },
+  { id: "stop-wolgok-1-hall", name: "월곡1리 마을회관", latitude: 35.6500, longitude: 128.7480 },
+  { id: "stop-dajeong", name: "다정다감", latitude: 35.6470, longitude: 128.7470 },
+  { id: "stop-daean-apt", name: "대안아파트", latitude: 35.6440, longitude: 128.7475 },
+  // H2/H3 shared (청도읍 -> 화양 범곡, interpolated to the Beomgok anchor).
+  { id: "stop-seongjo-apt", name: "성조아파트", latitude: 35.6400, longitude: 128.7420 },
+  { id: "stop-bumin-apt", name: "부민아파트", latitude: 35.6388, longitude: 128.7385 },
+  { id: "stop-county-office", name: "청도군청 뒤", latitude: 35.6378, longitude: 128.7360 },
+  { id: "stop-koaru-apt", name: "코아루아파트", latitude: 35.6362, longitude: 128.7335 },
+  { id: "stop-beomgok-humansia", name: "범곡휴먼시아아파트", latitude: 35.6352, longitude: 128.7320 },
+  { id: "stop-beomgok-1-welfare", name: "범곡1리복지회관", latitude: 35.6346, longitude: 128.7314 },
+  // H3 extras (청도읍 -> 화양 신봉리, interpolated to the Sinbong anchor).
+  { id: "stop-chukhyeop", name: "축협", latitude: 35.6410, longitude: 128.7415 },
+  { id: "stop-beomgok-crossroad", name: "범곡사거리", latitude: 35.6340, longitude: 128.7300 },
+  { id: "stop-sports-field", name: "청도공설운동장", latitude: 35.6325, longitude: 128.7270 },
+  { id: "stop-dongcheon-ri", name: "동천리", latitude: 35.6318, longitude: 128.7220 },
+  { id: "stop-eupseong", name: "청도읍성", latitude: 35.6385, longitude: 128.7150 },
+  { id: "stop-hwayang-police", name: "화양파출소", latitude: 35.6360, longitude: 128.7080 },
+  { id: "stop-seosang-super", name: "서상슈퍼", latitude: 35.6335, longitude: 128.7040 },
+  { id: "stop-sinbong-saeteo", name: "신봉리(새터)", latitude: 35.6320, longitude: 128.7020 },
+  { id: "stop-cheongseokgol-farm", name: "청석골농장", latitude: 35.6315, longitude: 128.7010 },
+  { id: "stop-sinbong-hongdo", name: "신봉리(홍도)", latitude: 35.6312, longitude: 128.7015 },
+  // H4 extras (청도읍 -> 금천 동곡, interpolated to the Donggok anchor).
+  { id: "stop-gomtijae", name: "곰티재", latitude: 35.6550, longitude: 128.7650 },
+  { id: "stop-sangpyeong", name: "상평", latitude: 35.6680, longitude: 128.7850 },
+  { id: "stop-doncchijae-tunnel", name: "돈치재터널", latitude: 35.6800, longitude: 128.8050 },
+  { id: "stop-gimjeon-ri", name: "김전리", latitude: 35.6880, longitude: 128.8350 },
+  { id: "stop-sajeon-ri", name: "사전리", latitude: 35.6940, longitude: 128.8600 },
+  // H5 extras (동곡 -> 운문 삼계, interpolated to the Daecheon / Unmunsa anchors).
+  { id: "stop-daecheon-terminal", name: "대천공용여객자동차터미널", latitude: 35.7281, longitude: 128.9205 },
+  { id: "stop-ojin", name: "오진", latitude: 35.7050, longitude: 128.9350 },
+  { id: "stop-sojin", name: "소진", latitude: 35.6850, longitude: 128.9450 },
+  { id: "stop-tongjeom", name: "통점", latitude: 35.6700, longitude: 128.9530 },
+  { id: "stop-samgye", name: "삼계", latitude: 35.6600, longitude: 128.9600 },
+  // H6 extras (청도읍 -> 송읍, interpolated north of the terminal).
+  { id: "stop-riverside-road", name: "강변도로", latitude: 35.6480, longitude: 128.7470 },
+  { id: "stop-eup-office", name: "청도읍사무소", latitude: 35.6540, longitude: 128.7510 },
+  { id: "stop-singi-bridge", name: "신기교", latitude: 35.6590, longitude: 128.7550 },
+  { id: "stop-ansongeup", name: "안송읍", latitude: 35.6620, longitude: 128.7580 },
 ];
 
 export type MockBusRouteStop = {
@@ -242,43 +284,70 @@ export type MockBusRouteStop = {
   sequence: number;
 };
 
-// H1 visits every stop in one sequence (not a closed loop back to the first
-// stop) so the merged route/stop selection screen defaults to a full six-stop
-// list (the user asked for route 1 to be shown by default). The other routes
-// visit three-stop subsets so the rejection branch
-// and the snap tie-breaks still have varied geometry. The
-// stops are intentionally shared across routes so junction tie-breaks in
-// inferRouteAndStop have a realistic geometry to exercise. Sequence numbers
-// are 1-based per route.
+// Real Cheongdo Happy Bus route compositions (source: namu.wiki, transcribed by
+// the user 2026-06-06). Stops are shared across routes where the source lists
+// the same place. The terminal that the source shows at both ends of a route
+// (H1/H3 etc.) is listed once; the loop is descriptive, not a duplicated row.
+// Sequence numbers are 1-based per route.
 export const mockBusRouteStops: MockBusRouteStop[] = [
-  // H1: every stop in order, the default selection list.
+  // H1: loop near 청도읍.
   { routeId: "route-happy-1", stopId: "stop-cheongdo-public-terminal", sequence: 1 },
   { routeId: "route-happy-1", stopId: "stop-gumiri", sequence: 2 },
   { routeId: "route-happy-1", stopId: "stop-arae-gumi", sequence: 3 },
   { routeId: "route-happy-1", stopId: "stop-wolgok-2-pakwol", sequence: 4 },
   { routeId: "route-happy-1", stopId: "stop-gwitturami-boiler", sequence: 5 },
   { routeId: "route-happy-1", stopId: "stop-nonggong-entrance", sequence: 6 },
-  // H2: public-terminal -> gumiri -> arae-gumi
+  { routeId: "route-happy-1", stopId: "stop-wolgok-1-hall", sequence: 7 },
+  { routeId: "route-happy-1", stopId: "stop-dajeong", sequence: 8 },
+  { routeId: "route-happy-1", stopId: "stop-daean-apt", sequence: 9 },
+  // H2: 청도읍 -> 화양 범곡.
   { routeId: "route-happy-2", stopId: "stop-cheongdo-public-terminal", sequence: 1 },
-  { routeId: "route-happy-2", stopId: "stop-gumiri", sequence: 2 },
-  { routeId: "route-happy-2", stopId: "stop-arae-gumi", sequence: 3 },
-  // H3: arae-gumi -> wolgok-2-pakwol -> gwitturami-boiler
-  { routeId: "route-happy-3", stopId: "stop-arae-gumi", sequence: 1 },
-  { routeId: "route-happy-3", stopId: "stop-wolgok-2-pakwol", sequence: 2 },
-  { routeId: "route-happy-3", stopId: "stop-gwitturami-boiler", sequence: 3 },
-  // H4: wolgok-2-pakwol -> gwitturami-boiler -> nonggong-entrance
-  { routeId: "route-happy-4", stopId: "stop-wolgok-2-pakwol", sequence: 1 },
-  { routeId: "route-happy-4", stopId: "stop-gwitturami-boiler", sequence: 2 },
-  { routeId: "route-happy-4", stopId: "stop-nonggong-entrance", sequence: 3 },
-  // H5: gwitturami-boiler -> nonggong-entrance -> public-terminal
-  { routeId: "route-happy-5", stopId: "stop-gwitturami-boiler", sequence: 1 },
-  { routeId: "route-happy-5", stopId: "stop-nonggong-entrance", sequence: 2 },
-  { routeId: "route-happy-5", stopId: "stop-cheongdo-public-terminal", sequence: 3 },
-  // H6: nonggong-entrance -> public-terminal -> gumiri -> arae-gumi
-  { routeId: "route-happy-6", stopId: "stop-nonggong-entrance", sequence: 1 },
-  { routeId: "route-happy-6", stopId: "stop-cheongdo-public-terminal", sequence: 2 },
-  { routeId: "route-happy-6", stopId: "stop-gumiri", sequence: 3 },
-  { routeId: "route-happy-6", stopId: "stop-arae-gumi", sequence: 4 },
+  { routeId: "route-happy-2", stopId: "stop-seongjo-apt", sequence: 2 },
+  { routeId: "route-happy-2", stopId: "stop-bumin-apt", sequence: 3 },
+  { routeId: "route-happy-2", stopId: "stop-county-office", sequence: 4 },
+  { routeId: "route-happy-2", stopId: "stop-koaru-apt", sequence: 5 },
+  { routeId: "route-happy-2", stopId: "stop-beomgok-humansia", sequence: 6 },
+  { routeId: "route-happy-2", stopId: "stop-beomgok-1-welfare", sequence: 7 },
+  // H3: 청도읍 -> 화양 신봉리.
+  { routeId: "route-happy-3", stopId: "stop-cheongdo-public-terminal", sequence: 1 },
+  { routeId: "route-happy-3", stopId: "stop-cheongdo-market", sequence: 2 },
+  { routeId: "route-happy-3", stopId: "stop-chukhyeop", sequence: 3 },
+  { routeId: "route-happy-3", stopId: "stop-seongjo-apt", sequence: 4 },
+  { routeId: "route-happy-3", stopId: "stop-bumin-apt", sequence: 5 },
+  { routeId: "route-happy-3", stopId: "stop-county-office", sequence: 6 },
+  { routeId: "route-happy-3", stopId: "stop-koaru-apt", sequence: 7 },
+  { routeId: "route-happy-3", stopId: "stop-beomgok-humansia", sequence: 8 },
+  { routeId: "route-happy-3", stopId: "stop-beomgok-crossroad", sequence: 9 },
+  { routeId: "route-happy-3", stopId: "stop-sports-field", sequence: 10 },
+  { routeId: "route-happy-3", stopId: "stop-dongcheon-ri", sequence: 11 },
+  { routeId: "route-happy-3", stopId: "stop-eupseong", sequence: 12 },
+  { routeId: "route-happy-3", stopId: "stop-hwayang-police", sequence: 13 },
+  { routeId: "route-happy-3", stopId: "stop-seosang-super", sequence: 14 },
+  { routeId: "route-happy-3", stopId: "stop-sinbong-saeteo", sequence: 15 },
+  { routeId: "route-happy-3", stopId: "stop-cheongseokgol-farm", sequence: 16 },
+  { routeId: "route-happy-3", stopId: "stop-sinbong-hongdo", sequence: 17 },
+  // H4: 청도읍 -> 금천 동곡.
+  { routeId: "route-happy-4", stopId: "stop-cheongdo-public-terminal", sequence: 1 },
+  { routeId: "route-happy-4", stopId: "stop-gomtijae", sequence: 2 },
+  { routeId: "route-happy-4", stopId: "stop-sangpyeong", sequence: 3 },
+  { routeId: "route-happy-4", stopId: "stop-doncchijae-tunnel", sequence: 4 },
+  { routeId: "route-happy-4", stopId: "stop-gimjeon-ri", sequence: 5 },
+  { routeId: "route-happy-4", stopId: "stop-sajeon-ri", sequence: 6 },
+  { routeId: "route-happy-4", stopId: "stop-donggok-terminal", sequence: 7 },
+  // H5: 동곡 -> 운문 삼계.
+  { routeId: "route-happy-5", stopId: "stop-donggok-terminal", sequence: 1 },
+  { routeId: "route-happy-5", stopId: "stop-daecheon-terminal", sequence: 2 },
+  { routeId: "route-happy-5", stopId: "stop-ojin", sequence: 3 },
+  { routeId: "route-happy-5", stopId: "stop-sojin", sequence: 4 },
+  { routeId: "route-happy-5", stopId: "stop-tongjeom", sequence: 5 },
+  { routeId: "route-happy-5", stopId: "stop-samgye", sequence: 6 },
+  // H6: 청도읍 -> 송읍.
+  { routeId: "route-happy-6", stopId: "stop-cheongdo-public-terminal", sequence: 1 },
+  { routeId: "route-happy-6", stopId: "stop-cheongdo-market", sequence: 2 },
+  { routeId: "route-happy-6", stopId: "stop-riverside-road", sequence: 3 },
+  { routeId: "route-happy-6", stopId: "stop-eup-office", sequence: 4 },
+  { routeId: "route-happy-6", stopId: "stop-singi-bridge", sequence: 5 },
+  { routeId: "route-happy-6", stopId: "stop-ansongeup", sequence: 6 },
 ];
 
 /**
@@ -308,35 +377,35 @@ export const mockBusSightings: MockBusSightingRaw[] = [
     routeId: "route-happy-1",
     stopId: "stop-cheongdo-public-terminal",
     reporterId: "me",
-    latitude: 35.6474,
-    longitude: 128.7338,
+    latitude: 35.6413,
+    longitude: 128.7464,
     createdAt: "2026-05-22T08:30:00.000Z",
   },
   {
     id: "sighting-2",
     routeId: "route-happy-2",
-    stopId: "stop-arae-gumi",
+    stopId: "stop-bumin-apt",
     reporterId: "author-1",
-    latitude: 35.6501,
-    longitude: 128.7370,
+    latitude: 35.6388,
+    longitude: 128.7385,
     createdAt: "2026-05-22T08:55:00.000Z",
   },
   {
     id: "sighting-3",
     routeId: "route-happy-3",
-    stopId: "stop-wolgok-2-pakwol",
+    stopId: "stop-eupseong",
     reporterId: "me",
-    latitude: 35.6480,
-    longitude: 128.7390,
+    latitude: 35.6385,
+    longitude: 128.7150,
     createdAt: "2026-05-22T08:48:00.000Z",
   },
   {
     id: "sighting-4",
     routeId: "route-happy-6",
-    stopId: "stop-nonggong-entrance",
+    stopId: "stop-ansongeup",
     reporterId: "author-1",
-    latitude: 35.6520,
-    longitude: 128.7385,
+    latitude: 35.6620,
+    longitude: 128.7580,
     createdAt: "2026-05-22T08:00:00.000Z",
   },
 ];
