@@ -335,7 +335,11 @@ function AppContent() {
         />
       )
     ) : (
-      <MapScreen onSelectTab={handleSelectTab} onOpenPost={setSelectedPostId} />
+      <MapScreen
+        onSelectTab={handleSelectTab}
+        onOpenPost={setSelectedPostId}
+        onOpenRouteInfo={() => setBusRouteInfoOpen(true)}
+      />
     );
 
   return (

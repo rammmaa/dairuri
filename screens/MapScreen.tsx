@@ -12,6 +12,7 @@ import {
 import { Bus, MapPin, Search, X } from "lucide-react-native";
 
 import { BottomNav } from "../components/BottomNav";
+import { BusRouteHomeCard } from "../components/BusRouteHomeCard";
 import { CurrentLocationIcon } from "../components/CurrentLocationIcon";
 import { FilterChip } from "../components/FilterChip";
 import { MapPreview } from "../components/MapPreview";
@@ -55,6 +56,7 @@ export type MapScreenProps = {
   onSearchPress?: () => void;
   onCurrentLocationPress?: () => void;
   onSelectMapMarker?: (markerId: string) => void;
+  onOpenRouteInfo?: () => void;
 };
 
 const SHEET_DEFAULT_TOP = 486;
@@ -126,6 +128,7 @@ export function MapScreen({
   onSearchPress,
   onCurrentLocationPress,
   onSelectMapMarker,
+  onOpenRouteInfo,
 }: MapScreenProps) {
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryFilter["id"] | null>(null);
@@ -728,6 +731,10 @@ export function MapScreen({
                 showsVerticalScrollIndicator={false}
                 testID="map-home-sheet-scroll"
               >
+                <View style={styles.busRouteCardWrap}>
+                  <BusRouteHomeCard onPress={onOpenRouteInfo} />
+                </View>
+
                 <View style={styles.listHeader}>
                   <View style={styles.countRow}>
                     <Text style={styles.countText}>총</Text>
@@ -1143,6 +1150,9 @@ const styles = StyleSheet.create({
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
     lineHeight: typography.lineHeight.sm,
+  },
+  busRouteCardWrap: {
+    marginBottom: 16,
   },
   listHeader: {
     flexDirection: "row",
