@@ -21,15 +21,35 @@ describe("getBusArrivalTimes", () => {
     expect(weekend).toEqual(weekday);
   });
 
-  it("anchors the first and last run to the route schedule", () => {
-    // H3 first bus 06:50 at the terminal (sequence 1, no offset).
-    const times = getBusArrivalTimes(
+  it("uses the real per-stop timetable for route 3 (both directions)", () => {
+    // 청도시장: outbound 06:51/10:31/15:31 + inbound 07:40/11:20/16:20.
+    const market = getBusArrivalTimes(
+      "route-happy-3",
+      "stop-cheongdo-market",
+      "월",
+    );
+    expect(market).toEqual([
+      "06:51",
+      "07:40",
+      "10:31",
+      "11:20",
+      "15:31",
+      "16:20",
+    ]);
+
+    // Terminal: outbound departures 06:50/10:30/15:30 plus inbound arrivals.
+    const terminal = getBusArrivalTimes(
       "route-happy-3",
       "stop-cheongdo-public-terminal",
       "월",
     );
-    expect(times[0]).toBe("06:50");
-    expect(times[times.length - 1]).toBe("15:30");
+    expect(terminal[0]).toBe("06:50");
+    expect(terminal).toContain("15:30");
+
+    // Excluded stops (축협) are not on route 3 and return nothing.
+    expect(getBusArrivalTimes("route-happy-3", "stop-chukhyeop", "월")).toEqual(
+      [],
+    );
   });
 
   it("returns an empty list for an unknown route", () => {
