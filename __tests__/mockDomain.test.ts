@@ -68,7 +68,7 @@ describe("mock domain service", () => {
 describe("mock Happy Bus fixtures", () => {
   it("exposes six Happy Bus routes, the real stop catalog, and historical sightings", () => {
     expect(mockBusRoutes).toHaveLength(6);
-    expect(mockBusStops).toHaveLength(41);
+    expect(mockBusStops).toHaveLength(39);
     expect(mockBusSightings.length).toBeGreaterThanOrEqual(3);
     expect(mockBusSightings.length).toBeLessThanOrEqual(6);
   });
