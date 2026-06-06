@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { Platform } from "react-native";
 
 import { ChatScreen } from "../screens/ChatScreen";
 
@@ -20,6 +21,34 @@ describe("ChatScreen", () => {
     expect(screen.getByText("채팅이 \n시작되었어요")).toBeTruthy();
     expect(screen.getByText("안녕하세요")).toBeTruthy();
     expect(screen.getByPlaceholderText("메시지 보내기")).toBeTruthy();
+  });
+
+  it("keeps the inline composer keyboard-aware and submits on return", () => {
+    render(<ChatScreen />);
+
+    expect(screen.getByTestId("chat-list-scroll").props.keyboardDismissMode).toBe(
+      Platform.OS === "ios" ? "interactive" : "on-drag",
+    );
+
+    fireEvent.press(screen.getByTestId("chat-room-brungpot"));
+
+    expect(screen.getByTestId("chat-inline-keyboard-avoiding-view")).toBeTruthy();
+    expect(screen.getByTestId("chat-inline-message-scroll").props.keyboardDismissMode).toBe(
+      Platform.OS === "ios" ? "interactive" : "on-drag",
+    );
+    expect(screen.getByTestId("chat-inline-message-scroll").props.keyboardShouldPersistTaps).toBe(
+      "handled",
+    );
+
+    const input = screen.getByTestId("chat-inline-message-input");
+    expect(input.props.returnKeyType).toBe("send");
+    expect(input.props.blurOnSubmit).toBe(true);
+
+    fireEvent.changeText(input, "인라인 엔터 전송");
+    fireEvent(input, "submitEditing");
+
+    expect(screen.getByText("인라인 엔터 전송")).toBeTruthy();
+    expect(screen.getByTestId("chat-inline-message-input").props.value).toBe("");
   });
 
   it("opens the more menu and confirms the leave-room modal can be cancelled", () => {

@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,10 +29,12 @@ import {
 import type { LucideIcon } from "lucide-react-native";
 
 import { BottomNav } from "../components/BottomNav";
+import { Header } from "../components/Header";
 import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
 import {
   getSafeAreaBottomInset,
+  getSafeAreaTopInset,
   useRuntimeSafeAreaInsets,
 } from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
@@ -106,6 +111,11 @@ const chatRooms: ChatListRoom[] = [
 type ChatFilter = "all" | "ride" | "work";
 type InlineChatActionMode = "manner" | "credentials" | "invite";
 
+const APP_HEADER_BASE_HEIGHT = 88;
+const APP_HEADER_TOP_PADDING = 36;
+const INLINE_CHAT_META_HEIGHT = 44;
+const chatKeyboardDismissMode = Platform.OS === "ios" ? "interactive" : "on-drag";
+
 const inlineRoomMessages = [
   {
     id: "received-1",
@@ -134,10 +144,14 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
   const [inlineSearchQuery, setInlineSearchQuery] = useState("");
   const [inlineMuted, setInlineMuted] = useState(false);
   const [inlineStatusMessage, setInlineStatusMessage] = useState<string | null>(null);
+  const [inlineMessages, setInlineMessages] = useState(inlineRoomMessages);
+  const [inlineComposerText, setInlineComposerText] = useState("");
   const [rooms, setRooms] = useState<ChatListRoom[]>(() =>
     process.env.NODE_ENV === "test" ? chatRooms : [],
   );
-  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
+  const insets = useRuntimeSafeAreaInsets();
+  const topInset = getSafeAreaTopInset(insets);
+  const bottomInset = getSafeAreaBottomInset(insets);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") {
@@ -171,6 +185,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
     setInlineSearchOpen(false);
     setInlineSearchQuery("");
     setInlineStatusMessage(null);
+    setInlineComposerText("");
   };
 
   const openLeaveModal = () => {
@@ -201,6 +216,25 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
     });
   };
 
+  const sendInlineMessage = () => {
+    const trimmed = inlineComposerText.trim();
+    if (!trimmed) {
+      Keyboard.dismiss();
+      return;
+    }
+
+    setInlineMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        id: `inline-sent-${currentMessages.length + 1}`,
+        text: trimmed,
+        mine: true,
+      },
+    ]);
+    setInlineComposerText("");
+    Keyboard.dismiss();
+  };
+
   if (selectedRoomId === null) {
     return (
       <ChatListScreen
@@ -213,6 +247,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
 
           setSelectedRoomId(roomId);
         }}
+        topInset={topInset}
         onSelectTab={onSelectTab}
       />
     );
@@ -220,17 +255,31 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
 
   const normalizedInlineSearchQuery = inlineSearchQuery.trim().toLowerCase();
   const visibleInlineMessages = normalizedInlineSearchQuery
-    ? inlineRoomMessages.filter((message) =>
+    ? inlineMessages.filter((message) =>
         message.text.toLowerCase().includes(normalizedInlineSearchQuery),
       )
-    : inlineRoomMessages;
+    : inlineMessages;
   const inlineInviteLink = `darori.chat/${selectedRoomId}`;
   const selectedRoom = rooms.find((room) => room.id === selectedRoomId);
 
   return (
-    <View style={styles.safeArea}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
+      style={styles.safeArea}
+      testID="chat-inline-keyboard-avoiding-view"
+    >
       <View style={styles.screen} testID="chat-screen">
-        <View style={styles.header}>
+        <View
+          style={[
+            styles.header,
+            {
+              minHeight: APP_HEADER_BASE_HEIGHT + INLINE_CHAT_META_HEIGHT + topInset,
+              paddingTop: APP_HEADER_TOP_PADDING + topInset,
+            },
+          ]}
+          testID="chat-inline-header"
+        >
           <View style={styles.headerTopRow}>
             <Pressable
               accessibilityRole="button"
@@ -295,6 +344,8 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
                 placeholderTextColor={colors.gray400}
                 value={inlineSearchQuery}
                 onChangeText={setInlineSearchQuery}
+                returnKeyType="search"
+                blurOnSubmit
                 testID="chat-inline-search-input"
                 style={styles.inlineSearchInput}
               />
@@ -308,11 +359,14 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
         ) : null}
 
         <ScrollView
+          testID="chat-inline-message-scroll"
           style={styles.messagesScroll}
           contentContainerStyle={[
             styles.messagesContent,
             { paddingBottom: 80 + bottomInset },
           ]}
+          keyboardDismissMode={chatKeyboardDismissMode}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.dateText}>2026년 5월 5일</Text>
@@ -400,11 +454,18 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
             accessibilityLabel="메시지 입력"
             placeholder="메시지 보내기"
             placeholderTextColor={colors.grayIcon}
+            value={inlineComposerText}
+            onChangeText={setInlineComposerText}
+            returnKeyType="send"
+            blurOnSubmit
+            onSubmitEditing={sendInlineMessage}
+            testID="chat-inline-message-input"
             style={styles.messageInput}
           />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="메시지 전송"
+            onPress={sendInlineMessage}
             style={({ pressed }) => [
               styles.inputIconButton,
               pressed && styles.pressed,
@@ -515,7 +576,7 @@ export function ChatScreen({ onSelectTab, onOpenRoom }: ChatScreenProps) {
           </View>
         ) : null}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -555,12 +616,14 @@ function mapChatRoomToListItem(room: DomainChatRoom): ChatListRoom {
 type ChatListScreenProps = {
   rooms: ChatListRoom[];
   onOpenRoom: (roomId: string) => void;
+  topInset: number;
   onSelectTab?: (item: BottomNavItem) => void;
 };
 
 function ChatListScreen({
   rooms,
   onOpenRoom,
+  topInset,
   onSelectTab,
 }: ChatListScreenProps) {
   const [selectedFilter, setSelectedFilter] = useState<ChatFilter>("all");
@@ -593,17 +656,19 @@ function ChatListScreen({
   return (
     <View style={styles.safeArea}>
       <View style={styles.listScreen} testID="chat-screen">
-        <View style={styles.listHeader}>
-          <View style={styles.listTitleRow}>
-            <View>
-              <ScreenTitle>채팅</ScreenTitle>
-              <Text style={styles.listSubtitle}>지금 함께 이동할 대화를 확인하세요</Text>
-            </View>
+        <Header
+          title="채팅"
+          border={false}
+          testID="chat-list-header"
+          titleSize="large"
+          right={
             <View style={styles.listHeaderIconFrame}>
               <MessageCircle size={22} color={colors.mintDark} strokeWidth={2.3} />
             </View>
-          </View>
-
+          }
+        />
+        <View style={styles.listControls}>
+          <Text style={styles.listSubtitle}>지금 함께 이동할 대화를 확인하세요</Text>
           <View style={styles.searchFilterRow}>
             <View
               accessibilityRole="search"
@@ -617,6 +682,8 @@ function ChatListScreen({
                 placeholderTextColor={colors.mutedText}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                returnKeyType="search"
+                blurOnSubmit
                 style={styles.searchInput}
               />
             </View>
@@ -639,8 +706,11 @@ function ChatListScreen({
         </View>
 
         <ScrollView
+          testID="chat-list-scroll"
           style={styles.chatScroll}
           contentContainerStyle={styles.chatList}
+          keyboardDismissMode={chatKeyboardDismissMode}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.filterTabs} accessibilityRole="tablist">
@@ -926,22 +996,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sheet,
     overflow: "hidden",
   },
-  listHeader: {
-    paddingTop: 54,
+  listControls: {
     paddingHorizontal: spacing.screenX,
     paddingBottom: 18,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
   },
-  listTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16,
-  },
   listSubtitle: {
-    marginTop: 3,
     color: colors.grayText,
     fontFamily: typography.family.regular,
     fontSize: typography.size.sm,
@@ -956,7 +1018,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mintLight,
   },
   searchFilterRow: {
-    marginTop: 20,
+    marginTop: 14,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -1168,8 +1230,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   header: {
-    height: 176,
-    paddingTop: 10,
     backgroundColor: colors.surface,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
@@ -1179,9 +1239,9 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   headerTopRow: {
-    minHeight: 96,
+    minHeight: 44,
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
   },
   iconButton: {
     width: 44,
@@ -1193,7 +1253,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     alignItems: "center",
-    paddingTop: 1,
     paddingRight: 7,
   },
   roomTitle: {
@@ -1211,7 +1270,7 @@ const styles = StyleSheet.create({
     width: 96,
     flexDirection: "row",
     justifyContent: "flex-end",
-    alignItems: "flex-start",
+    alignItems: "center",
     paddingRight: 8,
   },
   squareIcon: {
@@ -1223,7 +1282,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay,
   },
   participantRow: {
-    marginTop: 12,
     marginLeft: 25,
     flexDirection: "row",
     alignItems: "center",

@@ -59,7 +59,7 @@ export function ReportScreen({ roomId, onBack, onSubmitted }: ReportScreenProps)
           </View>
           <Text style={styles.completeTitle}>신고가 접수되었습니다</Text>
           <Text style={styles.completeDescription}>
-            접수된 내용은 다로리 운영팀이 확인할게요.
+            접수된 내용은 다로링크 운영팀이 확인할게요.
           </Text>
           <AppButton label="채팅방으로 돌아가기" onPress={onSubmitted ?? onBack} />
         </View>

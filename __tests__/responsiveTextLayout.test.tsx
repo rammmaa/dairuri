@@ -39,6 +39,12 @@ describe("responsive text layout", () => {
     expect(headerTitle.props.adjustsFontSizeToFit).toBe(true);
     expect(headerTitle.props.minimumFontScale).toBeLessThanOrEqual(0.82);
 
+    render(<Header title="프로필" titleSize="large" testID="profile-title-test-header" />);
+
+    const largeHeaderTitle = screen.getByTestId("profile-title-test-header-title");
+    expect(largeHeaderTitle.props.numberOfLines).toBe(1);
+    expect(largeHeaderTitle.props.adjustsFontSizeToFit).toBe(false);
+
     render(<CreateRecruitmentScreen />);
 
     const pageTitle = screen.getByText("어떤 모집을 시작할까요?");

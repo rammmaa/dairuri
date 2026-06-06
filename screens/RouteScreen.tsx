@@ -12,7 +12,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { BottomNav } from "../components/BottomNav";
 import { FilterChip } from "../components/FilterChip";
-import { ScreenTitle } from "../components/ScreenTitle";
+import { Header } from "../components/Header";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
@@ -205,10 +205,13 @@ export function RouteScreen({
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen}>
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <ScreenTitle>버스</ScreenTitle>
-            {onOpenBusSighting ? (
+        <Header
+          title="버스"
+          border={false}
+          testID="route-header"
+          titleSize="large"
+          right={
+            onOpenBusSighting ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="방금 버스 봤어요"
@@ -222,8 +225,10 @@ export function RouteScreen({
                 <Bus size={16} color={colors.surface} strokeWidth={2.4} />
                 <Text style={styles.recordSightingText}>방금 봤어요</Text>
               </Pressable>
-            ) : null}
-          </View>
+            ) : null
+          }
+        />
+        <View style={styles.headerControls}>
           <View style={styles.searchBar} accessibilityRole="search">
             <Search size={20} color={colors.grayIcon} strokeWidth={2.3} />
             <Text style={styles.searchPlaceholder}>노선, 정류장 검색</Text>
@@ -475,18 +480,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sheet,
     overflow: "hidden",
   },
-  header: {
+  headerControls: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 52,
     paddingBottom: 12,
     backgroundColor: colors.surface,
-    gap: 16,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
   },
   recordSightingButton: {
     minHeight: 36,

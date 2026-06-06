@@ -22,7 +22,16 @@ export type TextInputFieldProps = {
   multiline?: boolean;
   error?: string;
   testID?: string;
-} & Pick<TextInputProps, "onBlur" | "maxLength" | "autoCapitalize">;
+} & Pick<
+  TextInputProps,
+  | "onBlur"
+  | "maxLength"
+  | "autoCapitalize"
+  | "returnKeyType"
+  | "blurOnSubmit"
+  | "onSubmitEditing"
+  | "submitBehavior"
+>;
 
 export function TextInputField({
   label,

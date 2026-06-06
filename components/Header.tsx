@@ -16,6 +16,8 @@ export type HeaderProps = {
   backTestID?: string;
   right?: ReactNode;
   border?: boolean;
+  testID?: string;
+  titleSize?: "standard" | "large";
 };
 
 export function Header({
@@ -25,8 +27,11 @@ export function Header({
   backTestID,
   right,
   border = true,
+  testID,
+  titleSize = "standard",
 }: HeaderProps) {
   const topInset = getSafeAreaTopInset(useRuntimeSafeAreaInsets());
+  const adjustsTitleFontSize = titleSize !== "large";
 
   return (
     <View
@@ -38,6 +43,7 @@ export function Header({
         },
         border && styles.border,
       ]}
+      testID={testID}
     >
       {showBack ? (
         <Pressable
@@ -54,9 +60,10 @@ export function Header({
         <View style={styles.backSpacer} />
       )}
       <Text
-        style={styles.title}
+        style={[styles.title, titleSize === "large" && styles.largeTitle]}
+        testID={testID ? `${testID}-title` : undefined}
         numberOfLines={1}
-        adjustsFontSizeToFit
+        adjustsFontSizeToFit={adjustsTitleFontSize}
         minimumFontScale={0.82}
         maxFontSizeMultiplier={1.08}
       >
@@ -101,9 +108,13 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     color: colors.black,
-    fontFamily: typography.family.regular,
+    fontFamily: typography.family.bold,
     fontSize: typography.size.lg,
     lineHeight: typography.lineHeight.lg,
     textAlign: "left",
+  },
+  largeTitle: {
+    fontSize: typography.size.title,
+    lineHeight: typography.lineHeight.title,
   },
 });

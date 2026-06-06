@@ -26,6 +26,7 @@ import { ScreenTitle } from "../components/ScreenTitle";
 import { colors } from "../constants/colors";
 import {
   getSafeAreaBottomInset,
+  getSafeAreaTopInset,
   useRuntimeSafeAreaInsets,
 } from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
@@ -148,7 +149,9 @@ export function CreateRecruitmentScreen({
   const progress = selectedType
     ? Math.min((screenIndex + 1) / totalScreens, 1)
     : 0.22;
-  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
+  const insets = useRuntimeSafeAreaInsets();
+  const topInset = getSafeAreaTopInset(insets);
+  const bottomInset = getSafeAreaBottomInset(insets);
 
   const allAgreementsChecked = useMemo(
     () => agreementItems.every((item) => agreements[item.id]),
@@ -533,6 +536,7 @@ export function CreateRecruitmentScreen({
               ? destination
               : workArea
         }
+        topInset={topInset}
         onBack={() => setPlacePickerTarget(null)}
         onSelectPlace={handleSelectPlace}
       />
@@ -546,7 +550,7 @@ export function CreateRecruitmentScreen({
           style={styles.scroll}
           contentContainerStyle={[
             styles.content,
-            { paddingBottom: 126 + bottomInset },
+            { paddingTop: 28 + topInset, paddingBottom: 126 + bottomInset },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -1345,6 +1349,7 @@ type PlacePickerScreenProps = {
   target: PlacePickerTarget;
   accent: string;
   currentValue: string;
+  topInset: number;
   onBack: () => void;
   onSelectPlace: (place: PlaceCandidate) => void;
 };
@@ -1353,6 +1358,7 @@ function PlacePickerScreen({
   target,
   accent,
   currentValue,
+  topInset,
   onBack,
   onSelectPlace,
 }: PlacePickerScreenProps) {
@@ -1436,7 +1442,7 @@ function PlacePickerScreen({
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen} testID="place-picker-screen">
-        <View style={styles.placeHeader}>
+        <View style={[styles.placeHeader, { paddingTop: 28 + topInset }]}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="이전"
@@ -1865,7 +1871,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 28,
     gap: 30,
   },
   submitError: {
@@ -1901,7 +1906,6 @@ const styles = StyleSheet.create({
   },
   placeHeader: {
     paddingHorizontal: 20,
-    paddingTop: 28,
     paddingBottom: 14,
     flexDirection: "row",
     alignItems: "center",
