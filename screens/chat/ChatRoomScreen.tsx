@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -33,6 +34,10 @@ import {
 import { BottomSheet } from "../../components/BottomSheet";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { colors } from "../../constants/colors";
+import {
+  getSafeAreaTopInset,
+  useRuntimeSafeAreaInsets,
+} from "../../constants/safeArea";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { mockChatRooms, mockMessages } from "../../data/mockDomain";
@@ -46,6 +51,9 @@ import {
 } from "../../services/api";
 import { getSessionUser } from "../../services/authSession";
 import type { ChatMessage, ChatRoom } from "../../types/domain";
+
+const APP_HEADER_BASE_HEIGHT = 88;
+const APP_HEADER_TOP_PADDING = 36;
 
 export type ChatRoomScreenProps = {
   roomId: string;
@@ -157,6 +165,7 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
       setText("");
       setAttachedPhotoUri(null);
       setAttachedPhotoPayload(null);
+      Keyboard.dismiss();
     } catch (error) {
       setSendError(error instanceof Error ? error.message : "메시지를 보내지 못했어요.");
     } finally {
@@ -341,6 +350,8 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
               placeholderTextColor={colors.gray400}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              returnKeyType="search"
+              blurOnSubmit
               testID="chat-room-search-input"
               style={styles.roomSearchInput}
             />
@@ -351,8 +362,11 @@ export function ChatRoomScreen({ roomId, onBack, onReport }: ChatRoomScreenProps
         </View>
       ) : null}
       <FlatList
+        testID="chat-room-message-list"
         data={visibleMessages}
         keyExtractor={(item) => item.id}
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.messagesContent}
         renderItem={({ item }) => (
           <ChatMessageItem
@@ -434,8 +448,19 @@ function ChatHeader({
   onCall: () => void;
   onMore: () => void;
 }) {
+  const topInset = getSafeAreaTopInset(useRuntimeSafeAreaInsets());
+
   return (
-    <View style={styles.header}>
+    <View
+      style={[
+        styles.header,
+        {
+          minHeight: APP_HEADER_BASE_HEIGHT + topInset,
+          paddingTop: APP_HEADER_TOP_PADDING + topInset,
+        },
+      ]}
+      testID="chat-room-header"
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="뒤로가기"
@@ -555,6 +580,10 @@ function MessageComposer({
           placeholder="메시지 보내기"
           placeholderTextColor={colors.gray400}
           editable={!sending}
+          returnKeyType="send"
+          blurOnSubmit
+          onSubmitEditing={onSend}
+          testID="chat-room-message-input"
           style={styles.input}
         />
         <Pressable

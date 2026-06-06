@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { Share } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Platform, Share } from "react-native";
 
 jest.mock("../services/api", () => {
   const actual = jest.requireActual("../services/api");
@@ -102,6 +102,30 @@ describe("PostDetailScreen", () => {
 
     expect(onSubmitted).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("잘 제출되었어요!")).toBeNull();
+  });
+
+  it("keeps the apply form keyboard-aware and dismisses the keyboard on return", () => {
+    const dismissSpy = jest.spyOn(Keyboard, "dismiss").mockImplementation(() => undefined);
+
+    render(<PostDetailScreen postId="job-1" />);
+
+    fireEvent.press(screen.getByText("지원하기"));
+
+    expect(screen.getByTestId("apply-flow-keyboard-avoiding-view")).toBeTruthy();
+
+    const keyboardAvoidingView = screen.UNSAFE_getByType(KeyboardAvoidingView);
+    const input = screen.getByTestId("apply-intro-input");
+
+    expect(keyboardAvoidingView.props.behavior).toBe(
+      Platform.OS === "ios" ? "padding" : "height",
+    );
+    expect(input.props.returnKeyType).toBe("done");
+    expect(input.props.blurOnSubmit).toBe(true);
+    expect(input.props.submitBehavior).toBe("blurAndSubmit");
+
+    fireEvent(input, "submitEditing");
+
+    expect(dismissSpy).toHaveBeenCalledTimes(1);
   });
 
   it("does not let the current user apply to their own post", () => {

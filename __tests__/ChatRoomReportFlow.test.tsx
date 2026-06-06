@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { Linking, Share } from "react-native";
+import { Linking, Platform, Share } from "react-native";
 
 jest.mock("expo-image-picker", () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(),
@@ -60,7 +60,27 @@ describe("Chat room and report flow", () => {
     render(<ChatRoomScreen roomId="room-1" />);
 
     expect(screen.getByTestId("chat-room-keyboard-avoiding-view")).toBeTruthy();
-    expect(screen.getByPlaceholderText("메시지 보내기")).toBeTruthy();
+    expect(screen.getByTestId("chat-room-message-list").props.keyboardDismissMode).toBe(
+      Platform.OS === "ios" ? "interactive" : "on-drag",
+    );
+    expect(screen.getByTestId("chat-room-message-list").props.keyboardShouldPersistTaps).toBe(
+      "handled",
+    );
+
+    const input = screen.getByTestId("chat-room-message-input");
+    expect(input.props.returnKeyType).toBe("send");
+    expect(input.props.blurOnSubmit).toBe(true);
+  });
+
+  it("sends the message when return is pressed and clears the composer", async () => {
+    render(<ChatRoomScreen roomId="room-1" />);
+
+    const input = screen.getByTestId("chat-room-message-input");
+    fireEvent.changeText(input, "엔터로 보낼게요");
+    fireEvent(input, "submitEditing");
+
+    expect(await screen.findByText("엔터로 보낼게요")).toBeTruthy();
+    expect(screen.getByTestId("chat-room-message-input").props.value).toBe("");
   });
 
   it("sends a non-empty message and clears the composer", async () => {
@@ -318,6 +338,8 @@ describe("Chat room and report flow", () => {
     await waitFor(() => {
       expect(screen.getByText("신고가 접수되었습니다")).toBeTruthy();
     });
+    expect(screen.getByText("접수된 내용은 다로링크 운영팀이 확인할게요.")).toBeTruthy();
+    expect(screen.queryByText("접수된 내용은 다로리 운영팀이 확인할게요.")).toBeNull();
     expect(mockedApi.submitReport).toHaveBeenCalledWith("room-1", "욕설 및 비매너 사용");
     expect(onSubmitted).not.toHaveBeenCalled();
   });

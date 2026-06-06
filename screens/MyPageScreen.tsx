@@ -21,12 +21,8 @@ import {
 } from "react-native";
 
 import { BottomNav } from "../components/BottomNav";
-import { ScreenTitle } from "../components/ScreenTitle";
+import { Header } from "../components/Header";
 import { colors } from "../constants/colors";
-import {
-  getSafeAreaTopInset,
-  useRuntimeSafeAreaInsets,
-} from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { bottomNavItems, type BottomNavItem } from "../data/mapHome";
@@ -128,20 +124,15 @@ export function MyPageScreen({
   const pendingApplications = receivedApplications.filter(
     (detail) => detail.application.status === "pending",
   );
-  const topInset = getSafeAreaTopInset(useRuntimeSafeAreaInsets());
-
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen}>
+        <Header title="프로필" testID="profile-home-header" titleSize="large" />
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <ScreenTitle style={[styles.headerTitle, { paddingTop: 52 + topInset }]}>
-            프로필
-          </ScreenTitle>
-
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
               {profile?.avatarUrl ? (
@@ -342,15 +333,9 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 0,
+    paddingTop: 12,
     paddingBottom: spacing.navHeight + 30,
     gap: 10,
-  },
-  headerTitle: {
-    marginHorizontal: -spacing.screenX,
-    paddingHorizontal: spacing.screenX,
-    paddingBottom: 12,
-    backgroundColor: colors.surface,
   },
   profileCard: {
     width: "100%",

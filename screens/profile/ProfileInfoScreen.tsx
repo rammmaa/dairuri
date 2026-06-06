@@ -26,7 +26,7 @@ const infoContent: Record<
     sections: [
       {
         heading: "서비스 안내",
-        body: "다로리는 지역 이동과 일손 연결 기능을 안정적으로 제공하기 위해 기능별 업데이트를 순차적으로 적용하고 있어요.",
+        body: "다로링크는 지역 이동과 일손 연결 기능을 안정적으로 제공하기 위해 기능별 업데이트를 순차적으로 적용하고 있어요.",
       },
       {
         heading: "운영 시간",
@@ -50,11 +50,11 @@ const infoContent: Record<
   },
   appInfo: {
     title: "어플 정보",
-    intro: "다로리 앱의 현재 정보를 확인하세요.",
+    intro: "다로링크 앱의 현재 정보를 확인하세요.",
     sections: [
       {
         heading: "앱 이름",
-        body: "다로리",
+        body: "다로링크",
       },
       {
         heading: "버전",
@@ -91,7 +91,12 @@ export function ProfileInfoScreen({ kind, onBack }: ProfileInfoScreenProps) {
 
   return (
     <View style={styles.safeArea}>
-      <Header title={content.title} showBack onBack={onBack} />
+      <Header
+        title={content.title}
+        showBack
+        onBack={onBack}
+        testID={`profile-info-${kind}-header`}
+      />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}

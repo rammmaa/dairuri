@@ -4,13 +4,11 @@ import {
   Pressable,
   StyleProp,
   StyleSheet,
-  Text,
   View,
   ViewStyle,
 } from "react-native";
 
 import { colors } from "../constants/colors";
-import { typography } from "../constants/typography";
 import type { MapPreviewCamera, MapPreviewMarker } from "./mapPreviewData";
 
 type FallbackMapSurfaceProps = {
@@ -23,12 +21,6 @@ type FallbackMapSurfaceProps = {
 
 type RoadSegment = {
   key: string;
-  style: ViewStyle;
-};
-
-type MapLabel = {
-  key: string;
-  label: string;
   style: ViewStyle;
 };
 
@@ -125,36 +117,6 @@ const minorRoads: RoadSegment[] = [
   },
 ];
 
-const labels: MapLabel[] = [
-  {
-    key: "campus-road",
-    label: "다로리로",
-    style: {
-      top: 170,
-      left: 26,
-      transform: [{ rotate: "5deg" }],
-    },
-  },
-  {
-    key: "station-road",
-    label: "중앙대로",
-    style: {
-      top: 300,
-      right: 54,
-      transform: [{ rotate: "-36deg" }],
-    },
-  },
-  {
-    key: "cafe-road",
-    label: "카페거리",
-    style: {
-      top: 424,
-      left: 110,
-      transform: [{ rotate: "-18deg" }],
-    },
-  },
-];
-
 function clampPan(value: number) {
   return Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, value));
 }
@@ -244,12 +206,6 @@ export function FallbackMapSurface({
         <View style={styles.curvedRoad}>
           <View style={styles.curvedRoadInner} />
         </View>
-
-        {labels.map((item) => (
-          <Text key={item.key} style={[styles.roadLabel, item.style]}>
-            {item.label}
-          </Text>
-        ))}
 
         <View style={styles.currentLocation}>
           <View style={styles.locationPulse} />
@@ -390,14 +346,6 @@ const styles = StyleSheet.create({
     borderRightWidth: 2,
     borderColor: colors.mapRoadLine,
     borderTopRightRadius: 96,
-  },
-  roadLabel: {
-    position: "absolute",
-    color: colors.grayText,
-    fontFamily: typography.family.regular,
-    fontSize: typography.size.xs,
-    lineHeight: typography.lineHeight.xs,
-    opacity: 0.58,
   },
   currentLocation: {
     position: "absolute",

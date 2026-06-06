@@ -26,6 +26,14 @@ describe("App tabs", () => {
       expect(screen.getByText("여기서 검색")).toBeTruthy();
     });
 
+    fireEvent.press(screen.getByTestId("map-preview-marker-ride-carpool-1"));
+    expect(
+      await screen.findByText("‘청도감 학원’ 함께 다니실 사람 구해요"),
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("뒤로 가기"));
+    expect(await screen.findByText("여기서 검색")).toBeTruthy();
+
     fireEvent.press(screen.getByTestId("map-home-bottom-nav-bus"));
     expect(await screen.findByText("추천 경로")).toBeTruthy();
 

@@ -23,6 +23,7 @@ import { RecruitmentCard } from "../components/RecruitmentCard";
 import { colors } from "../constants/colors";
 import {
   getSafeAreaBottomInset,
+  getSafeAreaTopInset,
   useRuntimeSafeAreaInsets,
 } from "../constants/safeArea";
 import { spacing } from "../constants/spacing";
@@ -61,6 +62,8 @@ const SHEET_DEFAULT_TOP = 486;
 const SHEET_EXPANDED_TOP = 300;
 const BUS_ARCHIVE_SHEET_EXPANDED_TOP = 56;
 const SHEET_COLLAPSED_TOP = 560;
+const MAP_TOP_OVERLAY_TOP = 49;
+const MAP_TOP_SAFE_MARGIN = 12;
 const POST_PAGE_SIZE = 2;
 const BUS_ARCHIVE_UNKNOWN_LOCATION_LABEL = "확인 중";
 const BUS_ARCHIVE_CURRENT_LOCATION_LABEL = "현재 위치";
@@ -104,7 +107,7 @@ function mapPostsToPreviewMarkers(
       continue;
     }
 
-    const markerId = `${post.category}-${post.detailPostId}`;
+    const markerId = getPreviewMarkerId(post);
     if (markersById.has(markerId)) {
       continue;
     }
@@ -118,6 +121,10 @@ function mapPostsToPreviewMarkers(
   }
 
   return [...markersById.values()];
+}
+
+function getPreviewMarkerId(post: MapHomePost) {
+  return `${post.category}-${post.detailPostId}`;
 }
 
 export function MapScreen({
@@ -147,7 +154,17 @@ export function MapScreen({
   const [busArchiveLocationLabel, setBusArchiveLocationLabel] = useState(
     BUS_ARCHIVE_UNKNOWN_LOCATION_LABEL,
   );
-  const bottomInset = getSafeAreaBottomInset(useRuntimeSafeAreaInsets());
+  const insets = useRuntimeSafeAreaInsets();
+  const topInset = getSafeAreaTopInset(insets);
+  const bottomInset = getSafeAreaBottomInset(insets);
+  const topOverlayTop = Math.max(
+    MAP_TOP_OVERLAY_TOP,
+    topInset + MAP_TOP_SAFE_MARGIN,
+  );
+  const busArchiveExpandedTop = Math.max(
+    BUS_ARCHIVE_SHEET_EXPANDED_TOP,
+    topInset + MAP_TOP_SAFE_MARGIN,
+  );
   const [recruitmentPosts, setRecruitmentPosts] = useState<MapHomePost[]>(() =>
     process.env.NODE_ENV === "test" ? mapHomePosts : [],
   );
@@ -183,6 +200,28 @@ export function MapScreen({
   const mapMarkers = useMemo(
     () => mapPostsToPreviewMarkers(filteredPosts),
     [filteredPosts],
+  );
+  const markerPostIds = useMemo(() => {
+    const postIds = new Map<string, string>();
+
+    for (const post of filteredPosts) {
+      if (post.marker) {
+        postIds.set(getPreviewMarkerId(post), post.detailPostId);
+      }
+    }
+
+    return postIds;
+  }, [filteredPosts]);
+  const handleMapMarkerPress = useCallback(
+    (markerId: string) => {
+      onSelectMapMarker?.(markerId);
+
+      const postId = markerPostIds.get(markerId);
+      if (postId) {
+        onOpenPost?.(postId);
+      }
+    },
+    [markerPostIds, onOpenPost, onSelectMapMarker],
   );
 
   useEffect(() => {
@@ -288,12 +327,12 @@ export function MapScreen({
 
       if (nextFilter === "bus") {
         updateSheetTop(
-          BUS_ARCHIVE_SHEET_EXPANDED_TOP,
-          BUS_ARCHIVE_SHEET_EXPANDED_TOP,
+          busArchiveExpandedTop,
+          busArchiveExpandedTop,
         );
       }
     },
-    [selectedCategory, updateSheetTop],
+    [busArchiveExpandedTop, selectedCategory, updateSheetTop],
   );
   const applyFocusedLocation = useCallback((coords: {
     latitude: number;
@@ -416,12 +455,12 @@ export function MapScreen({
           updateSheetTop(
             dragStartTopRef.current + gestureState.dy,
             isBusArchiveMode
-              ? BUS_ARCHIVE_SHEET_EXPANDED_TOP
+              ? busArchiveExpandedTop
               : SHEET_EXPANDED_TOP,
           );
         },
       }),
-    [isBusArchiveMode, updateSheetTop],
+    [busArchiveExpandedTop, isBusArchiveMode, updateSheetTop],
   );
 
   return (
@@ -431,10 +470,13 @@ export function MapScreen({
           style={styles.mapPreview}
           camera={focusedCamera ?? undefined}
           markers={mapMarkers}
-          onMarkerPress={onSelectMapMarker}
+          onMarkerPress={handleMapMarkerPress}
         />
 
-        <View style={styles.topOverlay}>
+        <View
+          style={[styles.topOverlay, { top: topOverlayTop }]}
+          testID="map-home-top-overlay"
+        >
           {searchOpen ? (
             <View style={styles.searchPanel}>
               <View style={styles.searchInputRow}>
@@ -812,7 +854,6 @@ const styles = StyleSheet.create({
   },
   topOverlay: {
     position: "absolute",
-    top: 49,
     left: 13,
     right: 13,
   },

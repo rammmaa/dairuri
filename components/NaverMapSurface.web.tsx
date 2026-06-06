@@ -217,7 +217,6 @@ export function NaverMapSurface({
       const markerInstance = new naver.Marker({
         position: new naver.LatLng(marker.latitude, marker.longitude),
         map,
-        title: marker.label,
       });
 
       naver.Event?.addListener(markerInstance, "click", () => {

@@ -10,6 +10,7 @@ jest.mock("expo-image-picker", () => ({
 import * as api from "../services/api";
 import * as ImagePicker from "expo-image-picker";
 import { ProfileEditScreen } from "../screens/profile/ProfileEditScreen";
+import { ProfileInfoScreen } from "../screens/profile/ProfileInfoScreen";
 import { SettingsScreen } from "../screens/profile/SettingsScreen";
 import { SavedPostsScreen } from "../screens/profile/SavedPostsScreen";
 import { MyPostsScreen } from "../screens/profile/MyPostsScreen";
@@ -71,6 +72,15 @@ describe("Profile settings flow", () => {
 
     fireEvent.press(screen.getByText("설정"));
     expect(onOpenProfileScreen).toHaveBeenCalledWith("settings");
+  });
+
+  it("uses the Darolink display name in profile app information", () => {
+    render(<ProfileInfoScreen kind="appInfo" />);
+
+    expect(screen.getByText("다로링크 앱의 현재 정보를 확인하세요.")).toBeTruthy();
+    expect(screen.getByText("다로링크")).toBeTruthy();
+    expect(screen.queryByText("다로리 앱의 현재 정보를 확인하세요.")).toBeNull();
+    expect(screen.queryByText("다로리")).toBeNull();
   });
 
   it("shows received applications and opens the review screen", async () => {

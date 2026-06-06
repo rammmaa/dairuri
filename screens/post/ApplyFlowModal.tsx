@@ -1,6 +1,14 @@
 import { CheckCircle2 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { AppButton } from "../../components/AppButton";
 import { CheckBoxRow } from "../../components/CheckBoxRow";
@@ -125,14 +133,19 @@ export function ApplyFlowModal({
   };
 
   return (
-    <View style={styles.overlay} testID="apply-flow-modal">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={0}
+      style={styles.overlay}
+      testID="apply-flow-keyboard-avoiding-view"
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="지원 모달 닫기"
         onPress={onClose}
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.card}>
+      <View style={styles.card} testID="apply-flow-modal">
         <View style={[styles.progress, { backgroundColor: themeColor }]} />
         <Text style={styles.stepLabel}>{stepTitle}</Text>
 
@@ -153,6 +166,10 @@ export function ApplyFlowModal({
               }
               multiline
               maxLength={300}
+              returnKeyType="done"
+              blurOnSubmit
+              submitBehavior="blurAndSubmit"
+              onSubmitEditing={() => Keyboard.dismiss()}
               testID="apply-intro-input"
             />
             <Text style={styles.helper}>10자 이상 작성하면 다음 단계로 이동할 수 있어요.</Text>
@@ -226,7 +243,7 @@ export function ApplyFlowModal({
           </View>
         ) : null}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

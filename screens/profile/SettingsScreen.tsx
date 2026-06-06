@@ -144,7 +144,7 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
   return (
     <View style={styles.safeArea}>
       <View style={styles.screen}>
-        <Header title="설정" showBack onBack={onBack} />
+        <Header title="설정" showBack onBack={onBack} testID="settings-header" />
 
         <ScrollView
           style={styles.scroll}

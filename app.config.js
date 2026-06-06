@@ -53,6 +53,10 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: "com.dairuri.app",
+      buildNumber: "5",
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       package: "com.dairuri.app",

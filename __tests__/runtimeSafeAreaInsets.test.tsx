@@ -4,23 +4,36 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { BottomNav } from "../components/BottomNav";
 import { spacing } from "../constants/spacing";
+import { typography } from "../constants/typography";
 import { bottomNavItems } from "../data/mapHome";
 import { ChatScreen } from "../screens/ChatScreen";
+import { ChatRoomScreen } from "../screens/chat/ChatRoomScreen";
 import { CreateRecruitmentScreen } from "../screens/CreateRecruitmentScreen";
 import { MapScreen } from "../screens/MapScreen";
+import { MyPageScreen } from "../screens/MyPageScreen";
 import { ApplicationReviewScreen } from "../screens/post/ApplicationReviewScreen";
 import { PostDetailScreen } from "../screens/post/PostDetailScreen";
 import { ProfileEditScreen } from "../screens/profile/ProfileEditScreen";
+import { RouteScreen } from "../screens/RouteScreen";
 import { SettingsScreen } from "../screens/profile/SettingsScreen";
+import { ProfileInfoScreen } from "../screens/profile/ProfileInfoScreen";
 
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
-function withInsets(bottom: number, children: React.ReactNode) {
+function withInsets(
+  insetsOrBottom: number | Partial<{ top: number; right: number; bottom: number; left: number }>,
+  children: React.ReactNode,
+) {
+  const insets =
+    typeof insetsOrBottom === "number"
+      ? { top: 0, right: 0, bottom: insetsOrBottom, left: 0 }
+      : { top: 0, right: 0, bottom: 0, left: 0, ...insetsOrBottom };
+
   return (
     <SafeAreaProvider
       initialMetrics={{
         frame,
-        insets: { top: 0, right: 0, bottom, left: 0 },
+        insets,
       }}
     >
       {children}
@@ -29,6 +42,30 @@ function withInsets(bottom: number, children: React.ReactNode) {
 }
 
 describe("runtime safe area insets", () => {
+  const appHeaderBaseHeight = 88;
+  const appHeaderTopPadding = 36;
+
+  function expectAppHeader(
+    testID: string,
+    topInset: number,
+    titleSize: "standard" | "large" = "standard",
+  ) {
+    const headerStyle = StyleSheet.flatten(screen.getByTestId(testID).props.style);
+    const titleStyle = StyleSheet.flatten(
+      screen.getByTestId(`${testID}-title`).props.style,
+    );
+    const expectedFontSize =
+      titleSize === "large" ? typography.size.title : typography.size.lg;
+    const expectedLineHeight =
+      titleSize === "large" ? typography.lineHeight.title : typography.lineHeight.lg;
+
+    expect(headerStyle.minHeight).toBe(appHeaderBaseHeight + topInset);
+    expect(headerStyle.paddingTop).toBe(appHeaderTopPadding + topInset);
+    expect(titleStyle.fontFamily).toBe(typography.family.bold);
+    expect(titleStyle.fontSize).toBe(expectedFontSize);
+    expect(titleStyle.lineHeight).toBe(expectedLineHeight);
+  }
+
   it("uses the provider bottom inset for the bottom navigation", () => {
     const { unmount } = render(
       withInsets(
@@ -144,5 +181,104 @@ describe("runtime safe area insets", () => {
     );
 
     expect(bottomSheetStyle.bottom).toBe(spacing.navHeight + 34);
+  });
+
+  it("adds the provider top inset to custom top-level app surfaces", () => {
+    const top = 59;
+    const { unmount: unmountMap } = render(
+      withInsets({ top, bottom: 34 }, <MapScreen />),
+    );
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId("map-home-top-overlay").props.style)
+        .top,
+    ).toBe(top + 12);
+
+    fireEvent.press(screen.getByTestId("map-home-category-bus"));
+
+    expect(
+      StyleSheet.flatten(screen.getByTestId("map-home-bottom-sheet").props.style)
+        .top,
+    ).toBe(top + 12);
+
+    unmountMap();
+
+    const { unmount: unmountRoute } = render(withInsets({ top }, <RouteScreen />));
+
+    expectAppHeader("route-header", top, "large");
+
+    unmountRoute();
+
+    const { unmount: unmountRecruitment } = render(
+      withInsets({ top }, <CreateRecruitmentScreen />),
+    );
+
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId("recruitment-create-scroll").props.contentContainerStyle,
+      ).paddingTop,
+    ).toBe(28 + top);
+
+    unmountRecruitment();
+
+    const { unmount: unmountProfileHome } = render(
+      withInsets({ top, bottom: 34 }, <MyPageScreen />),
+    );
+
+    const profileHomeHeaderStyle = StyleSheet.flatten(
+      screen.getByTestId("profile-home-header").props.style,
+    );
+
+    expect(profileHomeHeaderStyle.minHeight).toBe(appHeaderBaseHeight + top);
+    expect(profileHomeHeaderStyle.paddingTop).toBe(appHeaderTopPadding + top);
+    expectAppHeader("profile-home-header", top, "large");
+
+    unmountProfileHome();
+
+    const { unmount: unmountChatList } = render(
+      withInsets({ top }, <ChatScreen />),
+    );
+
+    expectAppHeader("chat-list-header", top, "large");
+
+    fireEvent.press(screen.getByTestId("chat-room-brungpot"));
+
+    const inlineHeaderStyle = StyleSheet.flatten(
+      screen.getByTestId("chat-inline-header").props.style,
+    );
+
+    expect(inlineHeaderStyle.paddingTop).toBe(appHeaderTopPadding + top);
+    expect(inlineHeaderStyle.minHeight).toBe(appHeaderBaseHeight + 44 + top);
+
+    unmountChatList();
+
+    const { unmount: unmountSettings } = render(
+      withInsets({ top }, <SettingsScreen onBack={jest.fn()} />),
+    );
+
+    expectAppHeader("settings-header", top);
+
+    unmountSettings();
+
+    const { unmount: unmountNotice } = render(
+      withInsets({ top }, <ProfileInfoScreen kind="notice" onBack={jest.fn()} />),
+    );
+
+    expectAppHeader("profile-info-notice-header", top);
+
+    unmountNotice();
+
+    const { unmount: unmountChat } = render(
+      withInsets({ top }, <ChatRoomScreen roomId="room-1" />),
+    );
+
+    const chatRoomHeaderStyle = StyleSheet.flatten(
+      screen.getByTestId("chat-room-header").props.style,
+    );
+
+    expect(chatRoomHeaderStyle.paddingTop).toBe(appHeaderTopPadding + top);
+    expect(chatRoomHeaderStyle.minHeight).toBe(appHeaderBaseHeight + top);
+
+    unmountChat();
   });
 });
