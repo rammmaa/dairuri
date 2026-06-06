@@ -123,12 +123,14 @@ describe("MapScreen", () => {
     const handleSearchPress = jest.fn();
     const handleCurrentLocationPress = jest.fn();
     const handleMarkerPress = jest.fn();
+    const handleOpenPost = jest.fn();
 
     render(
       <MapScreen
         onSearchPress={handleSearchPress}
         onCurrentLocationPress={handleCurrentLocationPress}
         onSelectMapMarker={handleMarkerPress}
+        onOpenPost={handleOpenPost}
       />,
     );
 
@@ -140,6 +142,7 @@ describe("MapScreen", () => {
     expect(handleCurrentLocationPress).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("map-preview-marker-cafe")).toBeNull();
     expect(handleMarkerPress).toHaveBeenCalledWith("ride-carpool-1");
+    expect(handleOpenPost).toHaveBeenCalledWith("carpool-1");
   });
 
   it("opens a real map search field from the home search bar", () => {

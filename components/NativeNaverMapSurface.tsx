@@ -1,5 +1,6 @@
 import { StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import {
+  NaverMapCircleOverlay,
   NaverMapMarkerOverlay,
   NaverMapView,
 } from "@mj-studio/react-native-naver-map";
@@ -46,23 +47,30 @@ export function NativeNaverMapSurface({
         isShowZoomControls={false}
         isShowCompass={false}
         mapPadding={{ top: 126, right: 16, bottom: 220, left: 16 }}
-        locationOverlay={{
-          isVisible: true,
-          position: {
-            latitude: activeCamera.latitude,
-            longitude: activeCamera.longitude,
-          },
-          circleRadius: 42,
-          circleColor: colors.blueSoft,
-          circleOutlineWidth: 0,
-        }}
       >
+        <NaverMapCircleOverlay
+          latitude={activeCamera.latitude}
+          longitude={activeCamera.longitude}
+          radius={42}
+          color={colors.blueSoft}
+          outlineWidth={0}
+          zIndex={1}
+        />
+        <NaverMapMarkerOverlay
+          latitude={activeCamera.latitude}
+          longitude={activeCamera.longitude}
+          width={18}
+          height={18}
+          anchor={{ x: 0.5, y: 0.5 }}
+          zIndex={2}
+        >
+          <View style={styles.currentLocationDot} />
+        </NaverMapMarkerOverlay>
         {markers.map((marker) => (
           <NaverMapMarkerOverlay
             key={marker.id}
             latitude={marker.latitude}
             longitude={marker.longitude}
-            caption={{ text: marker.label }}
             image={{ symbol: "green" }}
             onTap={() => onMarkerPress?.(marker.id)}
           />
@@ -80,5 +88,13 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  currentLocationDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 3,
+    borderColor: colors.surface,
+    backgroundColor: colors.blue,
   },
 });
