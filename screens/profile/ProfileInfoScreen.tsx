@@ -4,6 +4,7 @@ import { Header } from "../../components/Header";
 import { colors } from "../../constants/colors";
 import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
+import { profileLayout } from "./profileLayout";
 
 export type ProfileInfoScreenKind = "notice" | "faq" | "appInfo" | "terms";
 
@@ -127,9 +128,9 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 20,
+    paddingTop: profileLayout.infoTopPadding,
     paddingBottom: 40,
-    gap: 18,
+    gap: profileLayout.infoContentGap,
   },
   intro: {
     color: colors.black,

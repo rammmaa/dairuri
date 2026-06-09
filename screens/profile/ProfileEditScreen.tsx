@@ -24,6 +24,7 @@ import { mockMe } from "../../data/mockDomain";
 import { getMe, updateMe } from "../../services/api";
 import type { DriverType, UpdateUserProfileInput } from "../../types/domain";
 import { ProfileImageBottomSheet } from "./ProfileImageBottomSheet";
+import { profileLayout } from "./profileLayout";
 
 export type ProfileEditScreenProps = {
   onBack?: () => void;
@@ -336,8 +337,8 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 24,
-    gap: 24,
+    paddingTop: profileLayout.editTopPadding,
+    gap: profileLayout.editContentGap,
   },
   avatarBlock: {
     alignSelf: "center",

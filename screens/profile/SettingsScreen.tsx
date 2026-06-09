@@ -26,6 +26,7 @@ import { typography } from "../../constants/typography";
 import { mockMe } from "../../data/mockDomain";
 import { changePassword, deleteMe, getMe } from "../../services/api";
 import type { UserProfile } from "../../types/domain";
+import { profileLayout } from "./profileLayout";
 
 export type SettingsScreenProps = {
   onBack?: () => void;
@@ -465,8 +466,8 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 20,
-    gap: 20,
+    paddingTop: profileLayout.settingsTopPadding,
+    gap: profileLayout.settingsContentGap,
   },
   section: {
     gap: 10,

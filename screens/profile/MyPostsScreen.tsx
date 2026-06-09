@@ -8,6 +8,7 @@ import { spacing } from "../../constants/spacing";
 import { typography } from "../../constants/typography";
 import { getMyPosts } from "../../services/api";
 import type { Post } from "../../types/domain";
+import { profileLayout } from "./profileLayout";
 import { ProfilePostCard } from "./SavedPostsScreen";
 
 export type MyPostsScreenProps = {
@@ -98,9 +99,9 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 18,
-    paddingBottom: 32,
-    gap: 14,
+    paddingTop: profileLayout.listTopPadding,
+    paddingBottom: profileLayout.listBottomPadding,
+    gap: profileLayout.listContentGap,
   },
   countText: {
     color: colors.black,
@@ -109,7 +110,7 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.base,
   },
   cardList: {
-    gap: 10,
+    gap: profileLayout.listCardGap,
   },
   emptyCard: {
     minHeight: 188,

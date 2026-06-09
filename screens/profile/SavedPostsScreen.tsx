@@ -16,6 +16,7 @@ import { typography } from "../../constants/typography";
 import { mockPosts } from "../../data/mockDomain";
 import { getSavedPosts } from "../../services/api";
 import type { Post } from "../../types/domain";
+import { profileLayout } from "./profileLayout";
 
 export type SavedPostsScreenProps = {
   onBack?: () => void;
@@ -205,9 +206,9 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 18,
-    paddingBottom: 32,
-    gap: 14,
+    paddingTop: profileLayout.listTopPadding,
+    paddingBottom: profileLayout.listBottomPadding,
+    gap: profileLayout.listContentGap,
   },
   countText: {
     color: colors.black,
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeight.base,
   },
   cardList: {
-    gap: 10,
+    gap: profileLayout.listCardGap,
   },
   postCard: {
     padding: 14,
