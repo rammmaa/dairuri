@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenX,
-    paddingTop: 18,
+    paddingTop: 20,
     paddingBottom: 40,
     gap: 18,
   },
