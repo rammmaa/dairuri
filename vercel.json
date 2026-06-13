@@ -2,9 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm install",
-  "buildCommand": "npx expo export --platform web --output-dir dist",
+  "buildCommand": "npx expo export --platform web --output-dir dist && cp public/privacy.html dist/privacy.html",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/api", "destination": "/api/index" },
     { "source": "/api/:path*", "destination": "/api/index?path=:path*" },
     { "source": "/:path((?!api/).*)", "destination": "/index.html" }
